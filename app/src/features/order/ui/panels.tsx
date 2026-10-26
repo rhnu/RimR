@@ -58,7 +58,13 @@ export function ValidationSummaryBadge({
   diagnostics = [],
   modByPackageId,
 }: {
-  summary: { errors: number; warnings: number; infos: number; isClean: boolean };
+  summary: {
+    errors: number;
+    warnings: number;
+    infos: number;
+    isClean: boolean;
+    suppressed?: number;
+  };
   phase: 'idle' | 'validating' | 'ready' | 'error';
   diagnostics?: DiagnosticDto[];
   modByPackageId: Map<string, ModMetadataDto>;
@@ -66,9 +72,14 @@ export function ValidationSummaryBadge({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   if (phase !== 'ready') return <ValidationPhaseBadge phase={phase} />;
-  if (summary.isClean) return <CleanValidationBadge />;
+  if (summary.isClean && !summary.suppressed && !open) return <CleanValidationBadge />;
   const badgeContent = (
     <>
+      {summary.isClean && summary.suppressed ? (
+        <span className="text-xs text-muted-foreground">
+          {t('suppression.noActionable', { count: summary.suppressed })}
+        </span>
+      ) : null}
       {summary.errors > 0 ? (
         <Badge variant="destructive">
           {t('order.validation.errors', { count: summary.errors })}

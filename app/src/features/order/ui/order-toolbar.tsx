@@ -35,12 +35,7 @@ import {
   useOrderWorkspaceValidation,
 } from '@/features/order/context/hooks';
 
-export type ValidationSummary = {
-  errors: number;
-  warnings: number;
-  infos: number;
-  isClean: boolean;
-};
+import type { ValidationSummary } from '@/domain/diagnostics/suppression';
 
 export function OrderToolbar() {
   const { t } = useTranslation();

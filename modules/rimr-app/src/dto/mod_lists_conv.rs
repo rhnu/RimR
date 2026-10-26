@@ -10,7 +10,10 @@ use rimr_core::{
     ModTagBinding as CoreModTagBinding, TagDef as CoreTagDef,
 };
 
-use super::mods_conv::{source_kind, source_kind_to_core};
+use super::mods_conv::{
+    diagnostic_suppression_from_core, diagnostic_suppression_to_core, source_kind,
+    source_kind_to_core,
+};
 use crate::{
     AppResult, LibrarySettingsFile as CoreLibrarySettingsFile, ModListFile as CoreModListFile,
 };
@@ -90,6 +93,13 @@ pub fn mod_tag_binding_from_core(binding: &CoreModTagBinding) -> ModTagBindingDt
 pub fn library_settings_to_core(dto: &LibrarySettingsDto) -> AppResult<CoreLibrarySettings> {
     Ok(CoreLibrarySettings {
         revision: dto.revision,
+        diagnostic_suppressions: dto
+            .diagnostic_suppressions
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .map(diagnostic_suppression_to_core)
+            .collect(),
         aliases: dto.aliases.iter().map(alias_to_core).collect(),
         tag_defs: dto
             .tag_defs
@@ -107,6 +117,13 @@ pub fn library_settings_to_core(dto: &LibrarySettingsDto) -> AppResult<CoreLibra
 pub fn library_settings_from_core(config: &CoreLibrarySettings) -> LibrarySettingsDto {
     LibrarySettingsDto {
         revision: config.revision,
+        diagnostic_suppressions: Some(
+            config
+                .diagnostic_suppressions
+                .iter()
+                .map(diagnostic_suppression_from_core)
+                .collect(),
+        ),
         aliases: config.aliases.iter().map(alias_from_core).collect(),
         tag_defs: config.tag_defs.iter().map(tag_def_from_core).collect(),
         mod_tags: config

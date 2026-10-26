@@ -27,7 +27,9 @@ mod domain {
     pub use rimr_core::*;
 }
 mod diagnostics {
-    pub use rimr_core::{Diagnostic, DiagnosticCode, DiagnosticLocation, Severity};
+    pub use rimr_core::{
+        Diagnostic, DiagnosticCode, DiagnosticIdentity, DiagnosticLocation, Severity,
+    };
 }
 mod formats {
     pub use rimr_core::{

@@ -7,7 +7,10 @@ mod formats;
 mod ports;
 mod rules;
 
-pub use diagnostics::{Diagnostic, DiagnosticCode, DiagnosticLocation, Severity};
+pub use diagnostics::{
+    Diagnostic, DiagnosticCode, DiagnosticIdentity, DiagnosticLocation, DiagnosticSuppression,
+    Severity,
+};
 pub use domain::{
     ActiveModList, Alias, CatalogInsertResult, Dependency, DuplicatePackageId, EntryId,
     GameVersion, GroupChild, IdentityError, Library, LibrarySettings, ModCatalog, ModIdentity,

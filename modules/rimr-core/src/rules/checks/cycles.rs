@@ -3,7 +3,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    diagnostics::{Diagnostic, DiagnosticCode, Severity},
+    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticIdentity, Severity},
     domain::{ActiveModList, PackageId},
     rules::graph::LoadOrderGraph,
 };
@@ -24,6 +24,11 @@ pub(crate) fn check_cycles(graph: &LoadOrderGraph, active: &ActiveModList) -> Ve
                 Severity::Error,
                 DiagnosticCode::CircularDependency,
                 format!("Circular dependency: {} -> {}", path, cycle[0]),
+            )
+            .with_suppression_identity(
+                DiagnosticIdentity::new()
+                    .version_dependent()
+                    .with_list("cycle", cycle.iter().map(ToString::to_string)),
             )
             .with_param("cycle", format!("{} -> {}", path, cycle[0]))
             .with_related_packages(cycle);

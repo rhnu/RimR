@@ -1,3 +1,5 @@
+import { DiagnosticMenuItems } from '../diagnostic-menu-items';
+import { ModDiagnosticIcon } from '../mod-diagnostic-icon';
 import { memo, type MouseEvent } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
@@ -101,6 +103,7 @@ export const InactiveModRow = memo(function InactiveModRow({
           >
             {label}
           </button>
+          <ModDiagnosticIcon identity={identityForMod(mod)} />
         </div>
       </ContextMenuTrigger>
       <InactiveModContextMenu
@@ -169,6 +172,7 @@ function InactiveModContextMenu({
   const targetIdentities = tagTargetIdentities.length > 0 ? tagTargetIdentities : [identity];
   return (
     <ContextMenuContent>
+      <DiagnosticMenuItems identity={identity} catalog />
       <ContextMenuItem disabled={!canAdd} onSelect={() => onAdd(mod)}>
         <Plus className="size-4" />
         {t('order.context.addToActive')}

@@ -3,7 +3,7 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{
-    diagnostics::{DiagnosticCode, Severity},
+    diagnostics::{DiagnosticCode, DiagnosticIdentity, DiagnosticSuppression, Severity},
     domain::PackageId,
     ports::ModSourceKey,
 };
@@ -61,6 +61,7 @@ impl DiagnosticLocation {
 /// A single non-fatal domain issue.
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
+    suppression_identity: Option<DiagnosticIdentity>,
     pub severity: Severity,
     pub code: DiagnosticCode,
     pub message: Arc<str>,
@@ -77,6 +78,7 @@ pub struct Diagnostic {
 impl Diagnostic {
     pub fn new(severity: Severity, code: DiagnosticCode, message: impl Into<Arc<str>>) -> Self {
         Self {
+            suppression_identity: None,
             severity,
             code,
             message: message.into(),
@@ -84,6 +86,26 @@ impl Diagnostic {
             related_locations: Vec::new(),
             params: BTreeMap::new(),
             related_packages: Vec::new(),
+        }
+    }
+
+    /// Declares a problem's semantic identity; global diagnostics omit this capability.
+    #[must_use]
+    pub fn with_suppression_identity(mut self, identity: DiagnosticIdentity) -> Self {
+        self.suppression_identity = Some(identity);
+        self
+    }
+
+    pub fn suppression(&self) -> Option<DiagnosticSuppression> {
+        self.suppression_identity
+            .as_ref()
+            .map(|identity| identity.descriptor(self))
+            .filter(DiagnosticSuppression::is_valid)
+    }
+
+    pub(crate) fn set_suppression_game_version(&mut self, version: &crate::domain::GameVersion) {
+        if let Some(identity) = &mut self.suppression_identity {
+            identity.set_game_version(version);
         }
     }
 

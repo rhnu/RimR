@@ -76,6 +76,12 @@ impl LibrarySnapshot {
         {
             return Err(invalid("current mod list reference is invalid"));
         }
+        let mut suppression_keys = HashSet::new();
+        for suppression in &self.settings.diagnostic_suppressions {
+            if !suppression.is_valid() || !suppression_keys.insert(&suppression.key) {
+                return Err(invalid("invalid or duplicate diagnostic suppression"));
+            }
+        }
         let mut tags = HashSet::new();
         for tag in &self.settings.tag_defs {
             if !tags.insert(tag.id) {

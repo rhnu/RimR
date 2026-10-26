@@ -1,3 +1,4 @@
+import { DiagnosticMenuItems } from '../diagnostic-menu-items';
 import { Layers, Pencil, SplitSquareHorizontal, Trash2, Ungroup } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ModListEntryDto } from '@/commands';
@@ -43,6 +44,7 @@ export function ActiveEntryMenu(props: ActiveEntryMenuProps) {
   return (
     <ContextMenuContent>
       <EntryActions {...props} />
+      <DiagnosticMenuItems entry={props.entry} />
       <ContextMenuSeparator />
       <ContextMenuItem onSelect={() => props.onAddSeparator(props.entry)}>
         <SplitSquareHorizontal className="size-4" />

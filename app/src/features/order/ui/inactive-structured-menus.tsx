@@ -1,3 +1,4 @@
+import { DiagnosticMenuItems } from './diagnostic-menu-items';
 import { Pencil, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type {
@@ -58,6 +59,7 @@ export function InactiveEntryMenu({
   const { t } = useTranslation();
   return (
     <ContextMenuContent>
+      <DiagnosticMenuItems entry={entry} />
       <ContextMenuItem onSelect={() => onAddActive(entry.id)}>
         <Plus className="size-4" />
         {t('order.context.addToActive')}
@@ -119,6 +121,7 @@ export function InactiveChildMenu({
   const { t } = useTranslation();
   return (
     <ContextMenuContent>
+      <DiagnosticMenuItems identity={row.child.identity} />
       <ContextMenuItem onSelect={() => onAddActive(row.groupId, row.child.id)}>
         <Plus className="size-4" />
         {t('order.context.addToActive')}

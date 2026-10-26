@@ -71,11 +71,16 @@ pub fn validate_order(
     errors.extend(checks::check_incompatibles(catalog, list, graph));
     errors.extend(checks::check_duplicates(catalog));
 
-    let report = ValidationReport {
+    let mut report = ValidationReport {
         errors,
         warnings,
         infos: Vec::new(),
     };
+    if let Some(version) = &opts.game_version {
+        for diagnostic in report.errors.iter_mut().chain(&mut report.warnings) {
+            diagnostic.set_suppression_game_version(version);
+        }
+    }
     tracing::info!(
         errors = report.errors.len(),
         warnings = report.warnings.len(),

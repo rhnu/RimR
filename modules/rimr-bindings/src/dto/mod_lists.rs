@@ -55,6 +55,9 @@ pub struct LibrarySettingsDto {
     pub tag_defs: Vec<TagDefDto>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub mod_tags: Vec<ModTagBindingDto>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub diagnostic_suppressions: Option<Vec<super::DiagnosticSuppressionDto>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -254,6 +257,9 @@ pub struct ImportModListFileRequest {
 #[serde(rename_all = "camelCase")]
 #[ts(rename_all = "camelCase")]
 pub struct ExportLibrarySettingsFileRequest {
+    #[serde(default)]
+    #[ts(optional)]
+    pub include_diagnostic_suppressions: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(type = "string | null")]
     pub output_path: Option<PathBuf>,

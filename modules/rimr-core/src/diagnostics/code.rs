@@ -4,7 +4,8 @@
 //! value for icon/sorting/translation without parsing the message string.
 
 /// Categorizes a [`super::Diagnostic`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum DiagnosticCode {
     /// No readable target game version was available.
     GameVersionUnknown,
@@ -34,4 +35,26 @@ pub enum DiagnosticCode {
     IncompatibleActive,
     /// Circular dependency detected in the active set.
     CircularDependency,
+}
+
+impl DiagnosticCode {
+    /// Stable persistence identifier, shared with serialized diagnostic codes.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::GameVersionUnknown => "gameVersionUnknown",
+            Self::GameVersionUnsupported => "gameVersionUnsupported",
+            Self::XmlMalformed => "xmlMalformed",
+            Self::PackageIdMissing => "packageIdMissing",
+            Self::PackageIdDuplicate => "packageIdDuplicate",
+            Self::SourceReadFailed => "sourceReadFailed",
+            Self::DependencyMissing => "dependencyMissing",
+            Self::ConfigModMissing => "configModMissing",
+            Self::ActiveModMissing => "activeModMissing",
+            Self::DependencyInactive => "dependencyInactive",
+            Self::OrderViolationLoadAfter => "orderViolationLoadAfter",
+            Self::OrderViolationLoadBefore => "orderViolationLoadBefore",
+            Self::IncompatibleActive => "incompatibleActive",
+            Self::CircularDependency => "circularDependency",
+        }
+    }
 }

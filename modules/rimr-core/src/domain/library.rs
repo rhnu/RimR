@@ -5,6 +5,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    diagnostics::DiagnosticSuppression,
     domain::{EntryId, ModCatalog, ModListId, TagId},
     ports::SourceKind,
 };
@@ -81,6 +82,8 @@ pub struct LibrarySettings {
     pub tag_defs: Vec<TagDef>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub mod_tags: Vec<ModTagBinding>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub diagnostic_suppressions: Vec<DiagnosticSuppression>,
 }
 
 /// A child entry inside a group within a mod list.
@@ -328,6 +331,7 @@ pub fn merge_library_settings_aliases(
         aliases,
         tag_defs: local.tag_defs,
         mod_tags: local.mod_tags,
+        diagnostic_suppressions: local.diagnostic_suppressions,
     }
 }
 
@@ -373,11 +377,23 @@ pub fn merge_library_settings(
         .chain(imported.mod_tags)
         .collect();
 
+    let imported_suppression_keys: std::collections::HashSet<_> = imported
+        .diagnostic_suppressions
+        .iter()
+        .map(|suppression| suppression.key.clone())
+        .collect();
+    let diagnostic_suppressions = local
+        .diagnostic_suppressions
+        .into_iter()
+        .filter(|suppression| !imported_suppression_keys.contains(&suppression.key))
+        .chain(imported.diagnostic_suppressions)
+        .collect();
     LibrarySettings {
         revision: local.revision,
         aliases,
         tag_defs,
         mod_tags,
+        diagnostic_suppressions,
     }
 }
 

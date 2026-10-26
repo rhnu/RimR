@@ -372,7 +372,10 @@ impl AppState {
         );
         let _operation = self.operations.lock().await;
         let data_dir = self.rimr_data_dir()?;
-        let settings = current::load_library(&data_dir)?.settings;
+        let mut settings = current::load_library(&data_dir)?.settings;
+        if !request.include_diagnostic_suppressions.unwrap_or(false) {
+            settings.diagnostic_suppressions.clear();
+        }
         let serializer = RimrFileSerializer::new(&AppClock);
         let exported = serializer.export_library_settings(&settings)?;
         let file = dto::library_settings_file_from_core(&exported.file);

@@ -42,7 +42,7 @@ export function useFileMenuActions() {
     );
   }
 
-  async function exportLibrary(): Promise<void> {
+  async function exportLibrary(includeDiagnosticSuppressions = false): Promise<void> {
     const outputPath = await chooseFilePath(
       t('dialog.exportLibrarySettings'),
       paths?.rimrDataDir,
@@ -50,7 +50,7 @@ export function useFileMenuActions() {
     );
     if (!outputPath) return;
     exportLibraryMutation.mutate(
-      { outputPath },
+      { outputPath, includeDiagnosticSuppressions },
       { onSuccess: () => toast.success(t('toast.librarySettingsExported')) },
     );
   }

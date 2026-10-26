@@ -1,7 +1,7 @@
 //! Order violation check: loadAfter/loadBefore/forceLoad* constraints.
 
 use crate::{
-    diagnostics::{Diagnostic, DiagnosticCode, Severity},
+    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticIdentity, Severity},
     domain::ActiveModList,
     rules::graph::{EdgeKind, LoadOrderGraph},
 };
@@ -38,6 +38,13 @@ pub(crate) fn check_order_violations(
                         "{}: {} must load before {} ({} rule violated)",
                         kind_str, edge.to, pkg, kind_str
                     ),
+                )
+                .with_suppression_identity(
+                    DiagnosticIdentity::new()
+                        .version_dependent()
+                        .with_field("rule", kind_str)
+                        .with_field("packageId", pkg.as_str())
+                        .with_field("targetPackageId", edge.to.as_str()),
                 )
                 .with_param("rule", kind_str)
                 .with_param("packageId", pkg.as_str())

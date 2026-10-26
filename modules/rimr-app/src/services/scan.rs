@@ -11,7 +11,7 @@ use std::sync::Arc;
 use futures::stream::{self, StreamExt};
 
 use crate::{
-    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticLocation, Severity},
+    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticIdentity, DiagnosticLocation, Severity},
     domain::{ModCatalog, ModMetadata},
     error::{AppError, AppResult},
     formats::{CompileOpts, compile_metadata, parse_about_xml},
@@ -84,6 +84,9 @@ pub async fn scan_mod_metadata(source: &dyn ModSource, opts: &ScanOpts) -> AppRe
                         format!("About.xml read error for {key}: {}", e.report()),
                     )
                     .with_location(DiagnosticLocation::about_xml(&key, "/ModMetaData"))
+                    .with_suppression_identity(
+                        DiagnosticIdentity::new().with_sources([key.to_string()]),
+                    )
                     .with_param("sourceKey", key.as_str()),
                 );
             },
@@ -100,27 +103,7 @@ pub async fn scan_mod_metadata(source: &dyn ModSource, opts: &ScanOpts) -> AppRe
                         meta.has_assemblies = features.has_assemblies;
                         catalog.insert(meta);
                         if package_id_missing {
-                            let offset = find_xml_tag_offset(&file.bytes, "packageId")
-                                .or_else(|| find_xml_tag_offset(&file.bytes, "ModMetaData"));
-                            let (line, col) = offset
-                                .and_then(|offset| line_col(&file.bytes, offset))
-                                .unwrap_or((1, 1));
-                            diagnostics.push(
-                                Diagnostic::new(
-                                    Severity::Error,
-                                    DiagnosticCode::PackageIdMissing,
-                                    format!("About.xml for {key} is missing packageId"),
-                                )
-                                .with_location(DiagnosticLocation {
-                                    source_key: Some(key.clone()),
-                                    path: Arc::clone(&file.path),
-                                    xml_path: Some(Arc::from("/ModMetaData/packageId")),
-                                    line: Some(line),
-                                    col: Some(col),
-                                    byte_offset: offset,
-                                })
-                                .with_param("sourceKey", key.as_str()),
-                            );
+                            diagnostics.push(missing_package_diagnostic(&key, &file));
                         }
                     },
                     Err(e) => {
@@ -146,6 +129,9 @@ pub async fn scan_mod_metadata(source: &dyn ModSource, opts: &ScanOpts) -> AppRe
                                 col: Some(col),
                                 byte_offset: offset,
                             })
+                            .with_suppression_identity(
+                                DiagnosticIdentity::new().with_sources([key.to_string()]),
+                            )
                             .with_param("sourceKey", key.as_str())
                             .with_param("error", e.to_string()),
                         );
@@ -164,6 +150,29 @@ pub async fn scan_mod_metadata(source: &dyn ModSource, opts: &ScanOpts) -> AppRe
         catalog,
         diagnostics,
     })
+}
+
+fn missing_package_diagnostic(key: &ModSourceKey, file: &SourceFile) -> Diagnostic {
+    let offset = find_xml_tag_offset(&file.bytes, "packageId")
+        .or_else(|| find_xml_tag_offset(&file.bytes, "ModMetaData"));
+    let (line, col) = offset
+        .and_then(|offset| line_col(&file.bytes, offset))
+        .unwrap_or((1, 1));
+    Diagnostic::new(
+        Severity::Error,
+        DiagnosticCode::PackageIdMissing,
+        format!("About.xml for {key} is missing packageId"),
+    )
+    .with_location(DiagnosticLocation {
+        source_key: Some(key.clone()),
+        path: Arc::clone(&file.path),
+        xml_path: Some(Arc::from("/ModMetaData/packageId")),
+        line: Some(line),
+        col: Some(col),
+        byte_offset: offset,
+    })
+    .with_suppression_identity(DiagnosticIdentity::new().with_sources([key.to_string()]))
+    .with_param("sourceKey", key.as_str())
 }
 
 async fn read_entries(

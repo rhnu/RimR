@@ -95,7 +95,9 @@ export type DiagnosticCodeDto = "gameVersionUnknown" | "gameVersionUnsupported" 
 
 export type DiagnosticLocationDto = { sourceKey: string | null, path: string, xmlPath: string | null, line: number | null, col: number | null, byteOffset: number | null, };
 
-export type DiagnosticDto = { severity: SeverityDto, code: DiagnosticCodeDto, message: string, location: DiagnosticLocationDto | null, relatedLocations: Array<DiagnosticLocationDto>, params: Record<string, string>, relatedPackages: Array<string>, };
+export type DiagnosticSuppressionDto = { key: string, code: DiagnosticCodeDto, params: Record<string, string>, relatedPackages: Array<string>, sourceKeys: Array<string>, gameVersion: string | null, };
+
+export type DiagnosticDto = { suppression?: DiagnosticSuppressionDto | null, severity: SeverityDto, code: DiagnosticCodeDto, message: string, location: DiagnosticLocationDto | null, relatedLocations: Array<DiagnosticLocationDto>, params: Record<string, string>, relatedPackages: Array<string>, };
 
 export type ActiveListLoadDto = { activeMods: Array<string>, config: ModsConfigDto, missing: Array<string>, diagnostics: Array<DiagnosticDto>, };
 
@@ -115,7 +117,7 @@ export type TagDefDto = { id: string, name: string, color?: string, };
 
 export type ModTagBindingDto = { identity: ModIdentityDto, tagIds: Array<string>, };
 
-export type LibrarySettingsDto = { revision: number, aliases: Array<DisplayAliasDto>, tagDefs?: Array<TagDefDto>, modTags?: Array<ModTagBindingDto>, };
+export type LibrarySettingsDto = { revision: number, aliases: Array<DisplayAliasDto>, tagDefs?: Array<TagDefDto>, modTags?: Array<ModTagBindingDto>, diagnosticSuppressions?: Array<DiagnosticSuppressionDto>, };
 
 export type RimrFileKind = "gameConfigBackup" | "modList" | "librarySettings";
 
@@ -155,7 +157,7 @@ export type ExportModListFileDto = { file: ModListFileDto, json: string, outputP
 
 export type ImportModListFileRequest = { inputPath?: string | null, json?: string | null, };
 
-export type ExportLibrarySettingsFileRequest = { outputPath?: string | null, };
+export type ExportLibrarySettingsFileRequest = { includeDiagnosticSuppressions?: boolean, outputPath?: string | null, };
 
 export type ExportLibrarySettingsFileDto = { file: LibrarySettingsFileDto, json: string, outputPath?: string | null, };
 

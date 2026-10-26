@@ -1,7 +1,7 @@
 //! Duplicate packageId check.
 
 use crate::{
-    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticLocation, Severity},
+    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticIdentity, DiagnosticLocation, Severity},
     domain::ModCatalog,
     ports::ModSourceKey,
 };
@@ -23,6 +23,11 @@ pub(crate) fn check_duplicates(catalog: &ModCatalog) -> Vec<Diagnostic> {
                 Severity::Error,
                 DiagnosticCode::PackageIdDuplicate,
                 format!("Duplicate package id: {}", dup.package_id),
+            )
+            .with_suppression_identity(
+                DiagnosticIdentity::new()
+                    .with_field("packageId", dup.package_id.as_str())
+                    .with_sources(dup.source_keys.iter().map(ToString::to_string)),
             )
             .with_param("packageId", dup.package_id.as_str())
             .with_param("usedPath", dup.effective_source_key().as_str())

@@ -1,8 +1,8 @@
 //! Missing and inactive dependency checks.
 
 use crate::{
-    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticLocation, Severity},
-    domain::{ActiveModList, ModCatalog, PackageId},
+    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticIdentity, DiagnosticLocation, Severity},
+    domain::{ActiveModList, Dependency, ModCatalog, PackageId},
 };
 
 /// Checks for active mods that are not installed.
@@ -15,6 +15,9 @@ pub(crate) fn check_active_missing(catalog: &ModCatalog, list: &ActiveModList) -
                     Severity::Error,
                     DiagnosticCode::ActiveModMissing,
                     format!("Active mod is not installed: {pkg}"),
+                )
+                .with_suppression_identity(
+                    DiagnosticIdentity::new().with_field("packageId", pkg.as_str()),
                 )
                 .with_param("packageId", pkg.as_str())
                 .with_related_packages(vec![pkg.clone()]),
@@ -50,6 +53,7 @@ pub(crate) fn check_missing_dependencies(
                                 "/ModMetaData/modDependencies",
                             ))
                             .with_param("packageId", pkg.as_str())
+                            .with_suppression_identity(dependency_identity(pkg, dep))
                             .with_param("dependencyPackageId", dep.package_id.as_str())
                             .with_param(
                                 "alternativePackageIds",
@@ -98,6 +102,7 @@ pub(crate) fn check_inactive_dependencies(
                                 "/ModMetaData/modDependencies",
                             ))
                             .with_param("packageId", pkg.as_str())
+                            .with_suppression_identity(dependency_identity(pkg, dep))
                             .with_param("dependencyPackageId", dep.package_id.as_str())
                             .with_param(
                                 "alternativePackageIds",
@@ -115,4 +120,19 @@ pub(crate) fn check_inactive_dependencies(
         }
     }
     diagnostics
+}
+
+fn dependency_identity(package: &PackageId, dependency: &Dependency) -> DiagnosticIdentity {
+    let mut alternatives = dependency
+        .alternative_package_ids
+        .iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>();
+    alternatives.sort();
+    alternatives.dedup();
+    DiagnosticIdentity::new()
+        .version_dependent()
+        .with_field("packageId", package.as_str())
+        .with_field("dependencyPackageId", dependency.package_id.as_str())
+        .with_list("alternatives", alternatives)
 }

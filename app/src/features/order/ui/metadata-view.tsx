@@ -1,20 +1,10 @@
 import { useTranslation } from 'react-i18next';
-import type {
-  DiagnosticDto,
-  ModIdentityDto,
-  ModMetadataDto,
-  ModListDto,
-  TagDefDto,
-} from '@/commands';
+import type { DiagnosticDto, ModIdentityDto, ModMetadataDto, TagDefDto } from '@/commands';
 import { Collapsible } from '@/components/ui/collapsible';
 import { SteamBbcode } from '@/components/ui/steam-bbcode';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatFileSize } from '@/features/order/model';
-import {
-  formatDiagnosticLocation,
-  formatDiagnosticMessage,
-  formatPackageLabel,
-} from '@/domain/diagnostics/messages';
+import { DiagnosticReport } from '@/features/order/ui/diagnostic-report';
 import { Meta } from '@/features/order/ui/meta-row';
 import { TagsMeta } from '@/features/order/ui/tags-meta';
 
@@ -155,29 +145,10 @@ export function DiagnosticList({
   const { t } = useTranslation();
   return (
     <section className="space-y-2">
-      <h3 className="text-xs font-semibold uppercase text-muted-foreground select-none">
+      <h3 className="text-xs font-semibold text-muted-foreground">
         {t('order.metadata.diagnostics')}
       </h3>
-      <ul className="space-y-1">
-        {diagnostics.map((diagnostic, index) => (
-          <li key={`${diagnostic.code}-${index}`} className="border px-2 py-1.5 text-xs">
-            <span className="font-medium">{t(`severity.${diagnostic.severity}`)}: </span>
-            {formatDiagnosticMessage(diagnostic, t, modByPackageId)}
-            {formatDiagnosticLocation(diagnostic) ? (
-              <p className="mt-1 font-mono text-[10px] text-muted-foreground">
-                {formatDiagnosticLocation(diagnostic)}
-              </p>
-            ) : null}
-            {diagnostic.relatedPackages.length > 0 ? (
-              <p className="mt-1 font-mono text-[10px] text-muted-foreground">
-                {diagnostic.relatedPackages
-                  .map((pkg) => formatPackageLabel(pkg, modByPackageId))
-                  .join(', ')}
-              </p>
-            ) : null}
-          </li>
-        ))}
-      </ul>
+      <DiagnosticReport diagnostics={diagnostics} modByPackageId={modByPackageId} />
     </section>
   );
 }
@@ -189,14 +160,4 @@ function RuleMeta({ label, values }: { label: string; values: string[] }) {
 function formatTimestamp(value: number | null | undefined): string {
   if (!value) return '-';
   return new Date(value).toLocaleString();
-}
-
-export function selectionDiagnostics(
-  identity: ModIdentityDto | null,
-  entry: ModListDto['entries'][number] | null | undefined,
-  diagnosticsByPackage: Map<string, DiagnosticDto[]>,
-): DiagnosticDto[] {
-  if (identity) return diagnosticsByPackage.get(identity.packageId) ?? [];
-  if (entry?.kind !== 'group') return [];
-  return entry.entries.flatMap((child) => diagnosticsByPackage.get(child.identity.packageId) ?? []);
 }

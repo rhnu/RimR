@@ -251,10 +251,26 @@ pub struct DiagnosticLocationDto {
     pub byte_offset: Option<u64>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(rename_all = "camelCase")]
+pub struct DiagnosticSuppressionDto {
+    pub key: String,
+    pub code: DiagnosticCodeDto,
+    #[ts(type = "Record<string, string>")]
+    pub params: BTreeMap<String, String>,
+    pub related_packages: Vec<String>,
+    pub source_keys: Vec<String>,
+    pub game_version: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(rename_all = "camelCase")]
 pub struct DiagnosticDto {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional = nullable)]
+    pub suppression: Option<DiagnosticSuppressionDto>,
     pub severity: SeverityDto,
     pub code: DiagnosticCodeDto,
     pub message: String,

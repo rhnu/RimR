@@ -191,6 +191,7 @@ fn settings_merge_replaces_logical_mod_overrides_and_retains_local_revision() {
     let imported_tag = TagId::new();
     let local = LibrarySettings {
         revision: 5,
+        diagnostic_suppressions: Vec::new(),
         aliases: vec![Alias {
             identity: bare_identity(" A "),
             display_alias: "local".into(),
@@ -207,6 +208,7 @@ fn settings_merge_replaces_logical_mod_overrides_and_retains_local_revision() {
     };
     let imported = LibrarySettings {
         revision: 100,
+        diagnostic_suppressions: Vec::new(),
         aliases: vec![Alias {
             identity: bare_identity("a"),
             display_alias: "imported".into(),
@@ -256,4 +258,49 @@ fn reimporting_current_settings_preserves_tag_identity() {
     assert_eq!(merged.tag_defs.len(), 1);
     assert_eq!(merged.tag_defs[0].id, tag_id);
     assert_eq!(merged.mod_tags[0].tag_ids, [tag_id]);
+}
+
+fn suppression(from: &str, to: &str) -> crate::DiagnosticSuppression {
+    crate::Diagnostic::new(
+        crate::Severity::Warning,
+        crate::DiagnosticCode::DependencyMissing,
+        "dependency",
+    )
+    .with_related_packages(vec![crate::PackageId::new(from), crate::PackageId::new(to)])
+    .with_suppression_identity(
+        crate::DiagnosticIdentity::new()
+            .with_field("from", from)
+            .with_field("to", to),
+    )
+    .suppression()
+    .unwrap()
+}
+
+#[test]
+fn suppressions_roundtrip_and_merge_by_exact_problem_without_replacing_unrelated_rules() {
+    let first = suppression("a", "b");
+    let unrelated = suppression("a", "c");
+    let mut updated = first.clone();
+    updated
+        .params
+        .insert("description".into(), "imported".into());
+    let local = LibrarySettings {
+        revision: 4,
+        diagnostic_suppressions: vec![first, unrelated.clone()],
+        ..LibrarySettings::default()
+    };
+    let imported = LibrarySettings {
+        revision: 99,
+        diagnostic_suppressions: vec![updated.clone()],
+        ..LibrarySettings::default()
+    };
+    let merged = merge_library_settings(local, imported);
+    assert_eq!(merged.revision, 4);
+    assert_eq!(merged.diagnostic_suppressions, [unrelated, updated]);
+    assert_eq!(
+        serde_json::from_str::<LibrarySettings>(&serde_json::to_string(&merged).unwrap()).unwrap(),
+        merged
+    );
+    let legacy: LibrarySettings = serde_json::from_str(r#"{"revision":0,"aliases":[]}"#).unwrap();
+    assert_eq!(legacy.diagnostic_suppressions, Vec::new());
 }

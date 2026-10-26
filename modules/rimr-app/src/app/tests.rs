@@ -237,3 +237,46 @@ fn partial_session_publication_preserves_independent_state() {
         [PackageId::new("updated")]
     );
 }
+
+#[test]
+fn suppression_settings_reject_corruption_and_duplicates_at_snapshot_and_portable_boundaries() {
+    let rule = rimr_core::Diagnostic::new(
+        rimr_core::Severity::Warning,
+        rimr_core::DiagnosticCode::ActiveModMissing,
+        "missing",
+    )
+    .with_related_packages(vec![PackageId::new("a")])
+    .with_suppression_identity(rimr_core::DiagnosticIdentity::new().with_field("packageId", "a"))
+    .suppression()
+    .unwrap();
+    let settings = LibrarySettings {
+        diagnostic_suppressions: vec![rule.clone()],
+        ..LibrarySettings::default()
+    };
+    let serializer = RimrFileSerializer::new(&FixedClock);
+    let exported = serializer.export_library_settings(&settings).unwrap();
+    assert_eq!(
+        serializer
+            .import_library_settings(exported.json.as_bytes())
+            .unwrap()
+            .settings,
+        settings
+    );
+    let mut snapshot = crate::current::LibrarySnapshot {
+        settings,
+        ..crate::current::LibrarySnapshot::default()
+    };
+    assert!(snapshot.validate().is_ok());
+    snapshot.settings.diagnostic_suppressions.push(rule);
+    assert!(snapshot.validate().is_err());
+    let mut value: Value = serde_json::from_str(&exported.json).unwrap();
+    value["settings"]["diagnosticSuppressions"][0]["gameVersion"] = json!("1.8");
+    assert!(
+        serializer
+            .import_library_settings(&serde_json::to_vec(&value).unwrap())
+            .is_err()
+    );
+    snapshot.settings.diagnostic_suppressions.truncate(1);
+    snapshot.settings.diagnostic_suppressions[0].key = "v1:".into();
+    assert!(snapshot.validate().is_err());
+}

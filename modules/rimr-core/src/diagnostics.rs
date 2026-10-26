@@ -7,7 +7,9 @@
 mod code;
 mod diagnostic;
 mod severity;
+mod suppression;
 
 pub use code::DiagnosticCode;
 pub use diagnostic::{Diagnostic, DiagnosticLocation};
 pub use severity::Severity;
+pub use suppression::{DiagnosticIdentity, DiagnosticSuppression};

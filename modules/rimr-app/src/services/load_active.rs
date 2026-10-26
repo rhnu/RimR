@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use crate::{
-    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticLocation, Severity},
+    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticIdentity, DiagnosticLocation, Severity},
     domain::{ActiveModList, ModCatalog, PackageId},
     error::{AppError, AppErrorCode, AppResult},
     formats::{ModsConfig, parse_mods_config},
@@ -64,6 +64,9 @@ pub async fn load_active_list(
                         col: None,
                         byte_offset: None,
                     })
+                    .with_suppression_identity(
+                        DiagnosticIdentity::new().with_field("packageId", pkg.as_str()),
+                    )
                     .with_param("packageId", pkg.as_str())
                     .with_related_packages(vec![pkg.clone()]),
                 );

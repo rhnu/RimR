@@ -2,12 +2,13 @@ use std::{path::Path, time::UNIX_EPOCH};
 
 use rimr_bindings::dto::{
     ActiveListLoadDto, CatalogSnapshotDto, DependencyDto, DiagnosticCodeDto, DiagnosticDto,
-    DiagnosticLocationDto, DuplicatePackageIdDto, ModCatalogDto, ModMetadataDto, ModsConfigDto,
-    RulesDto, SeverityDto, SourceKindDto, ValidateOrderDto, ValidationReportDto,
+    DiagnosticLocationDto, DiagnosticSuppressionDto, DuplicatePackageIdDto, ModCatalogDto,
+    ModMetadataDto, ModsConfigDto, RulesDto, SeverityDto, SourceKindDto, ValidateOrderDto,
+    ValidationReportDto,
 };
 use rimr_core::{
-    Dependency, Diagnostic, DiagnosticCode, DuplicatePackageId, ModCatalog, ModMetadata,
-    ModsConfig, Rules, Severity, SourceKind, ValidationReport,
+    Dependency, Diagnostic, DiagnosticCode, DiagnosticSuppression, DuplicatePackageId, ModCatalog,
+    ModMetadata, ModsConfig, Rules, Severity, SourceKind, ValidationReport,
 };
 
 use super::packages;
@@ -149,6 +150,10 @@ fn dependency(dependency: &Dependency) -> DependencyDto {
 
 fn diagnostic(diagnostic: &Diagnostic) -> DiagnosticDto {
     DiagnosticDto {
+        suppression: diagnostic
+            .suppression()
+            .as_ref()
+            .map(diagnostic_suppression_from_core),
         severity: severity(diagnostic.severity),
         code: diagnostic_code(diagnostic.code),
         message: diagnostic.message.to_string(),
@@ -160,6 +165,32 @@ fn diagnostic(diagnostic: &Diagnostic) -> DiagnosticDto {
             .collect(),
         params: diagnostic.params.clone(),
         related_packages: packages(&diagnostic.related_packages),
+    }
+}
+
+pub fn diagnostic_suppression_from_core(
+    suppression: &DiagnosticSuppression,
+) -> DiagnosticSuppressionDto {
+    DiagnosticSuppressionDto {
+        key: suppression.key.clone(),
+        code: diagnostic_code(suppression.code),
+        params: suppression.params.clone(),
+        related_packages: suppression.related_packages.clone(),
+        source_keys: suppression.source_keys.clone(),
+        game_version: suppression.game_version.clone(),
+    }
+}
+
+pub fn diagnostic_suppression_to_core(
+    suppression: &DiagnosticSuppressionDto,
+) -> DiagnosticSuppression {
+    DiagnosticSuppression {
+        key: suppression.key.clone(),
+        code: diagnostic_code_to_core(suppression.code),
+        params: suppression.params.clone(),
+        related_packages: suppression.related_packages.clone(),
+        source_keys: suppression.source_keys.clone(),
+        game_version: suppression.game_version.clone(),
     }
 }
 
@@ -217,5 +248,24 @@ fn diagnostic_code(code: DiagnosticCode) -> DiagnosticCodeDto {
         DiagnosticCode::OrderViolationLoadBefore => DiagnosticCodeDto::OrderViolationLoadBefore,
         DiagnosticCode::IncompatibleActive => DiagnosticCodeDto::IncompatibleActive,
         DiagnosticCode::CircularDependency => DiagnosticCodeDto::CircularDependency,
+    }
+}
+
+fn diagnostic_code_to_core(code: DiagnosticCodeDto) -> DiagnosticCode {
+    match code {
+        DiagnosticCodeDto::GameVersionUnknown => DiagnosticCode::GameVersionUnknown,
+        DiagnosticCodeDto::GameVersionUnsupported => DiagnosticCode::GameVersionUnsupported,
+        DiagnosticCodeDto::XmlMalformed => DiagnosticCode::XmlMalformed,
+        DiagnosticCodeDto::PackageIdMissing => DiagnosticCode::PackageIdMissing,
+        DiagnosticCodeDto::PackageIdDuplicate => DiagnosticCode::PackageIdDuplicate,
+        DiagnosticCodeDto::SourceReadFailed => DiagnosticCode::SourceReadFailed,
+        DiagnosticCodeDto::DependencyMissing => DiagnosticCode::DependencyMissing,
+        DiagnosticCodeDto::ConfigModMissing => DiagnosticCode::ConfigModMissing,
+        DiagnosticCodeDto::ActiveModMissing => DiagnosticCode::ActiveModMissing,
+        DiagnosticCodeDto::DependencyInactive => DiagnosticCode::DependencyInactive,
+        DiagnosticCodeDto::OrderViolationLoadAfter => DiagnosticCode::OrderViolationLoadAfter,
+        DiagnosticCodeDto::OrderViolationLoadBefore => DiagnosticCode::OrderViolationLoadBefore,
+        DiagnosticCodeDto::IncompatibleActive => DiagnosticCode::IncompatibleActive,
+        DiagnosticCodeDto::CircularDependency => DiagnosticCode::CircularDependency,
     }
 }

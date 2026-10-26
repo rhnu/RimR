@@ -1,11 +1,6 @@
-import { useRef, useState, type ReactNode, type Ref } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   MenuItem,
   MenuLabel,
@@ -14,17 +9,19 @@ import {
   MenuSubContent,
   MenuSubTrigger,
 } from '@/components/ui/menu';
+import { DiagnosticSuppressionDialog } from '@/features/library/diagnostic-suppression-dialog';
+import { ExportSettingsDialog } from '@/features/library/export-settings-dialog';
 import { ModListMenu } from '@/features/library/mod-list-menu';
 import { SUPPORTED_LOCALES_LIST, useLocaleStore, type Locale } from '@/stores/locale';
 import { useThemeStore } from '@/stores/theme';
 import { AboutDialog } from './about-dialog';
-import { cn } from '@/lib/utils';
 import { TOOL_CLEANUP_ITEMS } from './tools-menu-model';
 import type { useFileMenuActions } from './use-file-menu-actions';
 import type { useToolsMenuActions } from './use-tools-menu-actions';
 import type { useLibraryDialogActions } from '@/features/library/hooks/use-library-dialog-actions';
 
-export type MenuId = 'file' | 'modList' | 'tools' | 'view' | 'settings' | 'help';
+import { DesktopMenu, type MenuId } from './desktop-menu';
+export type { MenuId } from './desktop-menu';
 
 type AppMenuBarProps = {
   openMenu: MenuId | null;
@@ -49,79 +46,54 @@ export function AppMenuBar(props: AppMenuBarProps) {
 
 function FileMenu({ openMenu, setOpenMenu, fileActions }: AppMenuBarProps) {
   const { t } = useTranslation();
+  const [exportOpen, setExportOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   return (
-    <DesktopMenu label={t('menu.file')} id="file" openMenu={openMenu} setOpenMenu={setOpenMenu}>
-      <MenuItem onSelect={() => void fileActions.exportCurrentModList()}>
-        {t('file.exportModList')}
-      </MenuItem>
-      <MenuItem onSelect={() => void fileActions.exportLibrary()}>
-        {t('file.exportLibrarySettings')}
-      </MenuItem>
-      <MenuSeparator />
-      <MenuItem onSelect={() => void fileActions.importModList()}>
-        {t('file.importModList')}
-      </MenuItem>
-      <MenuItem onSelect={() => void fileActions.importLibrary()}>
-        {t('file.importLibrarySettings')}
-      </MenuItem>
-      <MenuItem
-        disabled={!fileActions.canImportFromSave}
-        onSelect={() => void fileActions.importFromSave()}
+    <>
+      <DesktopMenu
+        triggerRef={triggerRef}
+        label={t('menu.file')}
+        id="file"
+        openMenu={openMenu}
+        setOpenMenu={setOpenMenu}
       >
-        {t('file.importFromSave')}
-      </MenuItem>
-      <MenuSeparator />
-      <MenuSub>
-        <MenuSubTrigger>{t('file.openDirectory.title')}</MenuSubTrigger>
-        <MenuSubContent>
-          <MenuLabel>{t('file.openDirectory.groupGame')}</MenuLabel>
-          <MenuItem
-            disabled={!fileActions.isDirectoryAvailable('gameDir')}
-            onSelect={() => fileActions.openDirectory('gameDir')}
-          >
-            {t('file.openDirectory.gameDir')}
-          </MenuItem>
-          <MenuItem
-            disabled={!fileActions.isDirectoryAvailable('gameDataDir')}
-            onSelect={() => fileActions.openDirectory('gameDataDir')}
-          >
-            {t('file.openDirectory.gameDataDir')}
-          </MenuItem>
-          <MenuItem
-            disabled={!fileActions.isDirectoryAvailable('localModsDir')}
-            onSelect={() => fileActions.openDirectory('localModsDir')}
-          >
-            {t('file.openDirectory.localModsDir')}
-          </MenuItem>
-          <MenuItem
-            disabled={!fileActions.isDirectoryAvailable('workshopModsDir')}
-            onSelect={() => fileActions.openDirectory('workshopModsDir')}
-          >
-            {t('file.openDirectory.workshopModsDir')}
-          </MenuItem>
-          <MenuSeparator />
-          <MenuLabel>{t('file.openDirectory.groupRimr')}</MenuLabel>
-          <MenuItem
-            disabled={!fileActions.isDirectoryAvailable('rimrDataDir')}
-            onSelect={() => fileActions.openDirectory('rimrDataDir')}
-          >
-            {t('file.openDirectory.rimrDataDir')}
-          </MenuItem>
-          <MenuItem
-            disabled={!fileActions.isDirectoryAvailable('rimrModListsDir')}
-            onSelect={() => fileActions.openDirectory('rimrModListsDir')}
-          >
-            {t('file.openDirectory.rimrModListsDir')}
-          </MenuItem>
-          <MenuItem
-            disabled={!fileActions.isDirectoryAvailable('rimrLogsDir')}
-            onSelect={() => fileActions.openDirectory('rimrLogsDir')}
-          >
-            {t('file.openDirectory.rimrLogsDir')}
-          </MenuItem>
-        </MenuSubContent>
-      </MenuSub>
-    </DesktopMenu>
+        <MenuItem onSelect={() => void fileActions.exportCurrentModList()}>
+          {t('file.exportModList')}
+        </MenuItem>
+        <MenuItem
+          onSelect={() => {
+            setOpenMenu(null);
+            setExportOpen(true);
+          }}
+        >
+          {t('file.exportLibrarySettings')}
+        </MenuItem>
+        <MenuSeparator />
+        <MenuItem onSelect={() => void fileActions.importModList()}>
+          {t('file.importModList')}
+        </MenuItem>
+        <MenuItem onSelect={() => void fileActions.importLibrary()}>
+          {t('file.importLibrarySettings')}
+        </MenuItem>
+        <MenuItem
+          disabled={!fileActions.canImportFromSave}
+          onSelect={() => void fileActions.importFromSave()}
+        >
+          {t('file.importFromSave')}
+        </MenuItem>
+        <MenuSeparator />
+        <FileDirectoryMenu fileActions={fileActions} />
+      </DesktopMenu>
+      <ExportSettingsDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        onExport={fileActions.exportLibrary}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          triggerRef.current?.focus();
+        }}
+      />
+    </>
   );
 }
 
@@ -147,18 +119,45 @@ function ModListDesktopMenu({ openMenu, setOpenMenu, modListMenu }: AppMenuBarPr
 
 function ToolsMenu({ openMenu, setOpenMenu, toolsActions }: AppMenuBarProps) {
   const { t } = useTranslation();
+  const [suppressionOpen, setSuppressionOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   return (
-    <DesktopMenu label={t('menu.tools')} id="tools" openMenu={openMenu} setOpenMenu={setOpenMenu}>
-      {TOOL_CLEANUP_ITEMS.map((item) => (
+    <>
+      <DesktopMenu
+        triggerRef={triggerRef}
+        label={t('menu.tools')}
+        id="tools"
+        openMenu={openMenu}
+        setOpenMenu={setOpenMenu}
+      >
         <MenuItem
-          key={item.kind}
-          disabled={toolsActions.isPending}
-          onSelect={() => void toolsActions.preview(item.kind)}
+          onSelect={() => {
+            setOpenMenu(null);
+            setSuppressionOpen(true);
+          }}
         >
-          {t(item.labelKey)}
+          {t('suppression.manage')}
         </MenuItem>
-      ))}
-    </DesktopMenu>
+        <MenuSeparator />
+        {TOOL_CLEANUP_ITEMS.map((item) => (
+          <MenuItem
+            key={item.kind}
+            disabled={toolsActions.isPending}
+            onSelect={() => void toolsActions.preview(item.kind)}
+          >
+            {t(item.labelKey)}
+          </MenuItem>
+        ))}
+      </DesktopMenu>
+      <DiagnosticSuppressionDialog
+        open={suppressionOpen}
+        onOpenChange={setSuppressionOpen}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          triggerRef.current?.focus();
+        }}
+      />
+    </>
   );
 }
 
@@ -243,56 +242,58 @@ function HelpMenu({ openMenu, setOpenMenu }: AppMenuBarProps) {
   );
 }
 
-function DesktopMenu({
-  label,
-  id,
-  openMenu,
-  setOpenMenu,
-  children,
-  triggerRef,
-}: {
-  label: string;
-  id: MenuId;
-  openMenu: MenuId | null;
-  setOpenMenu: (menu: MenuId | null) => void;
-  children: ReactNode;
-  triggerRef?: Ref<HTMLButtonElement>;
-}) {
-  const open = openMenu === id;
+function FileDirectoryMenu({ fileActions }: Pick<AppMenuBarProps, 'fileActions'>) {
+  const { t } = useTranslation();
   return (
-    <DropdownMenu
-      open={open}
-      onOpenChange={(isOpen) => {
-        if (isOpen) setOpenMenu(id);
-        else if (openMenu === id) setOpenMenu(null);
-      }}
-      modal={false}
-    >
-      <div className="relative h-full">
-        <DropdownMenuTrigger asChild>
-          <button
-            ref={triggerRef}
-            type="button"
-            className={cn(
-              'h-full px-3 text-xs text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-              open && 'bg-accent',
-            )}
-            onMouseEnter={() => {
-              if (openMenu) setOpenMenu(id);
-            }}
-          >
-            {label}
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="start"
-          sideOffset={0}
-          onCloseAutoFocus={(e) => e.preventDefault()}
-          className="min-w-48 rounded-slight border border-border bg-popover p-1 text-popover-foreground shadow-lg"
+    <MenuSub>
+      <MenuSubTrigger>{t('file.openDirectory.title')}</MenuSubTrigger>
+      <MenuSubContent>
+        <MenuLabel>{t('file.openDirectory.groupGame')}</MenuLabel>
+        <MenuItem
+          disabled={!fileActions.isDirectoryAvailable('gameDir')}
+          onSelect={() => fileActions.openDirectory('gameDir')}
         >
-          {children}
-        </DropdownMenuContent>
-      </div>
-    </DropdownMenu>
+          {t('file.openDirectory.gameDir')}
+        </MenuItem>
+        <MenuItem
+          disabled={!fileActions.isDirectoryAvailable('gameDataDir')}
+          onSelect={() => fileActions.openDirectory('gameDataDir')}
+        >
+          {t('file.openDirectory.gameDataDir')}
+        </MenuItem>
+        <MenuItem
+          disabled={!fileActions.isDirectoryAvailable('localModsDir')}
+          onSelect={() => fileActions.openDirectory('localModsDir')}
+        >
+          {t('file.openDirectory.localModsDir')}
+        </MenuItem>
+        <MenuItem
+          disabled={!fileActions.isDirectoryAvailable('workshopModsDir')}
+          onSelect={() => fileActions.openDirectory('workshopModsDir')}
+        >
+          {t('file.openDirectory.workshopModsDir')}
+        </MenuItem>
+        <MenuSeparator />
+        <MenuLabel>{t('file.openDirectory.groupRimr')}</MenuLabel>
+        <MenuItem
+          disabled={!fileActions.isDirectoryAvailable('rimrDataDir')}
+          onSelect={() => fileActions.openDirectory('rimrDataDir')}
+        >
+          {t('file.openDirectory.rimrDataDir')}
+        </MenuItem>
+        <MenuItem
+          disabled={!fileActions.isDirectoryAvailable('rimrModListsDir')}
+          onSelect={() => fileActions.openDirectory('rimrModListsDir')}
+        >
+          {t('file.openDirectory.rimrModListsDir')}
+        </MenuItem>
+        <MenuItem
+          disabled={!fileActions.isDirectoryAvailable('rimrLogsDir')}
+          onSelect={() => fileActions.openDirectory('rimrLogsDir')}
+        >
+          {t('file.openDirectory.rimrLogsDir')}
+        </MenuItem>
+      </MenuSubContent>
+    </MenuSub>
   );
 }

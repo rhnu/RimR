@@ -2,7 +2,7 @@ import type { DiagnosticDto, DiagnosticLocationDto, ModMetadataDto } from '@/com
 import { officialDisplayName } from '@/domain/mods/official-content';
 
 export function formatDiagnosticMessage(
-  diagnostic: DiagnosticDto,
+  diagnostic: Pick<DiagnosticDto, 'code' | 'params' | 'message'>,
   t: unknown,
   modByPackageId?: Map<string, ModMetadataDto>,
 ): string {

@@ -1,7 +1,7 @@
 //! Declared game-version support for active mods.
 
 use crate::{
-    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticLocation, Severity},
+    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticIdentity, DiagnosticLocation, Severity},
     domain::{ActiveModList, GameVersion, ModCatalog},
 };
 
@@ -48,6 +48,11 @@ pub(crate) fn check_game_versions(
                 format!(
                     "{package_id} declares support for {versions}, excluding game version {game_version}"
                 ),
+            )
+            .with_suppression_identity(
+                DiagnosticIdentity::new()
+                    .with_field("packageId", package_id.as_str())
+                    .with_game_version(game_version),
             )
             .with_param("packageId", package_id.as_str())
             .with_param("gameVersion", game_version.raw())

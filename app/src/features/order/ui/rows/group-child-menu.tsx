@@ -1,3 +1,4 @@
+import { DiagnosticMenuItems } from '../diagnostic-menu-items';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ModIdentityDto } from '@/commands';
@@ -57,6 +58,7 @@ export function GroupChildMenu({
   const workshopSourceKey = steamWorkshopSourceKey(identity, modByPackageId);
   return (
     <ContextMenuContent>
+      <DiagnosticMenuItems identity={identity} />
       <ContextMenuItem onSelect={() => onEditAlias(identity)}>
         <Pencil className="size-4" />
         {t('order.context.editAlias')}

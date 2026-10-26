@@ -11,13 +11,15 @@ import type {
   ValidateOrderDto,
   ModTagBindingDto,
   TagDefDto,
+  DiagnosticDto,
+  DiagnosticSuppressionDto,
 } from '@/commands';
 import {
   sortAvailableMods,
   type AvailableModSortKey,
   type SortDirection,
 } from '@/domain/mods/available-mods';
-import { diagnosticsByPackage, summarizeValidationReport } from '@/domain/diagnostics/validation';
+import { deriveDiagnosticState } from '@/domain/diagnostics/suppression';
 import {
   buildActiveRenderRows,
   buildInactiveRenderRows,
@@ -87,38 +89,33 @@ export function useOrderDerivedData({
       }),
     [activeSearch, aliases, draft?.entries, modByPackageId, modTags, tagDefs],
   );
-  const status = useOrderStatus(draft, activeMods, validationResult);
+  const status = useOrderStatus(
+    draft,
+    activeMods,
+    validationResult,
+    scan?.diagnostics ?? [],
+    library?.settings.diagnosticSuppressions ?? [],
+    modByPackageId,
+  );
   const visibleActiveEntryIds = useMemo(() => visibleModEntryIds(activeRows), [activeRows]);
   const activeSourceKeys = useMemo(
     () => sourceKeysForRows(activeRows, modByPackageId),
     [activeRows, modByPackageId],
   );
 
-  return useMemo(
-    () => ({
-      mods,
-      modByPackageId,
-      modByCatalogKey,
-      sortedInactiveMods: inactive.sortedInactiveMods,
-      inactiveRows: inactive.inactiveRows,
-      activeRows,
-      ...status,
-      inactiveCatalogKeys: inactive.inactiveCatalogKeys,
-      inactiveSourceKeys: inactive.inactiveSourceKeys,
-      visibleActiveEntryIds,
-      activeSourceKeys,
-    }),
-    [
-      mods,
-      modByPackageId,
-      modByCatalogKey,
-      inactive,
-      status,
-      activeRows,
-      visibleActiveEntryIds,
-      activeSourceKeys,
-    ],
-  );
+  return {
+    mods,
+    modByPackageId,
+    modByCatalogKey,
+    sortedInactiveMods: inactive.sortedInactiveMods,
+    inactiveRows: inactive.inactiveRows,
+    activeRows,
+    ...status,
+    inactiveCatalogKeys: inactive.inactiveCatalogKeys,
+    inactiveSourceKeys: inactive.inactiveSourceKeys,
+    visibleActiveEntryIds,
+    activeSourceKeys,
+  };
 }
 
 type UseInactiveModsParams = {
@@ -206,16 +203,6 @@ function useInactiveMods({
   );
 }
 
-function validationDiagnostics(validationResult: ValidateOrderDto | null) {
-  return validationResult
-    ? [
-        ...validationResult.report.errors,
-        ...validationResult.report.warnings,
-        ...validationResult.report.infos,
-      ]
-    : [];
-}
-
 function visibleModEntryIds(rows: ReturnType<typeof buildActiveRenderRows>): string[] {
   return rows.flatMap((row) =>
     row.kind === 'entry' && row.entry.kind === 'mod' ? [row.entryId] : [],
@@ -246,15 +233,16 @@ function useOrderStatus(
   draft: ModListDto | null,
   activeMods: string[],
   validationResult: ValidateOrderDto | null,
+  scanDiagnostics: DiagnosticDto[],
+  rules: DiagnosticSuppressionDto[],
+  mods: Map<string, ModMetadataDto>,
 ) {
   return useMemo(
     () => ({
-      diagnosticsMap: diagnosticsByPackage(validationResult),
-      validationSummary: summarizeValidationReport(validationResult),
-      allDiagnostics: validationDiagnostics(validationResult),
+      ...deriveDiagnosticState(scanDiagnostics, validationResult, rules, mods),
       draftActiveModsKey: activeModsKey(draft ? flattenModListEntries(draft.entries) : []),
       gameActiveModsKey: activeModsKey(activeMods),
     }),
-    [draft, activeMods, validationResult],
+    [draft, activeMods, validationResult, scanDiagnostics, rules, mods],
   );
 }

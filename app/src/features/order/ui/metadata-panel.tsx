@@ -11,6 +11,8 @@ import type {
 import { useModFolderSize, useModPreview } from '@/queries/previews';
 import { officialDisplayName } from '@/domain/mods/official-content';
 import { currentModFolderSize, currentModPreview } from '@/domain/mods/file-info';
+import { diagnosticsForTargets, entryDiagnosticTargets } from '@/domain/diagnostics/suppression';
+import { identityForMod } from '@/domain/mods/identity';
 import type { Selection } from '@/features/order/types';
 import { resolveModTags } from '@/features/order/ui/tags-meta';
 import { deriveSelection } from '@/features/order/model/metadata-selection';
@@ -19,7 +21,6 @@ import {
   SelectedGroupMetadata,
   SelectedModMetadata,
   SelectedSeparatorMetadata,
-  selectionDiagnostics,
 } from '@/features/order/ui/metadata-view';
 import {
   useOrderWorkspaceData,
@@ -35,7 +36,7 @@ export function MetadataPanel() {
   const { library } = useOrderWorkspaceData();
   const { draft } = useOrderWorkspaceDraftState();
   const { selection } = useOrderWorkspaceSelection();
-  const { modByPackageId, modByCatalogKey, diagnosticsMap } = useOrderWorkspaceDerived();
+  const { modByPackageId, modByCatalogKey, rawDiagnostics } = useOrderWorkspaceDerived();
   const view = draft ? deriveSelection(selection, draft, modByPackageId, modByCatalogKey) : null;
   const sourceKey = view?.selectedMod?.sourceKey ?? null;
   const folderSizeEnabled = useFolderSizeEnabled(sourceKey);
@@ -45,10 +46,18 @@ export function MetadataPanel() {
   const selectedPreview = currentModPreview(sourceKey, preview.data);
   const selectedFolderSize = currentModFolderSize(sourceKey, folderSize.data);
   const previewLoading = sourceKey != null && preview.isLoading && !selectedPreview?.previewDataUrl;
-  const diagnostics = selectionDiagnostics(
-    view.selectedModIdentity,
-    view.selectedEntry,
-    diagnosticsMap,
+  const diagnostics = diagnosticsForTargets(
+    rawDiagnostics,
+    view.selectedMod
+      ? [identityForMod(view.selectedMod)]
+      : view.selectedModIdentity
+        ? [view.selectedModIdentity]
+        : view.selectedEntry
+          ? entryDiagnosticTargets(view.selectedEntry).map((identity) => ({
+              ...identity,
+              sourceKey: modByPackageId.get(identity.packageId)?.sourceKey ?? identity.sourceKey,
+            }))
+          : [],
   );
   const title = metadataTitle(
     view.selectedModIdentity,

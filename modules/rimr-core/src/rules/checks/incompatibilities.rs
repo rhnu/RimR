@@ -1,7 +1,7 @@
 //! Incompatible-mods-both-active check.
 
 use crate::{
-    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticLocation, Severity},
+    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticIdentity, DiagnosticLocation, Severity},
     domain::{ActiveModList, ModCatalog},
     rules::graph::LoadOrderGraph,
 };
@@ -20,6 +20,12 @@ pub(crate) fn check_incompatibles(
                     Severity::Error,
                     DiagnosticCode::IncompatibleActive,
                     format!("{pkg} and {incompatible} are incompatible but both active"),
+                )
+                .with_suppression_identity(
+                    DiagnosticIdentity::new()
+                        .version_dependent()
+                        .with_field("first", pkg.as_str())
+                        .with_field("second", incompatible.as_str()),
                 )
                 .with_param("packageId", pkg.as_str())
                 .with_param("incompatiblePackageId", incompatible.as_str())

@@ -409,3 +409,72 @@ fn chain_clean_and_violated() {
     let report = validate_order(&cat, &bad, &g, &ValidateOpts::default());
     assert_eq!(report.warnings.len(), 2);
 }
+
+#[test]
+fn relation_suppression_uses_target_game_context_and_distinguishes_force_rules() {
+    let mut declaring = make_mod("a", &["b"], &[], &[]);
+    let key = |metadata: ModMetadata, version: Option<&str>| {
+        let catalog = make_catalog(vec![metadata, make_mod("b", &[], &[], &[])]);
+        let order = ActiveModList::from_slice(&[PackageId::new("a"), PackageId::new("b")]);
+        let report = validate_order(
+            &catalog,
+            &order,
+            &build_load_order_graph(&catalog),
+            &ValidateOpts {
+                game_version: version.map(GameVersion::parse),
+            },
+        );
+        report.warnings[0].suppression().unwrap().key
+    };
+    let original = key(declaring.clone(), Some("1.7.100"));
+    assert_eq!(original, key(declaring.clone(), Some("1.7.200")));
+    assert_ne!(original, key(declaring.clone(), Some("1.8")));
+    assert_ne!(original, key(declaring.clone(), None));
+    declaring.rules.load_after.clear();
+    declaring.rules.force_load_after.push(PackageId::new("b"));
+    assert_ne!(original, key(declaring, Some("1.7")));
+}
+
+#[test]
+fn cycle_suppression_is_rotation_stable_and_direction_specific() {
+    let identity = |reverse: bool, order: &[&str]| {
+        let mods = if reverse {
+            vec![
+                make_mod("a", &["c"], &[], &[]),
+                make_mod("b", &["a"], &[], &[]),
+                make_mod("c", &["b"], &[], &[]),
+            ]
+        } else {
+            vec![
+                make_mod("a", &["b"], &[], &[]),
+                make_mod("b", &["c"], &[], &[]),
+                make_mod("c", &["a"], &[], &[]),
+            ]
+        };
+        let catalog = make_catalog(mods);
+        let order = ActiveModList::from_slice(
+            &order
+                .iter()
+                .copied()
+                .map(PackageId::new)
+                .collect::<Vec<_>>(),
+        );
+        let report = validate_order(
+            &catalog,
+            &order,
+            &build_load_order_graph(&catalog),
+            &ValidateOpts::default(),
+        );
+        report
+            .errors
+            .iter()
+            .find(|diagnostic| diagnostic.code == DiagnosticCode::CircularDependency)
+            .unwrap()
+            .suppression()
+            .unwrap()
+            .key
+    };
+    let original = identity(false, &["a", "b", "c"]);
+    assert_eq!(original, identity(false, &["b", "c", "a"]));
+    assert_ne!(original, identity(true, &["a", "b", "c"]));
+}

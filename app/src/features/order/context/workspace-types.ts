@@ -20,7 +20,7 @@ import type {
   SteamWorkshopOpenTarget,
 } from '@/commands';
 import type { ModListAction, GameSyncResult } from '@/domain/mod-list/types';
-import type { ValidationSummary } from '@/domain/diagnostics/validation';
+import type { ValidationSummary } from '@/domain/diagnostics/suppression';
 import type { AvailableModSortKey, SortDirection } from '@/domain/mods/available-mods';
 import type { ActiveRenderRow, InactiveRenderRow } from '../model/selectors';
 import type { DropIndicatorStore } from '../hooks/drop-indicator-store';
@@ -73,6 +73,7 @@ export type OrderDerived = {
   diagnosticsMap: Map<string, DiagnosticDto[]>;
   validationSummary: ValidationSummary;
   allDiagnostics: DiagnosticDto[];
+  rawDiagnostics: DiagnosticDto[];
   draftActiveModsKey: string;
   gameActiveModsKey: string;
   inactiveCatalogKeys: string[];
