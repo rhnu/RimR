@@ -69,18 +69,9 @@ pub fn run(root: &Path, options: &Options) -> Result<()> {
     let lock = read_document(&lock_path)?;
     let new_manifest = updated_manifest(&manifest_source, &next)?;
     fs::write(&manifest_path, &new_manifest).context("write release version to Cargo.toml")?;
-    capture(
-        root,
-        "cargo",
-        &[
-            "metadata",
-            "--offline",
-            "--no-deps",
-            "--format-version",
-            "1",
-        ],
-    )
-    .context("refresh Cargo.lock; edited files were retained for inspection")?;
+    // Metadata with --no-deps skips resolution and does not refresh Cargo.lock.
+    run_command(root, "cargo", &["update", "--workspace", "--offline"])
+        .context("refresh Cargo.lock; edited files were retained for inspection")?;
     let new_lock = read_document(&lock_path)?;
     validate_lock_change(lock, &new_lock, &names, &current, &next)
         .context("Cargo.lock changed beyond workspace versions; edited files were retained")?;
