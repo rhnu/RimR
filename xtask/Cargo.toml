@@ -7,4 +7,4 @@ publish = false
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
-rimr-bindings = { path = "../crates/rimr-bindings", features = ["export"] }
+rimr-bindings = { path = "../modules/rimr-bindings", features = ["export"] }
