@@ -1,6 +1,6 @@
 # `src/stores/` — 全局 Zustand store
 
-参见 [`docs/state-management.md`](../../docs/state-management.md)。
+参见 [`docs/state-management.md`](../../../docs/state-management.md)。
 
 本目录存放**跨页面 / 跨会话保留**的全局状态。规则：
 

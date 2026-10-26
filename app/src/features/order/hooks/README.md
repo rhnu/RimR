@@ -1,6 +1,6 @@
 # `src/features/order/hooks/` — React 绑定层
 
-参见 [`docs/state-management.md`](../../../../docs/state-management.md)。
+参见 [`docs/state-management.md`](../../../../../docs/state-management.md)。
 
 本目录的 hook 只负责把**纯逻辑**（`../model/`）和**外部状态**（React Query、Zustand store、Tauri 命令）粘合到 React 组件树上。规则：
 

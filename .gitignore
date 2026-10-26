@@ -21,7 +21,6 @@ dist-ssr/
 
 # Rust
 target/
-src-tauri/target/
 
 # Temporary
 /temp

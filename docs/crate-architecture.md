@@ -48,7 +48,7 @@ Tauri 是应用边界。它同时连接 RimWorld 文件和 RimR 自有配置文�
 
 ### Command 边界
 
-主要 commands 见 `src-tauri/src/commands/mod.rs`，包括：
+主要 commands 见 `app/src-tauri/src/commands/mod.rs`，包括：
 
 - 配置：`get_app_config`、`save_app_config`、`autodetect_paths`、`clear_session_cache`
 - Mod catalog 与元数据：`rebuild_mod_catalog`、`load_mod_preview`、`load_mod_folder_size`
@@ -75,9 +75,9 @@ React UI 不解析 XML、不构建依赖图、不写文件。它通过 hooks 调
 
 当前结构重点：
 
-- `src/commands/rimrClient.ts`：唯一直接 `invoke` Tauri 的文件。
-- `src/hooks/commands.ts`：TanStack Query hooks。
-- `src/features/order/model/`：模组列表 reducer、flatten、drop intent、同步等纯逻辑。
+- `app/src/commands/rimrClient.ts`：唯一直接 `invoke` Tauri 的文件。
+- `app/src/hooks/commands.ts`：TanStack Query hooks。
+- `app/src/features/order/model/`：模组列表 reducer、flatten、drop intent、同步等纯逻辑。
 - `/order`：模组列表管理、三栏工作区、元数据栏、Save Mod List、Apply、实时诊断。
 - Catalog 是会话内核心 snapshot，由 `/order` 启动加载和手动重建动作刷新；不再提供独立浏览页。
 - File 菜单：导入/导出模组列表和库设置 `.rimr.json` 文件；模组列表导入创建新模组列表，不直接写 `ModsConfig.xml`。

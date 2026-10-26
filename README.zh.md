@@ -54,7 +54,9 @@ Windows 是主要支持的发行目标。Linux 与 macOS 构建目前为实验�
 - [Node.js](https://nodejs.org/) 与 [pnpm](https://pnpm.io/)
 - [Rust](https://www.rust-lang.org/tools/install)
 
-运行开发版本：
+应用位于 `app/`（前端与 `src-tauri/`）；Cargo、pnpm workspace 和统一命令保留在仓库根目录。
+
+在仓库根目录运行开发版本：
 
 ```powershell
 pnpm install

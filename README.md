@@ -54,7 +54,9 @@ Requirements:
 - [Node.js](https://nodejs.org/) and [pnpm](https://pnpm.io/)
 - [Rust](https://www.rust-lang.org/tools/install)
 
-Run the development app:
+The application lives in `app/` (frontend and `src-tauri/`); Cargo and pnpm workspaces and shared commands live at the repository root.
+
+Run the development app from the repository root:
 
 ```powershell
 pnpm install

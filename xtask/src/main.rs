@@ -19,7 +19,7 @@ enum Command {
     },
 }
 
-const OUTPUT_PATH: &str = "src/commands/generated/types.ts";
+const OUTPUT_PATH: &str = "app/src/commands/generated/types.ts";
 
 fn main() -> Result<()> {
     let cli = Cli::parse();

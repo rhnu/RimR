@@ -1,6 +1,6 @@
 # `src/features/order/model/` — 纯领域模型
 
-参见 [`docs/state-management.md`](../../../../docs/state-management.md)。
+参见 [`docs/state-management.md`](../../../../../docs/state-management.md)。
 
 本目录是 order feature 的**纯函数层**，承载所有不依赖框架的业务规则。规则：
 

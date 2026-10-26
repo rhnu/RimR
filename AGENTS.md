@@ -36,8 +36,8 @@ When changing frontend components, follow the conventions in [`docs/ui-style.md`
 When adding or refactoring frontend state, follow [`docs/state-management.md`](docs/state-management.md). Highlights:
 
 - Server / IPC data lives in React Query via `hooks/commands.ts`; do not duplicate it elsewhere.
-- Persisted user preferences live in `src/stores/` as Zustand `persist` stores.
-- Cross-page session state (e.g. order draft, dialog, cross-module intents) lives in `src/stores/` Zustand stores.
+- Persisted user preferences live in `app/src/stores/` as Zustand `persist` stores.
+- Cross-page session state (e.g. order draft, dialog, cross-module intents) lives in `app/src/stores/` Zustand stores.
 - Single-page interaction state (selection, filter, drag, etc.) lives in the feature's `context/` provider.
 - Pure business rules live in `features/<x>/model/` and must not import `react` or `zustand`.
 - Do not introduce mirror effects between `useState` and a store; pick one source of truth.

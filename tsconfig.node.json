@@ -5,7 +5,11 @@
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "noEmit": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["vite.config.ts", "vitest.config.ts", "scripts/**/*.ts"]
+  "include": [
+    "scripts/**/*.ts"
+  ]
 }

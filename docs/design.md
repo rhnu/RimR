@@ -56,7 +56,7 @@ Setup 只在 `gameDir`、`configDir` 或 `rimrDataDir` 缺失时作为首屏向�
 
 模组列表/库设置的导入导出通过 File 菜单执行。
 
-前端 UI 文案使用 react-i18next 实现英文/简体中文切换。语言偏好通过 zustand 持久化（`rimr-locale`），首次启动按 `navigator.language` 自动检测并回退英文。翻译资源为 `src/i18n/locales/` 下的静态 JSON，单命名空间 + 嵌套分组。后端 Rust 诊断 `diagnostic.message` 与 mod 自身元数据（名称、描述等）不纳入前端 i18n，原样展示。
+前端 UI 文案使用 react-i18next 实现英文/简体中文切换。语言偏好通过 zustand 持久化（`rimr-locale`），首次启动按 `navigator.language` 自动检测并回退英文。翻译资源为 `app/src/i18n/locales/` 下的静态 JSON，单命名空间 + 嵌套分组。后端 Rust 诊断 `diagnostic.message` 与 mod 自身元数据（名称、描述等）不纳入前端 i18n，原样展示。
 
 ## 设计约束
 

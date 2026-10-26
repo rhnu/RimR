@@ -34,7 +34,7 @@
     "copyright": "Copyright (C) 2026 Rhynia. Licensed under the GNU General Public License v3.",
     "publisher": "Rhynia",
     "license": "GPL-3.0",
-    "licenseFile": "../LICENSE",
+    "licenseFile": "../../LICENSE",
     "shortDescription": "A RimWorld mod manager.",
     "longDescription": "RimR is a desktop mod manager for RimWorld.",
     "icon": [

@@ -16,7 +16,7 @@
 |---|---|---|---|
 | 服务器数据 / IPC 结果 | **React Query** | 经 `hooks/commands.ts` 单一入口；mutation 负责 query invalidation；全局 `onError` 走 toast | `catalogSnapshot`、`library`、`playerLog` |
 | 用户偏好（持久化） | **Zustand persist** | 写入 `localStorage`；UI 启动时即可使用 | `theme`、`locale` |
-| 跨页面的当前会话状态 | **Zustand 全局 store**（`src/stores/`） | 路由切换后仍需保留；非服务器派生 | `orderDraft`、`orderDialog`、`orderCommand` intent |
+| 跨页面的当前会话状态 | **Zustand 全局 store**（`app/src/stores/`） | 路由切换后仍需保留；非服务器派生 | `orderDraft`、`orderDialog`、`orderCommand` intent |
 | 单页面内的交互状态 | **Feature Context**（如 `OrderWorkspaceContext`） | 离开该页可丢弃；面板组件自取，避免 prop bundle | `selection`、`filter`、`search`、`drag`、`preview` |
 | 派生数据 / 视图状态 | **`useMemo` + 纯 selector** | 不允许把派生结果再存进 store | 渲染行、diagnostics summary |
 | 纯计算 / 业务规则 | **`features/<x>/model/`** 纯函数 | 不依赖 React、不依赖 Zustand（ESLint 守护） | `modListReducer`、`buildOrderDiff`、`syncModListFromGame` |
@@ -31,7 +31,7 @@
 1. **来自后端 IPC / 服务器？** → React Query（mutation 顺带定义 invalidation）。
 2. **是用户偏好且需要跨会话持久化？** → Zustand persist。
 3. **离开当前页面后还需要保留？**
-   - **是**：Zustand 全局 store（`src/stores/`）。
+   - **是**：Zustand 全局 store（`app/src/stores/`）。
    - **否**：feature Context（多组件共享）或 feature hook + `useState`（单组件树）。
 4. **是"做一次就结束"的跨模块意图？** → command bus（Zustand intent slice），消费者读取后 `consume()` / `clear()` 清空。
 5. **可以从已有 state 计算出来？** → 不要存。用 `useMemo` + 纯 selector 派生。
@@ -40,7 +40,7 @@
 ## 3. 目录约定
 
 ```
-src/
+app/src/
 ├── stores/                       # 全局 / 跨页 Zustand store
 │   ├── theme.ts                  # 持久化偏好
 │   ├── locale.ts                 # 持久化偏好
@@ -176,7 +176,7 @@ AppShell 顶层 <OrderDialogView /> 自取 store dialog → 打开
 
 - **禁止双源 mirror**：若状态需要在多处读取，定一个唯一持有者，其他人订阅；不要写 `useEffect` 把 `useState` 同步到 store（阶段 3 已清理 `currentDraft` mirror）。
 - **禁止在 `model/` 里 import `react` 或任何 hook**（阶段 2 起由 ESLint `no-restricted-imports` 守护，含 `react` / `react-dom` / `zustand` / `@tanstack/react-query`）。
-- **禁止在非 `src/stores/**` 目录调用 `zustand` 的 `create`**（阶段 2 起由 ESLint 根级 `no-restricted-imports` 守护，`src/stores/**` override 解除限制）。
+- **禁止在非 `app/src/stores/**` 目录调用 `zustand` 的 `create`**（阶段 2 起由 ESLint 根级 `no-restricted-imports` 守护，`app/src/stores/**` override 解除限制）。
 - **禁止把可派生数据存进 store**：能 `useMemo` 出来的就不要落地。
 - **禁止用"隐式约定"传递跨模块意图**：必须走 command bus，可读、可测试；不要在 store 里临时塞一个布尔标志暗示对端"现在该做某事"。
 - **禁止在面板组件里持有跨组件共享的交互状态**：放到 feature Context，组件自取（阶段 4 已经把所有 panel 的 `ComponentProps<typeof X>` 形态拆除）。
@@ -188,9 +188,9 @@ AppShell 顶层 <OrderDialogView /> 自取 store dialog → 打开
 
 | 范围 | 禁止 | 用途 |
 |---|---|---|
-| 根（默认）| `zustand` | 防止在 `src/stores/` 之外随意 `create` store |
-| `src/stores/**` override | `zustand` 解除 | 唯一允许的 store 定义位置 |
-| `src/features/*/model/**` override | `react` / `react-dom` / `zustand` / `@tanstack/react-query` | 保证 model 层纯净 |
+| 根（默认）| `zustand` | 防止在 `app/src/stores/` 之外随意 `create` store |
+| `app/src/stores/**` override | `zustand` 解除 | 唯一允许的 store 定义位置 |
+| `app/src/features/*/model/**` override | `react` / `react-dom` / `zustand` / `@tanstack/react-query` | 保证 model 层纯净 |
 
 新增 feature 时如果有 `<feature>/model/`，自动适用第三条；如需更精细控制，请在 PR 中补 override。
 

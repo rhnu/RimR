@@ -24,9 +24,9 @@ base64 = "0.22"
 directories = "6"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 regex = "1"
-rimr-bindings = { path = "../crates/rimr-bindings" }
-rimr-core = { path = "../crates/rimr-core" }
-rimr-steam = { path = "../crates/rimr-steam" }
+rimr-bindings = { path = "../../crates/rimr-bindings" }
+rimr-core = { path = "../../crates/rimr-core" }
+rimr-steam = { path = "../../crates/rimr-steam" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 steamlocate = "2.1"

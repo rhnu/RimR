@@ -251,13 +251,15 @@ async function main(): Promise<void> {
   );
 
   const pkgPath = join(REPO_ROOT, "package.json");
-  const tauriPath = join(REPO_ROOT, "src-tauri", "tauri.conf.json");
+  const appPkgPath = join(REPO_ROOT, "app", "package.json");
+  const tauriPath = join(REPO_ROOT, "app", "src-tauri", "tauri.conf.json");
   const cargoPath = join(REPO_ROOT, "Cargo.toml");
 
   const updates: Array<{ label: string; changed: boolean }> = [];
 
   if (opts.dryRun) {
     process.stdout.write(`[dry-run] write ${relative(REPO_ROOT, pkgPath)} version=${next}\n`);
+    process.stdout.write(`[dry-run] write ${relative(REPO_ROOT, appPkgPath)} version=${next}\n`);
     process.stdout.write(
       `[dry-run] write ${relative(REPO_ROOT, tauriPath)} version=${next}\n`,
     );
@@ -270,7 +272,11 @@ async function main(): Promise<void> {
       changed: updateJsonVersion(pkgPath, next),
     });
     updates.push({
-      label: "src-tauri/tauri.conf.json",
+      label: "app/package.json",
+      changed: updateJsonVersion(appPkgPath, next),
+    });
+    updates.push({
+      label: "app/src-tauri/tauri.conf.json",
       changed: updateJsonVersion(tauriPath, next),
     });
     updates.push({

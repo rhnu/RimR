@@ -33,9 +33,9 @@ pnpm check
 
 ## 前端工具链
 
-前端使用 Oxc 的 oxlint（lint）与 oxfmt（格式化）替代 eslint + prettier。配置文件为 `.oxlintrc.json` 与 `.oxfmtrc.json`。`pnpm fmt` 仅格式化 `src` 目录下的前端文件，不触碰其它目录。
+前端使用 Oxc 的 oxlint（lint）与 oxfmt（格式化）替代 eslint + prettier。配置文件为 `app/.oxlintrc.json` 与 `app/.oxfmtrc.json`。`pnpm fmt` 仅格式化 `src` 目录下的前端文件，不触碰其它目录。
 
-`.oxfmtrc.json` 中已将 `src/commands/generated` 等自动生成的文件加入忽略列表。
+`.oxfmtrc.json` 中已将 `app/src/commands/generated` 等自动生成的文件加入忽略列表。
 
 `pnpm test` 使用 Vitest 跑纯逻辑单测（`profileModel` / `ordering` / `formatError` / `orderDraft` 等），不渲染组件、不依赖 DOM。
 

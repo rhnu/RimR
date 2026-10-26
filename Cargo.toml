@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/rimr-bindings", "crates/rimr-core", "crates/rimr-steam", "src-tauri", "xtask"]
+members = ["crates/rimr-bindings", "crates/rimr-core", "crates/rimr-steam", "app/src-tauri", "xtask"]
 resolver = "2"
 
 [workspace.package]
