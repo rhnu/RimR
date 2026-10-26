@@ -1,4 +1,5 @@
 export const queryKeys = {
+  appVersion: ['appVersion'] as const,
   bootstrap: ['bootstrap'] as const,
   appConfig: ['appConfig'] as const,
   workspaceRoot: ['workspace'] as const,

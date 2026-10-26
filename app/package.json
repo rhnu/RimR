@@ -1,7 +1,6 @@
 {
   "name": "rimr",
   "private": true,
-  "version": "0.2.2",
   "description": "A RimWorld mod manager.",
   "author": "Rhynia",
   "license": "GPL-3.0",
@@ -9,7 +8,8 @@
   "scripts": {
     "tauri": "tauri",
     "dev": "vite",
-    "build": "pnpm typecheck && vite build",
+    "build": "pnpm typecheck && pnpm build:assets",
+    "build:assets": "vite build",
     "build:bin": "tauri build --no-bundle",
     "typecheck": "tsc --noEmit -p tsconfig.json --pretty false && tsc --noEmit -p tsconfig.node.json --pretty false",
     "lint": "pnpm -w lint",

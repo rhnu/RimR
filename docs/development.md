@@ -11,7 +11,32 @@ pnpm install --frozen-lockfile
 pnpm tauri dev
 ```
 
-`pnpm dev` 单独启动前端开发服务器。`pnpm build` 检查并构建前端；`pnpm build:bin` 构建桌面可执行文件。发布版本由根配置与应用配置共同使用，通过 `pnpm bump` 入口更新，避免只修改一处版本。
+`pnpm dev` 单独启动前端开发服务器。`pnpm build` 检查并构建前端；`pnpm build:assets` 仅构建资源，供已完成类型检查的流水线使用。`pnpm build:bin` 构建本地桌面可执行文件，`pnpm bundle` 构建当前平台的安装包。
+
+## 版本与发布
+
+应用版本只在根 `Cargo.toml` 的 `workspace.package.version` 定义。Rust 成员继承它，Tauri 配置不再单独声明版本，前端通过 Tauri API 读取实际运行版本。不要给 private 的 Node 包添加应用版本，也不要从 tag 覆盖构建版本。
+
+发布前将 main 与 origin/main 同步，并保持工作区及暂存区干净。从根目录执行：
+
+```powershell
+pnpm release patch --dry-run
+pnpm release patch
+```
+
+也可指定 `minor`、`major` 或精确版本，例如 `pnpm release 0.3.0-rc.1`。版本必须严格递增；从 rc 转为同一正式版时指定精确版本。安装器版本各数字分量不超过 65535，发布版本不接受 build metadata；预发布标识内部不能带连字符，以兼容 RPM。`--dry-run` 仍核对干净的 main 和远端引用，但不 fetch、修改文件、执行检查或推送。
+
+发布工具通过 Cargo 更新工作区包的锁文件版本，确认外部依赖没有变化，运行完整 `pnpm check`，仅提交版本文件并创建 annotated tag，然后原子推送 main 与这个 tag。Windows 的发布检查使用 `target/release-check`，避免检查重编译时替换正在运行的 xtask。失败保留现场，修复原因后再处理；不会自动 reset 或删除 tag。`--no-push` 完成本地提交和 tag，并输出准确的原子推送命令。
+
+自动发布以 main 的 push 为入口：只有该次提交恰好对应一个与 Cargo 版本相同的 `v<semver>` annotated tag，才会在全部检查通过后构建三平台安装包。必须一次原子推送提交和 tag；事后单独补推 tag 不触发发布。重试时在 CI 的手动入口选择 main 并填写已有 tag；该提交必须属于 main 历史，构建与验证始终使用 tag 指向的提交。
+
+Windows x86_64 发布 NSIS 安装程序，Linux x86_64 发布 deb 和 rpm，macOS arm64 发布 DMG。全部产物验证提交、版本、架构、类型和 SHA256 后才公开 Release；失败保留草稿，重试可补齐草稿，已经公开的版本拒绝覆盖。校验文件为 `SHA256SUMS`。
+
+预发布的程序仍保留完整 SemVer，原生安装器元数据从它派生。例如 `0.3.0-rc.1` 的 deb 版本为 `0.3.0~rc.1`，RPM 为版本 `0.3.0`、release `0.rc.1`，使正式版能够正常升级覆盖 rc；macOS 安装包使用数字版本 `0.3.0`。这些值只在打包时生成，不另建版本定义或重编译程序。
+
+当前 Windows 安装包未配置证书签名。macOS 可通过仓库 secrets 配置 `APPLE_CERTIFICATE`、`APPLE_CERTIFICATE_PASSWORD`、`APPLE_SIGNING_IDENTITY`，并使用 `APPLE_ID`、`APPLE_PASSWORD`、`APPLE_TEAM_ID` 公证；未配置时按未签名或临时签名分发，Release 会列出实际签名状态。缺少签名的包可能需要系统额外确认。
+
+CI 按变更范围并行检查，发布提交强制完整检查。main 更新 Cargo 缓存，PR 恢复缓存；发布也在 main 作用域执行，便于后续版本复用缓存。前端资源受 Tauri 平台环境影响，各平台打包时分别构建，不跨平台复用 `dist`。
 
 ## Rust 边界
 
@@ -93,4 +118,4 @@ cargo test --workspace --locked
 pnpm check
 ```
 
-它按工作区脚本检查绑定、格式、lint、类型、前端构建与测试，以及 Rust 检查、格式、lint 和测试。范围检查用于工作中的快速反馈，完整检查用于发现跨层遗漏；未执行或失败的部分应在交付中如实说明。
+它按工作区脚本检查 CI 脚本单元测试、绑定、格式、lint、类型、前端构建与测试，以及 Rust 检查、格式、lint 和测试。修改 workflow 时还需运行 `actionlint`；CI 的仓库规范检查会安装并执行它。范围检查用于工作中的快速反馈，完整检查用于发现跨层遗漏；未执行或失败的部分应在交付中如实说明。

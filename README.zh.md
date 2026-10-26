@@ -8,7 +8,7 @@ Windows 是主要支持平台，Linux 和 macOS 构建仍属实验性支持。�
 
 ## 开始使用
 
-1. 从 [Releases](https://github.com/rhnu/rimr/releases) 下载并解压构建，启动 RimR。
+1. 从 [Releases](https://github.com/rhnu/rimr/releases) 下载对应平台的安装包：Windows x86_64 `.exe`、Linux x86_64 `.deb` / `.rpm`，或 macOS arm64 `.dmg`。安装后启动 RimR；macOS 打开磁盘映像后，将 RimR 拖入“应用程序”。
 2. 在初始设置或设置页面自动检测 RimWorld 路径，并修正未识别的目录。游戏数据目录包含 `Config/ModsConfig.xml`，与游戏安装目录不同。
 3. 保存路径，扫描已安装的模组。
 4. 打开排序页面，新建或选择列表，添加并排列模组。若要从游戏现状开始，使用“从游戏顺序同步”。

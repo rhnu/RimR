@@ -1,0 +1,109 @@
+name: Quality checks
+
+on:
+  workflow_call:
+    inputs:
+      sha:
+        required: true
+        type: string
+      frontend:
+        required: true
+        type: boolean
+      rust:
+        required: true
+        type: boolean
+      quality-runner:
+        required: true
+        type: string
+      compatibility-targets:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  CARGO_PROFILE_DEV_DEBUG: '0'
+  CARGO_PROFILE_TEST_DEBUG: '0'
+
+jobs:
+  standards:
+    name: Repository standards
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-node
+      - run: pnpm fmt:check
+      - run: pnpm lint
+      - run: pnpm ci:test
+      - name: Validate workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v1.7.12 --repo rhysd/actionlint --pattern actionlint_1.7.12_linux_amd64.tar.gz --dir "$RUNNER_TEMP"
+          tar -xzf "$RUNNER_TEMP/actionlint_1.7.12_linux_amd64.tar.gz" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -color
+
+  frontend:
+    name: Frontend
+    if: inputs.frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-node
+      - run: pnpm typecheck
+      - run: pnpm build:assets
+      - run: pnpm test
+
+  rust-quality:
+    name: Rust quality (Windows)
+    if: inputs.rust
+    runs-on: ${{ inputs.quality-runner }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-rust
+        with:
+          components: clippy,rustfmt
+          cache-key: check
+      - run: cargo check --workspace --locked
+      - name: Check generated bindings
+        run: cargo run --locked -p xtask -- export-bindings --check
+      - uses: rhnu/rusteward@main
+      - name: Rust formatting
+        run: cargo dev format --check --diff --locked
+      - name: Rust lint
+        run: cargo dev lint --locked
+      - run: cargo test --workspace --locked
+
+  rust-compatibility:
+    name: Rust compatibility (${{ matrix.platform }})
+    if: inputs.rust
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(inputs.compatibility-targets) }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-linux
+        if: runner.os == 'Linux'
+      - uses: ./.github/actions/setup-rust
+        with:
+          cache-key: check
+      - run: cargo check --workspace --locked
+      - run: cargo test --workspace --locked

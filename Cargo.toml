@@ -30,6 +30,7 @@ keyvalues-serde = "0.2.4"
 log = "0.4.34"
 quick-xml = "0.42.0"
 regex = "1.13.1"
+semver = "1.0.28"
 rimr-bindings = { path = "modules/rimr-bindings" }
 rimr-app = { path = "modules/rimr-app" }
 rimr-core = { path = "modules/rimr-core" }
@@ -48,6 +49,7 @@ tempfile = "3.27.0"
 thiserror = "2.0.21"
 time = "0.3.55"
 tokio = "1.54.1"
+toml_edit = "0.25.17"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 uuid = { version = "1.29.0", features = ["v4", "serde"] }

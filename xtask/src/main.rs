@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use anyhow::{Result, anyhow};
 use clap::{Parser, Subcommand};
 
+mod release;
+
 #[derive(Debug, Parser)]
 #[command(author, version, about = "RimR workspace automation tasks")]
 struct Cli {
@@ -12,6 +14,14 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Validate, version, check, commit, tag and atomically push a release from main.
+    Release(release::Options),
+    /// Print runtime workspace version metadata as JSON for release automation.
+    ReleaseInfo {
+        /// Require this exact v-prefixed semver tag to match the workspace version.
+        #[arg(long)]
+        tag: Option<String>,
+    },
     /// Export Rust DTO bindings to TypeScript.
     ExportBindings {
         /// Check that generated bindings are up to date without rewriting files.
@@ -24,12 +34,14 @@ const OUTPUT_PATH: &str = "app/src/commands/generated/types.ts";
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("xtask has workspace parent")
+        .to_path_buf();
     match cli.command {
+        Command::Release(options) => release::run(&root, &options),
+        Command::ReleaseInfo { tag } => release::print_info(&root, tag.as_deref()),
         Command::ExportBindings { check } => {
-            let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .parent()
-                .expect("xtask has workspace parent")
-                .to_path_buf();
             let output_path = root.join(OUTPUT_PATH);
             let contents = format!("{}\n", rimr_bindings::generate_typescript().trim_end());
 

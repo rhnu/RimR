@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing annotated release tag on main to retry
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}-${{ inputs.tag || 'automatic' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  plan:
+    name: Plan checks and release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      sha: ${{ steps.plan.outputs.sha }}
+      tag: ${{ steps.plan.outputs.tag }}
+      version: ${{ steps.plan.outputs.version }}
+      prerelease: ${{ steps.plan.outputs.prerelease }}
+      frontend: ${{ steps.plan.outputs.frontend }}
+      rust: ${{ steps.plan.outputs.rust }}
+      targets: ${{ steps.plan.outputs.targets }}
+      quality-runner: ${{ steps.plan.outputs.quality-runner }}
+      compatibility-targets: ${{ steps.plan.outputs.compatibility-targets }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Resolve checks and release metadata
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/scripts/plan.mjs
+
+  quality:
+    name: Quality
+    needs: plan
+    uses: ./.github/workflows/quality.yml
+    with:
+      sha: ${{ needs.plan.outputs.sha }}
+      frontend: ${{ needs.plan.outputs.frontend == 'true' }}
+      rust: ${{ needs.plan.outputs.rust == 'true' }}
+      quality-runner: ${{ needs.plan.outputs.quality-runner }}
+      compatibility-targets: ${{ needs.plan.outputs.compatibility-targets }}
+
+  check:
+    name: Check
+    if: always()
+    needs: [plan, quality]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require successful quality checks
+        env:
+          PLAN_RESULT: ${{ needs.plan.result }}
+          QUALITY_RESULT: ${{ needs.quality.result }}
+        run: test "$PLAN_RESULT" = success && test "$QUALITY_RESULT" = success
+
+  release:
+    name: Release
+    needs: [plan, check]
+    if: needs.plan.outputs.tag != '' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      sha: ${{ needs.plan.outputs.sha }}
+      tag: ${{ needs.plan.outputs.tag }}
+      version: ${{ needs.plan.outputs.version }}
+      targets: ${{ needs.plan.outputs.targets }}
+    secrets: inherit

@@ -2,7 +2,6 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "RimR",
   "mainBinaryName": "RimR",
-  "version": "0.2.2",
   "identifier": "org.rhnu.rimr",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -27,7 +26,6 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
     "category": "Utility",
     "copyright": "Copyright (C) 2026 Rhynia. Licensed under the GNU General Public License v3.",
     "publisher": "Rhynia",

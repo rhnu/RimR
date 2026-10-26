@@ -166,12 +166,6 @@ importers:
 
   .:
     devDependencies:
-      '@types/node':
-        specifier: ^26.6.5
-        version: 26.6.5
-      '@types/semver':
-        specifier: ^7.8.0
-        version: 7.8.0
       oxfmt:
         specifier: ^0.74.0
         version: 0.74.0
@@ -181,15 +175,6 @@ importers:
       rumdl:
         specifier: ^0.3.0
         version: 0.3.0
-      semver:
-        specifier: ^7.8.5
-        version: 7.8.5
-      tsx:
-        specifier: ^4.23.15
-        version: 4.23.15
-      typescript:
-        specifier: ^7.0.2
-        version: 7.0.2
 
   app:
     dependencies:
@@ -1987,9 +1972,6 @@ packages:
   '@types/react@19.3.0':
     resolution: {integrity: sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg==}
 
-  '@types/semver@7.8.0':
-    resolution: {integrity: sha512-1mAINjtQCXXeLkJ9ehXkwOcBpqtLxiVtKhpUf83DdRNdQKV0iXZpaHYqRr7nj+wvxuJzoAmAwXI+sCNMv1CzLQ==}
-
   '@typescript/typescript-aix-ppc64@7.0.2':
     resolution: {integrity: sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==}
     engines: {node: '>=16.20.0'}
@@ -2539,11 +2521,6 @@ packages:
 
   scheduler@0.28.0:
     resolution: {integrity: sha512-juorfCmIkIw8tT+p5BXSm6PJjQF/ycEYmKyzURCIt/RaZIhL+PulbQ9Yu2z1HdOJDdqDTlxA1+xKBmHXJsczAw==}
-
-  semver@7.8.5:
-    resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
-    engines: {node: '>=10'}
-    hasBin: true
 
   seroval-plugins@1.6.12:
     resolution: {integrity: sha512-+reiwp/lYxiyctSrdvX7OQ1YLrcbWYgBiZrhSFL+V43b0/DGRLNVSDyZINbQe+tWplPOI2fw2dPrdv6hcc09kQ==}
@@ -4220,8 +4197,6 @@ snapshots:
     dependencies:
       csstype: 3.2.3
 
-  '@types/semver@7.8.0': {}
-
   '@typescript/typescript-aix-ppc64@7.0.2':
     optional: true
 
@@ -4357,6 +4332,7 @@ snapshots:
       '@esbuild/win32-arm64': 0.28.1
       '@esbuild/win32-ia32': 0.28.1
       '@esbuild/win32-x64': 0.28.1
+    optional: true
 
   estree-walker@3.0.3:
     dependencies:
@@ -4708,8 +4684,6 @@ snapshots:
 
   scheduler@0.28.0: {}
 
-  semver@7.8.5: {}
-
   seroval-plugins@1.6.12(seroval@1.6.12):
     dependencies:
       seroval: 1.6.12
@@ -4785,6 +4759,7 @@ snapshots:
       esbuild: 0.28.1
     optionalDependencies:
       fsevents: 2.3.3
+    optional: true
 
   typescript@7.0.2:
     optionalDependencies:

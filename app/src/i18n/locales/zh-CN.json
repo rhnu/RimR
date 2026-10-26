@@ -98,7 +98,10 @@
     "tagCreated": "标签已创建",
     "tagRenamed": "标签已重命名",
     "tagDeleted": "标签已删除",
-    "about": "RimR {{version}}"
+    "about": "RimR {{version}}",
+    "versionLoading": "（正在读取版本…）",
+    "versionUnavailable": "（无法读取版本）",
+    "developmentBuild": "（浏览器开发预览）"
   },
   "common": {
     "retry": "重试",

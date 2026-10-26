@@ -98,7 +98,10 @@
     "tagCreated": "Tag created",
     "tagRenamed": "Tag renamed",
     "tagDeleted": "Tag deleted",
-    "about": "RimR {{version}}"
+    "about": "RimR {{version}}",
+    "versionLoading": "(reading version…)",
+    "versionUnavailable": "(version unavailable)",
+    "developmentBuild": "(browser development preview)"
   },
   "common": {
     "retry": "Retry",

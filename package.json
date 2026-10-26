@@ -1,7 +1,6 @@
 {
   "name": "rimr-workspace",
   "private": true,
-  "version": "0.2.2",
   "description": "A RimWorld mod manager.",
   "author": "Rhynia",
   "license": "GPL-3.0",
@@ -13,14 +12,17 @@
     "bindings": "cargo run --locked -p xtask -- export-bindings",
     "bindings:check": "cargo run --locked -p xtask -- export-bindings --check",
     "build": "pnpm --filter rimr build",
+    "build:assets": "pnpm --filter rimr build:assets",
     "build:bin": "pnpm --filter rimr build:bin",
-    "typecheck": "pnpm --filter rimr typecheck && tsc --noEmit -p tsconfig.node.json --pretty false",
+    "bundle": "node .github/scripts/build.mjs",
+    "typecheck": "pnpm --filter rimr typecheck",
     "lint": "oxlint . --deny-warnings --report-unused-disable-directives",
     "fmt": "oxfmt --write . && pnpm docs:fix",
     "fmt:check": "oxfmt --check . && pnpm docs:check",
     "test": "pnpm --filter rimr test",
-    "bump": "tsx scripts/bump-version.ts",
-    "check": "pnpm bindings:check && pnpm fmt:check && pnpm lint && pnpm typecheck && pnpm build && pnpm test && pnpm rust:check && pnpm rust:fmt:check && pnpm rust:lint && pnpm rust:test",
+    "release": "cargo run --locked -p xtask -- release",
+    "ci:test": "node --test .github/scripts/ci.test.mjs .github/scripts/native-packages.test.mjs",
+    "check": "pnpm ci:test && pnpm bindings:check && pnpm fmt:check && pnpm lint && pnpm typecheck && pnpm build:assets && pnpm test && pnpm rust:check && pnpm rust:fmt:check && pnpm rust:lint && pnpm rust:test",
     "lint:fix": "pnpm lint --fix",
     "docs:fix": "rumdl check --fix --deny-config-warnings",
     "docs:check": "rumdl check --deny-config-warnings",
@@ -31,14 +33,9 @@
     "rust:test": "cargo test --workspace --locked"
   },
   "devDependencies": {
-    "@types/node": "^26.6.5",
-    "@types/semver": "^7.8.0",
     "oxfmt": "^0.74.0",
     "oxlint": "^1.89.0",
-    "rumdl": "^0.3.0",
-    "semver": "^7.8.5",
-    "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "rumdl": "^0.3.0"
   },
   "engines": {
     "node": ">=24.0.0"

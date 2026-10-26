@@ -1,0 +1,12 @@
+name: Setup Linux desktop dependencies
+description: Install WebKitGTK and native packaging tools on Ubuntu
+runs:
+  using: composite
+  steps:
+    - name: Install system dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install --no-install-recommends -y \
+          build-essential libwebkit2gtk-4.1-dev libxdo-dev libssl-dev \
+          libayatana-appindicator3-dev librsvg2-dev patchelf rpm

@@ -8,3 +8,6 @@ publish = false
 anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 rimr-bindings = { workspace = true, features = ["export"] }
+semver = { workspace = true }
+serde_json = { workspace = true }
+toml_edit = { workspace = true }

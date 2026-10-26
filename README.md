@@ -8,7 +8,7 @@ Windows is the primary supported platform. Linux and macOS builds are experiment
 
 ## Get started
 
-1. Download and extract a build from [Releases](https://github.com/rhnu/rimr/releases), then launch RimR.
+1. Download the installer for your platform from [Releases](https://github.com/rhnu/rimr/releases): Windows x86_64 `.exe`, Linux x86_64 `.deb` / `.rpm`, or macOS arm64 `.dmg`. Install RimR, then launch it. On macOS, open the disk image and drag RimR into Applications.
 2. In Setup or Settings, autodetect your RimWorld paths and correct them if needed. The game data directory contains `Config/ModsConfig.xml`; it is separate from the game installation.
 3. Save the paths and scan your installed mods.
 4. Open Order, create or select a mod list, then add and arrange mods. Use **Sync from game order** to start from the game's current order.

@@ -1,0 +1,35 @@
+name: Setup Rust
+description: Install stable Rust and restore dependencies for the selected build purpose and target
+inputs:
+  components:
+    description: Additional Rust components, separated by commas
+    default: ''
+  target:
+    description: Optional Rust target triple
+    default: ''
+  cache-key:
+    description: Separate incompatible build purposes (check or release)
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Install toolchain
+      shell: bash
+      env:
+        RIMR_COMPONENTS: ${{ inputs.components }}
+        RIMR_TARGET: ${{ inputs.target }}
+      run: |
+        rustup toolchain install stable --profile minimal --no-self-update
+        rustup default stable
+        if [[ -n "$RIMR_COMPONENTS" ]]; then
+          IFS=',' read -ra components <<< "$RIMR_COMPONENTS"
+          rustup component add "${components[@]}"
+        fi
+        if [[ -n "$RIMR_TARGET" ]]; then
+          rustup target add "$RIMR_TARGET"
+        fi
+    - uses: Swatinem/rust-cache@v2.9.3
+      with:
+        shared-key: ${{ inputs.cache-key }}-${{ inputs.target || 'host' }}
+        save-if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+        cache-bin: 'false'

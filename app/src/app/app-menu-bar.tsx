@@ -18,6 +18,7 @@ import {
 import { ModListMenu } from '@/features/library/mod-list-menu';
 import { SUPPORTED_LOCALES_LIST, useLocaleStore, type Locale } from '@/stores/locale';
 import { useThemeStore } from '@/stores/theme';
+import { useAppVersion } from '@/queries/app';
 import { cn } from '@/lib/utils';
 import { TOOL_CLEANUP_ITEMS } from './tools-menu-model';
 import type { useFileMenuActions } from './use-file-menu-actions';
@@ -211,9 +212,17 @@ function SettingsMenu({ openMenu, setOpenMenu }: AppMenuBarProps) {
 
 function HelpMenu({ openMenu, setOpenMenu }: AppMenuBarProps) {
   const { t } = useTranslation();
+  const version = useAppVersion();
+  const versionLabel = version.isPending
+    ? t('toast.versionLoading')
+    : version.isError
+      ? t('toast.versionUnavailable')
+      : version.data === null
+        ? t('toast.developmentBuild')
+        : version.data;
   return (
     <DesktopMenu label={t('menu.help')} id="help" openMenu={openMenu} setOpenMenu={setOpenMenu}>
-      <MenuItem onSelect={() => toast.info(t('toast.about', { version: '0.1.0' }))}>
+      <MenuItem onSelect={() => toast.info(t('toast.about', { version: versionLabel }))}>
         {t('menu.aboutRimr')}
       </MenuItem>
     </DesktopMenu>
