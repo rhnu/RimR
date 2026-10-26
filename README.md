@@ -6,6 +6,26 @@ RimR is a desktop mod manager for RimWorld. Organize load orders with groups and
 
 Windows is the primary supported platform. Linux and macOS builds are experimental. The interface supports English and Simplified Chinese, with light, dark, and system themes.
 
+## Features
+
+### Organize mod lists
+
+Keep several named load orders and arrange mods with groups and separators. Use aliases, colored tags, and search to find mods in a large collection.
+
+![A mod group containing Vanilla Furniture Expanded mods](docs/screenshots/mod-group.png)
+
+### Review changes before applying
+
+Preview added, removed, and moved mods before writing the draft order to the game. Switch between a unified view and changes grouped by type to inspect the differences.
+
+![Apply to Game preview highlighting moved, removed, and added mods](docs/screenshots/apply-game-diff-view.png)
+
+### Inspect game and Workshop logs
+
+Read RimWorld logs with search, severity filters, reference navigation, and live refresh. Check Steam Workshop installation records from the same logs page.
+
+![RimWorld log viewer with search, severity counts, and live refresh](docs/screenshots/logs-view.png)
+
 ## Get started
 
 1. Download the installer for your platform from [Releases](https://github.com/rhnu/rimr/releases): Windows x86_64 `.exe`, Linux x86_64 `.deb` / `.rpm`, or macOS arm64 `.dmg`. Install RimR, then launch it. On macOS, open the disk image and drag RimR into Applications.

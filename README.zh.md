@@ -6,6 +6,26 @@ RimR 是 RimWorld 的桌面模组管理器。你可以用分组和分隔线整�
 
 Windows 是主要支持平台，Linux 和 macOS 构建仍属实验性支持。界面提供英语、简体中文，以及浅色、深色和跟随系统主题。
 
+## 功能介绍
+
+### 整理模组列表
+
+保存多份命名加载顺序，用分组和分隔线整理模组。结合别名、彩色标签和搜索，在大量模组中快速定位目标。
+
+![包含 Vanilla Furniture Expanded 系列模组的分组](docs/screenshots/mod-group.png)
+
+### 应用前预览变化
+
+写入游戏配置前，预览草稿中添加、移除和移动的模组。可以切换统一视图和按变更类型分组的视图，核对加载顺序差异。
+
+![应用到游戏的预览，高亮显示移动、移除和添加的模组](docs/screenshots/apply-game-diff-view.png)
+
+### 查看游戏与创意工坊日志
+
+阅读 RimWorld 日志，支持搜索、级别筛选、引用跳转和实时刷新；也可以在日志页面查看 Steam 创意工坊安装记录。
+
+![RimWorld 日志查看器，提供搜索、级别统计和实时刷新](docs/screenshots/logs-view.png)
+
 ## 开始使用
 
 1. 从 [Releases](https://github.com/rhnu/rimr/releases) 下载对应平台的安装包：Windows x86_64 `.exe`、Linux x86_64 `.deb` / `.rpm`，或 macOS arm64 `.dmg`。安装后启动 RimR；macOS 打开磁盘映像后，将 RimR 拖入“应用程序”。
