@@ -69,12 +69,6 @@ export function OrderToolbar() {
           diagnostics={derived.allDiagnostics}
           modByPackageId={derived.modByPackageId}
         />
-        <RefreshMenu
-          activeListFetching={activeList.isFetching}
-          catalogFetching={scan.isFetching}
-          onSyncFromGame={sync.handleSyncFromGame}
-          onRebuildCatalog={sync.handleRebuildCatalog}
-        />
         <ToolbarActions
           savePending={commands.savePending}
           saveDisabled={hasConflict}
@@ -90,6 +84,12 @@ export function OrderToolbar() {
             {t('order.conflictLabel')}
           </Badge>
         ) : null}
+        <RefreshMenu
+          activeListFetching={activeList.isFetching}
+          catalogFetching={scan.isFetching}
+          onSyncFromGame={sync.handleSyncFromGame}
+          onRebuildCatalog={sync.handleRebuildCatalog}
+        />
         <LaunchGameButton />
       </div>
     </header>
