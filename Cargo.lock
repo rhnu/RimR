@@ -3150,7 +3150,7 @@ dependencies = [
 
 [[package]]
 name = "rimr-app"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -3174,7 +3174,7 @@ dependencies = [
 
 [[package]]
 name = "rimr-bindings"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -3183,7 +3183,7 @@ dependencies = [
 
 [[package]]
 name = "rimr-core"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "flate2",
  "indexmap 2.14.2",
@@ -3198,7 +3198,7 @@ dependencies = [
 
 [[package]]
 name = "rimr-steam"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "keyvalues-serde",
  "serde",
@@ -3207,7 +3207,7 @@ dependencies = [
 
 [[package]]
 name = "rimr-tauri"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "log",
  "rimr-app",
@@ -5392,7 +5392,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "clap",
