@@ -1,19 +1,4 @@
-# AGENTS.md
-
-## Git
-
-- Use Conventional Commits: `<type>(<scope>): <description>`.
-- When a task is split into independently deliverable targets, plan commits up front. Complete and commit one target before moving to the next, unless the changes are genuinely coupled. Each commit should leave the repo in a reviewable state.
-
-## Context7
-
-Use Context7 MCP to fetch current documentation whenever a task asks about a library, framework, SDK, API, CLI tool, or cloud service. This includes Tauri, React, Vite, Rust crates, Node tooling, and setup or migration details.
-
-Do not use Context7 for ordinary refactors, business-logic debugging, code review, or general programming concepts.
-
-## Source Lookup
-
-- Rust crates source code can be found in `$CARGO_HOME`, do not grep in `$USER_PROFILE/.cargo`
+# AGENTS
 
 ## Capabilities
 
@@ -68,12 +53,6 @@ Before finishing a session, also run the full aggregate check as a safety net:
 
 ```powershell
 pnpm check
-```
-
-If a Tauri desktop build is relevant and the host environment supports it, also run:
-
-```powershell
-pnpm tauri build --no-bundle
 ```
 
 Note: `pnpm check` runs `bindings:check` → `fmt:check` → `lint` → `typecheck` → `build` → `test` → `cargo check` → Rusteward format → Rusteward lint (including Clippy) → `cargo test`. It is broad and slower than scoped checks, so use it to catch cross-layer omissions rather than for every small change.
