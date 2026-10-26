@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { createInstance } from 'i18next';
+import en from '@/i18n/locales/en.json';
+import zhCN from '@/i18n/locales/zh-CN.json';
 import type { DiagnosticDto, ModMetadataDto } from '@/commands';
 import {
   formatDiagnosticMessage,
@@ -56,6 +59,33 @@ function mod(id: string, name: string | null): ModMetadataDto {
 }
 
 describe('diagnostic message formatting', () => {
+  it.each(['en', 'zh-CN'])('explains unsupported game versions in %s', async (locale) => {
+    const i18n = createInstance();
+    await i18n.init({
+      resources: { en: { translation: en }, 'zh-CN': { translation: zhCN } },
+      lng: locale,
+      interpolation: { escapeValue: false },
+    });
+    const mismatch = diagnostic({
+      code: 'gameVersionUnsupported',
+      params: {
+        packageId: 'missing.mod',
+        gameVersion: '1.6.4633 rev123',
+        supportedVersions: '1.4, 1.5',
+      },
+    });
+    const message = formatDiagnosticMessage(
+      mismatch,
+      i18n.t.bind(i18n),
+      new Map([['missing.mod', mod('missing.mod', 'Older Mod')]]),
+    );
+    expect(message).toContain('Older Mod (missing.mod)');
+    expect(message).toContain('1.6.4633 rev123');
+    expect(message).toContain('1.4, 1.5');
+    expect(message).not.toContain('{{');
+    expect(message).not.toBe(mismatch.message);
+  });
+
   it('uses translated diagnostic templates with params', () => {
     const t = (key: string, params?: Record<string, string>) =>
       key === 'diagnostics.configModMissing' ? `Missing from catalog: ${params?.packageId}` : key;

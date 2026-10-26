@@ -91,7 +91,7 @@ export type SourceKindDto = "expansion" | "local" | "workshop";
 
 export type SeverityDto = "error" | "warning" | "info";
 
-export type DiagnosticCodeDto = "gameVersionUnknown" | "xmlMalformed" | "packageIdMissing" | "packageIdDuplicate" | "sourceReadFailed" | "dependencyMissing" | "configModMissing" | "activeModMissing" | "dependencyInactive" | "orderViolationLoadAfter" | "orderViolationLoadBefore" | "incompatibleActive" | "circularDependency";
+export type DiagnosticCodeDto = "gameVersionUnknown" | "gameVersionUnsupported" | "xmlMalformed" | "packageIdMissing" | "packageIdDuplicate" | "sourceReadFailed" | "dependencyMissing" | "configModMissing" | "activeModMissing" | "dependencyInactive" | "orderViolationLoadAfter" | "orderViolationLoadBefore" | "incompatibleActive" | "circularDependency";
 
 export type DiagnosticLocationDto = { sourceKey: string | null, path: string, xmlPath: string | null, line: number | null, col: number | null, byteOffset: number | null, };
 

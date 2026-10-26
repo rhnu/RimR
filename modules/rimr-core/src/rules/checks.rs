@@ -3,6 +3,7 @@
 mod cycles;
 mod dependencies;
 mod duplicates;
+mod game_versions;
 mod incompatibilities;
 mod order;
 
@@ -11,5 +12,6 @@ pub(crate) use dependencies::{
     check_active_missing, check_inactive_dependencies, check_missing_dependencies,
 };
 pub(crate) use duplicates::check_duplicates;
+pub(crate) use game_versions::check_game_versions;
 pub(crate) use incompatibilities::check_incompatibles;
 pub(crate) use order::check_order_violations;

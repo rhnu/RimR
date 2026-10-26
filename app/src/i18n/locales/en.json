@@ -133,7 +133,8 @@
     "orderViolationLoadBefore": "{{targetPackageId}} must load before {{packageId}} ({{rule}}).",
     "incompatibleActive": "{{packageId}} and {{incompatiblePackageId}} are incompatible but both active.",
     "circularDependency": "Circular dependency: {{cycle}}",
-    "gameVersionUnknown": "The target game version could not be detected. Version-specific mod metadata may be incomplete."
+    "gameVersionUnknown": "The target game version could not be detected. Version-specific mod metadata may be incomplete.",
+    "gameVersionUnsupported": "{{packageId}} declares support for game versions {{supportedVersions}}, which do not include the current game version {{gameVersion}}."
   },
   "settings": {
     "title": "Settings",

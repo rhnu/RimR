@@ -8,6 +8,8 @@
 pub enum DiagnosticCode {
     /// No readable target game version was available.
     GameVersionUnknown,
+    /// An active mod does not declare support for the target game version.
+    GameVersionUnsupported,
     /// `About.xml` could not be parsed as valid XML.
     XmlMalformed,
     /// `packageId` is missing, empty, or not a string.

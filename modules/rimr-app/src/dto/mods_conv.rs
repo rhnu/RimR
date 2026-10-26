@@ -204,6 +204,7 @@ fn severity(severity: Severity) -> SeverityDto {
 fn diagnostic_code(code: DiagnosticCode) -> DiagnosticCodeDto {
     match code {
         DiagnosticCode::GameVersionUnknown => DiagnosticCodeDto::GameVersionUnknown,
+        DiagnosticCode::GameVersionUnsupported => DiagnosticCodeDto::GameVersionUnsupported,
         DiagnosticCode::XmlMalformed => DiagnosticCodeDto::XmlMalformed,
         DiagnosticCode::PackageIdMissing => DiagnosticCodeDto::PackageIdMissing,
         DiagnosticCode::PackageIdDuplicate => DiagnosticCodeDto::PackageIdDuplicate,

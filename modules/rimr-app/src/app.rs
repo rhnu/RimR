@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    domain::{ActiveModList, ModCatalog, ModList, PackageId},
+    domain::{ActiveModList, GameVersion, ModCatalog, ModList, PackageId},
     error::{AppError, AppErrorCode, AppResult, RimrFileParseError},
     formats::ModsConfig,
     ports::Clock,
@@ -16,20 +16,24 @@ pub const RIMR_FILE_FORMAT_VERSION: u32 = 3;
 /// Application-owned runtime state for a `RimR` workspace session.
 #[derive(Debug, Default)]
 pub struct WorkspaceSession {
-    catalog: Option<ModCatalog>,
+    catalog: Option<(ModCatalog, GameVersion)>,
     active_mods: Option<ActiveModList>,
     mods_config: Option<ModsConfig>,
 }
 
 impl WorkspaceSession {
-    pub fn catalog(&self) -> Option<&ModCatalog> { self.catalog.as_ref() }
+    pub fn catalog(&self) -> Option<&ModCatalog> {
+        self.catalog.as_ref().map(|(catalog, _)| catalog)
+    }
 
     pub fn active_mods(&self) -> Option<&ActiveModList> { self.active_mods.as_ref() }
 
     pub fn mods_config(&self) -> Option<&ModsConfig> { self.mods_config.as_ref() }
 
     /// Publishes a completed scan without replacing loaded game state.
-    pub fn replace_catalog(&mut self, catalog: ModCatalog) { self.catalog = Some(catalog); }
+    pub fn replace_catalog(&mut self, catalog: ModCatalog, game_version: GameVersion) {
+        self.catalog = Some((catalog, game_version));
+    }
 
     /// Publishes game state without replacing the latest catalog.
     pub fn replace_game_config(&mut self, config: ModsConfig) {
@@ -50,7 +54,7 @@ impl WorkspaceSession {
         &self,
         active_mods: Vec<String>,
     ) -> AppResult<crate::services::ValidateOrderResult> {
-        let catalog = self
+        let (catalog, game_version) = self
             .catalog
             .as_ref()
             .ok_or_else(|| AppError::new(AppErrorCode::StateMissing, "catalog is not loaded"))?;
@@ -62,7 +66,9 @@ impl WorkspaceSession {
         Ok(services::validate_order(
             catalog,
             &list,
-            &crate::rules::ValidateOpts::default(),
+            &crate::rules::ValidateOpts {
+                game_version: Some(game_version.clone()),
+            },
         ))
     }
 }

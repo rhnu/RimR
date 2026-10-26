@@ -54,6 +54,100 @@ fn make_catalog(mods: Vec<ModMetadata>) -> ModCatalog {
     cat
 }
 
+fn version_report(
+    target: Option<&str>,
+    supported: &[&str],
+    active: bool,
+    valid: bool,
+) -> ValidationReport {
+    let mut metadata = make_mod("test.versioned", &[], &[], &[]);
+    metadata.supported_versions = supported.iter().map(|v| GameVersion::parse(v)).collect();
+    metadata.valid = valid;
+    let catalog = make_catalog(vec![metadata]);
+    let ids = if active {
+        vec![PackageId::new("test.versioned")]
+    } else {
+        vec![]
+    };
+    let list = ActiveModList::from_slice(&ids);
+    validate_order(
+        &catalog,
+        &list,
+        &build_load_order_graph(&catalog),
+        &ValidateOpts {
+            game_version: target.map(GameVersion::parse),
+        },
+    )
+}
+
+#[test]
+fn unsupported_game_version_warns_with_versions_and_mod_location() {
+    let report = version_report(Some("1.6.4633 rev123"), &["1.4", "1.5"], true, true);
+    assert!(!report.has_errors());
+    assert_eq!(report.warnings.len(), 1);
+    let warning = &report.warnings[0];
+    assert_eq!(warning.code, DiagnosticCode::GameVersionUnsupported);
+    assert_eq!(warning.severity, crate::Severity::Warning);
+    assert_eq!(warning.params["packageId"], "test.versioned");
+    assert_eq!(warning.params["gameVersion"], "1.6.4633 rev123");
+    assert_eq!(warning.params["supportedVersions"], "1.4, 1.5");
+    assert_eq!(warning.related_packages, [PackageId::new("test.versioned")]);
+    let location = warning.location.as_ref().unwrap();
+    assert_eq!(
+        location.source_key.as_ref().unwrap().as_str(),
+        "test.versioned"
+    );
+    assert_eq!(
+        location.xml_path.as_deref(),
+        Some("/ModMetaData/supportedVersions")
+    );
+}
+
+#[test]
+fn matching_unknown_inactive_and_invalid_versions_do_not_warn() {
+    for (target, supported, active, valid) in [
+        (Some("1.6.4633 rev123"), vec!["1.5", "1.6"], true, true),
+        (Some("1.6"), vec!["1.6.9999 rev999"], true, true),
+        (Some("1.6"), vec![], true, true),
+        (Some("1.6"), vec!["garbage"], true, true),
+        (Some("Unknown"), vec!["1.5"], true, true),
+        (None, vec!["1.5"], true, true),
+        (Some("1.6"), vec!["1.5"], false, true),
+        (Some("1.6"), vec!["1.5"], true, false),
+    ] {
+        let report = version_report(target, &supported, active, valid);
+        assert!(
+            report.is_clean(),
+            "unexpected diagnostic for {target:?}, {supported:?}, active={active}, valid={valid}"
+        );
+    }
+}
+
+#[test]
+fn version_matching_compares_major_and_minor_and_uses_primary_copy() {
+    // A different major version cannot match merely because the minor matches.
+    let report = version_report(Some("2.6"), &["1.6"], true, true);
+    assert_eq!(report.warnings.len(), 1);
+
+    let mut primary = make_mod("test.duplicate", &[], &[], &[]);
+    primary.supported_versions = vec![GameVersion::parse("1.6")];
+    let mut shadowed = primary.clone();
+    shadowed.source_key = ModSourceKey::new("shadowed");
+    shadowed.supported_versions = vec![GameVersion::parse("1.5")];
+    let catalog = make_catalog(vec![primary, shadowed]);
+    let report = validate_order(
+        &catalog,
+        &ActiveModList::from_slice(&[PackageId::new("test.duplicate")]),
+        &build_load_order_graph(&catalog),
+        &ValidateOpts {
+            game_version: Some(GameVersion::parse("1.6")),
+        },
+    );
+    assert!(report.warnings.is_empty());
+    assert_eq!(report.errors.len(), 1);
+    assert_eq!(report.errors[0].code, DiagnosticCode::PackageIdDuplicate);
+}
+
 #[test]
 fn clean_order_no_violations() {
     let cat = make_catalog(vec![

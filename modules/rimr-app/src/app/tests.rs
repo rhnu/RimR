@@ -7,6 +7,59 @@ use super::*;
 
 struct FixedClock;
 
+#[test]
+fn order_validation_uses_version_published_with_catalog_and_refreshes_on_rescan() {
+    let mut session = WorkspaceSession::default();
+    let catalog = || {
+        let raw = rimr_core::parse_about_xml(
+            b"<ModMetaData><packageId>test.versioned</packageId><supportedVersions><li>1.5</li></supportedVersions></ModMetaData>",
+        ).unwrap();
+        let mut catalog = ModCatalog::new();
+        catalog.insert(rimr_core::compile_metadata(
+            raw,
+            rimr_core::ModSourceKey::new("test.versioned"),
+            rimr_core::SourceKind::Local,
+            &rimr_core::CompileOpts::default(),
+        ));
+        catalog
+    };
+    session.replace_catalog(catalog(), GameVersion::parse("1.6.4633"));
+    // The version in loaded game configuration can be stale after an update.
+    session.replace_game_config(ModsConfig {
+        version: "1.5".into(),
+        active_mods: vec![],
+        known_expansions: vec![],
+    });
+    let result = session
+        .validate_active_order(vec!["test.versioned".into()])
+        .unwrap();
+    assert_eq!(result.report.warnings.len(), 1);
+    assert_eq!(result.report.warnings[0].params["gameVersion"], "1.6.4633");
+
+    session.replace_catalog(catalog(), GameVersion::parse("1.5"));
+    assert!(
+        session
+            .validate_active_order(vec!["test.versioned".into()])
+            .unwrap()
+            .report
+            .is_clean()
+    );
+    session.replace_catalog(catalog(), GameVersion::unknown());
+    assert!(
+        session
+            .validate_active_order(vec!["test.versioned".into()])
+            .unwrap()
+            .report
+            .is_clean()
+    );
+    session.clear();
+    assert!(
+        session
+            .validate_active_order(vec!["test.versioned".into()])
+            .is_err()
+    );
+}
+
 impl Clock for FixedClock {
     fn now_rfc3339(&self) -> String { "2026-01-01T00:00:00Z".into() }
 }
@@ -172,7 +225,7 @@ fn partial_session_publication_preserves_independent_state() {
     let original_config = config("original");
     let mut published = WorkspaceSession::default();
     published.replace_game_config(original_config.clone());
-    published.replace_catalog(ModCatalog::new());
+    published.replace_catalog(ModCatalog::new(), GameVersion::unknown());
     assert_eq!(published.mods_config(), Some(&original_config));
     assert!(published.catalog().is_some());
     let updated_config = config("updated");

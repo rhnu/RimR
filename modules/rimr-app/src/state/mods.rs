@@ -42,7 +42,7 @@ impl AppState {
         let version_unknown = game_version.is_unknown();
         let opts = crate::ScanOpts {
             compile: rimr_core::CompileOpts {
-                game_version,
+                game_version: game_version.clone(),
                 prefer_versioned: true,
             },
             ..crate::ScanOpts::default()
@@ -64,7 +64,9 @@ impl AppState {
         );
         let mut state = self.write_state()?;
         state.generation += 1;
-        state.workspace.replace_catalog(report.catalog);
+        state
+            .workspace
+            .replace_catalog(report.catalog, game_version);
         state.canonical_source_roots = Some(canonical_source_roots);
         state.mod_previews.clear();
         state.mod_folder_sizes.clear();

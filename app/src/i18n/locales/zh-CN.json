@@ -133,7 +133,8 @@
     "orderViolationLoadBefore": "{{targetPackageId}} 必须在 {{packageId}} 之前加载（{{rule}}）。",
     "incompatibleActive": "{{packageId}} 与 {{incompatiblePackageId}} 不兼容，但两者都已启用。",
     "circularDependency": "循环依赖：{{cycle}}",
-    "gameVersionUnknown": "无法检测目标游戏版本，模组的按版本元数据可能不完整。"
+    "gameVersionUnknown": "无法检测目标游戏版本，模组的按版本元数据可能不完整。",
+    "gameVersionUnsupported": "{{packageId}} 声明支持的游戏版本为 {{supportedVersions}}，不包含当前游戏版本 {{gameVersion}}。"
   },
   "settings": {
     "title": "设置",
