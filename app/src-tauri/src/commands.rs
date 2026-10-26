@@ -1,3 +1,4 @@
+pub mod app;
 pub mod backups;
 pub mod config;
 pub mod logs;
@@ -5,6 +6,7 @@ pub mod mod_lists;
 pub mod mods;
 pub mod saves;
 
+pub use app::*;
 pub use backups::*;
 pub use config::*;
 pub use logs::*;
@@ -16,6 +18,8 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool {
     tauri::generate_handler![
         get_bootstrap_status,
         get_app_config,
+        get_game_version,
+        open_project_page,
         save_app_config,
         autodetect_paths,
         clear_session_cache,

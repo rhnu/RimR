@@ -15,6 +15,17 @@
     "saveAsModList": "另存为模组列表...",
     "deleteModList": "删除模组列表..."
   },
+  "about": {
+    "description": "RimWorld 桌面模组管理器",
+    "author": "作者",
+    "license": "许可证",
+    "rimrVersion": "RimR 版本",
+    "rimworldVersion": "RimWorld 版本",
+    "versionLoading": "正在读取…",
+    "versionUnavailable": "无法读取",
+    "developmentBuild": "浏览器开发预览",
+    "gameVersionUndetected": "未检测到"
+  },
   "theme": {
     "light": "浅色",
     "dark": "深色",
@@ -97,11 +108,7 @@
     "aliasSaved": "别名已保存",
     "tagCreated": "标签已创建",
     "tagRenamed": "标签已重命名",
-    "tagDeleted": "标签已删除",
-    "about": "RimR {{version}}",
-    "versionLoading": "（正在读取版本…）",
-    "versionUnavailable": "（无法读取版本）",
-    "developmentBuild": "（浏览器开发预览）"
+    "tagDeleted": "标签已删除"
   },
   "common": {
     "retry": "重试",

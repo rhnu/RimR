@@ -7,6 +7,10 @@ use crate::{
     error::SourceError, fs_utils::resolve_path_case_insensitive_checked, ports::ModSource,
 };
 
+mod game_version;
+
+pub(crate) use game_version::detect_game_version;
+
 #[derive(Debug, Clone)]
 pub struct SourceRoots {
     pub game_dir: PathBuf,
@@ -24,37 +28,7 @@ impl FsModSource {
     pub fn new(roots: SourceRoots) -> Self { Self { roots } }
 
     pub async fn target_game_version(&self) -> rimr_core::GameVersion {
-        let path = self.roots.game_dir.join("Version.txt");
-        match tokio::fs::read_to_string(&path).await {
-            Ok(raw) => {
-                let version = rimr_core::GameVersion::parse(raw.lines().next().unwrap_or_default());
-                if version.major() > 0 {
-                    return version;
-                }
-            },
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {},
-            Err(error) => {
-                tracing::warn!(path = ?path, error = %error, "Version.txt unavailable; inspecting game configuration");
-            },
-        }
-        match self.read_mods_config().await {
-            Ok(Some(file)) => match rimr_core::parse_mods_config(&file.bytes) {
-                Ok(config) => {
-                    let version = rimr_core::GameVersion::parse(&config.version);
-                    if version.major() > 0 {
-                        return version;
-                    }
-                },
-                Err(error) => {
-                    tracing::warn!(error = ?error, "game configuration cannot supply the target version");
-                },
-            },
-            Ok(None) => {},
-            Err(error) => {
-                tracing::warn!(error = ?error, "game configuration cannot supply the target version");
-            },
-        }
-        rimr_core::GameVersion::unknown()
+        detect_game_version(Some(&self.roots.game_dir), Some(&self.roots.data_dir)).await
     }
 
     fn mods_config_path(&self) -> PathBuf {

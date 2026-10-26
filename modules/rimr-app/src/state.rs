@@ -118,6 +118,21 @@ impl AppState {
     /// Returns a source, parsing, validation, or state error if the operation cannot complete.
     pub fn get_config(&self) -> AppResult<AppConfig> { Ok(self.read_state()?.config.clone()) }
 
+    /// Detects the game version without requiring a mod scan or every source path.
+    ///
+    /// # Errors
+    /// Returns an error if configuration is unavailable.
+    pub async fn get_game_version(&self) -> AppResult<Option<String>> {
+        let _operation = self.operations.lock().await;
+        let config = self.get_config()?;
+        let version = crate::source::detect_game_version(
+            config.paths.game_dir.as_deref(),
+            config.paths.game_data_dir.as_deref(),
+        )
+        .await;
+        Ok((!version.is_unknown()).then(|| version.to_string()))
+    }
+
     /// # Errors
     /// Returns a source, parsing, validation, or state error if the operation cannot complete.
     pub fn clear_session_cache(&self) -> AppResult<()> {

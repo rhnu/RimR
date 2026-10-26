@@ -59,6 +59,14 @@ type CommandContracts = {
     args: undefined;
     result: AppConfig;
   };
+  get_game_version: {
+    args: undefined;
+    result: string | null;
+  };
+  open_project_page: {
+    args: undefined;
+    result: void;
+  };
   save_app_config: {
     args: { request: { config: AppConfig } };
     result: AppConfig;
@@ -222,6 +230,8 @@ function isCommandError(value: unknown): value is CommandError {
 export const rimrClient = {
   getBootstrapStatus: () => invokeCommand('get_bootstrap_status'),
   getAppConfig: () => invokeCommand('get_app_config'),
+  getGameVersion: () => invokeCommand('get_game_version'),
+  openProjectPage: () => invokeCommand('open_project_page'),
   saveAppConfig: (config: AppConfig) => invokeCommand('save_app_config', { request: { config } }),
   autodetectPaths: () => invokeCommand('autodetect_paths'),
   clearSessionCache: () => invokeCommand('clear_session_cache'),

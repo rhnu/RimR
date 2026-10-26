@@ -15,6 +15,17 @@
     "saveAsModList": "Save Mod List As...",
     "deleteModList": "Delete Mod List..."
   },
+  "about": {
+    "description": "A desktop mod manager for RimWorld",
+    "author": "Author",
+    "license": "License",
+    "rimrVersion": "RimR version",
+    "rimworldVersion": "RimWorld version",
+    "versionLoading": "Reading…",
+    "versionUnavailable": "Unavailable",
+    "developmentBuild": "Browser development preview",
+    "gameVersionUndetected": "Not detected"
+  },
   "theme": {
     "light": "Light",
     "dark": "Dark",
@@ -97,11 +108,7 @@
     "aliasSaved": "Alias saved",
     "tagCreated": "Tag created",
     "tagRenamed": "Tag renamed",
-    "tagDeleted": "Tag deleted",
-    "about": "RimR {{version}}",
-    "versionLoading": "(reading version…)",
-    "versionUnavailable": "(version unavailable)",
-    "developmentBuild": "(browser development preview)"
+    "tagDeleted": "Tag deleted"
   },
   "common": {
     "retry": "Retry",

@@ -2,6 +2,29 @@ use tempfile::tempdir;
 
 use super::*;
 
+#[tokio::test]
+async fn game_version_is_available_before_scanning_with_only_install_path_configured() {
+    let root = tempdir().unwrap();
+    let mut config = crate::app_config::AppConfig::default();
+    let state = AppState::with_config(None, config.clone(), None, None, false);
+    assert_eq!(state.get_game_version().await.unwrap(), None);
+
+    config.paths.game_dir = Some(root.path().to_path_buf());
+    let state = AppState::with_config(None, config, None, None, false);
+    assert_eq!(state.get_game_version().await.unwrap(), None);
+    std::fs::write(root.path().join("Version.txt"), "1.6.4633").unwrap();
+    assert_eq!(
+        state.get_game_version().await.unwrap().as_deref(),
+        Some("1.6.4633")
+    );
+    assert!(state.read_state().unwrap().workspace.catalog().is_none());
+    std::fs::write(root.path().join("Version.txt"), "1.5.4104").unwrap();
+    assert_eq!(
+        state.get_game_version().await.unwrap().as_deref(),
+        Some("1.5.4104")
+    );
+}
+
 fn source(root: &Path) -> FsModSource {
     FsModSource::new(SourceRoots {
         game_dir: root.to_path_buf(),

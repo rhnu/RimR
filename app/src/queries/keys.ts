@@ -1,5 +1,6 @@
 export const queryKeys = {
   appVersion: ['appVersion'] as const,
+  gameVersion: (epoch: number) => ['workspace', epoch, 'gameVersion'] as const,
   bootstrap: ['bootstrap'] as const,
   appConfig: ['appConfig'] as const,
   workspaceRoot: ['workspace'] as const,

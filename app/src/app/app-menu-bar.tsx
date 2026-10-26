@@ -1,6 +1,5 @@
-import type { ReactNode } from 'react';
+import { useRef, useState, type ReactNode, type Ref } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
@@ -18,7 +17,7 @@ import {
 import { ModListMenu } from '@/features/library/mod-list-menu';
 import { SUPPORTED_LOCALES_LIST, useLocaleStore, type Locale } from '@/stores/locale';
 import { useThemeStore } from '@/stores/theme';
-import { useAppVersion } from '@/queries/app';
+import { AboutDialog } from './about-dialog';
 import { cn } from '@/lib/utils';
 import { TOOL_CLEANUP_ITEMS } from './tools-menu-model';
 import type { useFileMenuActions } from './use-file-menu-actions';
@@ -212,20 +211,35 @@ function SettingsMenu({ openMenu, setOpenMenu }: AppMenuBarProps) {
 
 function HelpMenu({ openMenu, setOpenMenu }: AppMenuBarProps) {
   const { t } = useTranslation();
-  const version = useAppVersion();
-  const versionLabel = version.isPending
-    ? t('toast.versionLoading')
-    : version.isError
-      ? t('toast.versionUnavailable')
-      : version.data === null
-        ? t('toast.developmentBuild')
-        : version.data;
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   return (
-    <DesktopMenu label={t('menu.help')} id="help" openMenu={openMenu} setOpenMenu={setOpenMenu}>
-      <MenuItem onSelect={() => toast.info(t('toast.about', { version: versionLabel }))}>
-        {t('menu.aboutRimr')}
-      </MenuItem>
-    </DesktopMenu>
+    <>
+      <DesktopMenu
+        label={t('menu.help')}
+        id="help"
+        openMenu={openMenu}
+        setOpenMenu={setOpenMenu}
+        triggerRef={triggerRef}
+      >
+        <MenuItem
+          onSelect={() => {
+            setOpenMenu(null);
+            setAboutOpen(true);
+          }}
+        >
+          {t('menu.aboutRimr')}
+        </MenuItem>
+      </DesktopMenu>
+      <AboutDialog
+        open={aboutOpen}
+        onOpenChange={setAboutOpen}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          triggerRef.current?.focus();
+        }}
+      />
+    </>
   );
 }
 
@@ -235,12 +249,14 @@ function DesktopMenu({
   openMenu,
   setOpenMenu,
   children,
+  triggerRef,
 }: {
   label: string;
   id: MenuId;
   openMenu: MenuId | null;
   setOpenMenu: (menu: MenuId | null) => void;
   children: ReactNode;
+  triggerRef?: Ref<HTMLButtonElement>;
 }) {
   const open = openMenu === id;
   return (
@@ -255,6 +271,7 @@ function DesktopMenu({
       <div className="relative h-full">
         <DropdownMenuTrigger asChild>
           <button
+            ref={triggerRef}
             type="button"
             className={cn(
               'h-full px-3 text-xs text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
