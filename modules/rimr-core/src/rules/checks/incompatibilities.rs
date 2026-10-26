@@ -1,10 +1,8 @@
 //! Incompatible-mods-both-active check.
 
-use std::collections::HashSet;
-
 use crate::{
     diagnostics::{Diagnostic, DiagnosticCode, DiagnosticLocation, Severity},
-    domain::{ActiveModList, ModCatalog, PackageId},
+    domain::{ActiveModList, ModCatalog},
     rules::graph::LoadOrderGraph,
 };
 
@@ -13,12 +11,11 @@ pub(crate) fn check_incompatibles(
     catalog: &ModCatalog,
     list: &ActiveModList,
     graph: &LoadOrderGraph,
-    active_set: &HashSet<&PackageId>,
 ) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     for pkg in list.iter() {
         for incompatible in graph.incompatibilities(pkg) {
-            if active_set.contains(incompatible) && pkg < incompatible {
+            if list.contains(incompatible) && pkg < incompatible {
                 let diagnostic = Diagnostic::new(
                     Severity::Error,
                     DiagnosticCode::IncompatibleActive,

@@ -26,10 +26,6 @@ const validation: ValidateOrderDto = {
     warnings: [diagnostic('warning', 'orderViolationLoadAfter', ['c.mod', 'a.mod'])],
     infos: [diagnostic('info', 'packageIdDuplicate', [])],
   },
-  graph: {
-    edges: [],
-    incompatibilities: [],
-  },
 };
 
 describe('diagnostics helpers', () => {

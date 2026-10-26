@@ -42,10 +42,6 @@ pub struct PlayerLogResult {
     pub error_count: u32,
     pub warning_count: u32,
     pub exception_count: u32,
-    pub source: LogSource,
-    pub file_path: String,
-    pub file_size_bytes: u64,
-    pub modified_at_ms: u64,
 }
 
 struct ClassificationPatterns {
@@ -116,7 +112,7 @@ fn extract_duplicate_ref(line: &str) -> Option<String> {
         .and_then(|c| c.get(1).map(|m| m.as_str().to_string()))
 }
 
-pub fn parse_player_log(content: &str, source: LogSource) -> PlayerLogResult {
+pub fn parse_player_log(content: &str) -> PlayerLogResult {
     let mut entries = Vec::new();
     let mut error_count = 0u32;
     let mut warning_count = 0u32;
@@ -158,10 +154,6 @@ pub fn parse_player_log(content: &str, source: LogSource) -> PlayerLogResult {
         error_count,
         warning_count,
         exception_count,
-        source,
-        file_path: String::new(),
-        file_size_bytes: 0,
-        modified_at_ms: 0,
     }
 }
 

@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use quick_xml::{events::Event, reader::Reader};
+use quick_xml::{errors::IllFormedError, events::Event, reader::Reader};
 
 use crate::{
     domain::PackageId,
@@ -45,6 +45,7 @@ pub fn parse_mods_config(bytes: &[u8]) -> Result<ModsConfig, CoreError> {
         XmlReadError::UnknownEntity(message) => CoreError::ModsConfigInvalid(message),
     })?;
     let mut reader = Reader::from_reader(bytes.as_ref());
+    reader.config_mut().expand_empty_elements = true;
 
     let mut version: Option<String> = None;
     let mut active_mods: Option<Vec<PackageId>> = None;
@@ -80,10 +81,11 @@ pub fn parse_mods_config(bytes: &[u8]) -> Result<ModsConfig, CoreError> {
                         version = read_text(&mut reader)?;
                     },
                     "activeMods" => {
-                        active_mods = Some(read_package_id_list(&mut reader)?);
+                        active_mods = Some(read_package_id_list(&mut reader, "activeMods")?);
                     },
                     "knownExpansions" => {
-                        known_expansions = Some(read_package_id_list(&mut reader)?);
+                        known_expansions =
+                            Some(read_package_id_list(&mut reader, "knownExpansions")?);
                     },
                     _ => {
                         reader
@@ -92,7 +94,8 @@ pub fn parse_mods_config(bytes: &[u8]) -> Result<ModsConfig, CoreError> {
                     },
                 }
             },
-            Ok(Event::End(_) | Event::Eof) => break,
+            Ok(Event::End(e)) if e.name().as_ref() == "ModsConfigData" => break,
+            Ok(Event::Eof) => return Err(missing_end_tag("ModsConfigData")),
             Err(e) => return Err(CoreError::ModsConfigParse { source: e }),
             _ => {},
         }
@@ -122,7 +125,10 @@ pub fn parse_mods_config(bytes: &[u8]) -> Result<ModsConfig, CoreError> {
 }
 
 /// Reads a `<li>packageId</li>` list until the outer End.
-fn read_package_id_list(reader: &mut Reader<&[u8]>) -> Result<Vec<PackageId>, CoreError> {
+fn read_package_id_list(
+    reader: &mut Reader<&[u8]>,
+    element: &str,
+) -> Result<Vec<PackageId>, CoreError> {
     let mut result = Vec::new();
     let mut buf = Vec::new();
     loop {
@@ -133,13 +139,20 @@ fn read_package_id_list(reader: &mut Reader<&[u8]>) -> Result<Vec<PackageId>, Co
                     result.push(PackageId::new(&t));
                 }
             },
-            Ok(Event::End(_) | Event::Eof) => break,
+            Ok(Event::End(e)) if e.name().as_ref() == element => break,
+            Ok(Event::Eof) => return Err(missing_end_tag(element)),
             Ok(_) => {},
             Err(e) => return Err(CoreError::ModsConfigParse { source: e }),
         }
         buf.clear();
     }
     Ok(result)
+}
+
+fn missing_end_tag(element: &str) -> CoreError {
+    CoreError::ModsConfigParse {
+        source: IllFormedError::MissingEndTag(element.to_string()).into(),
+    }
 }
 
 #[cfg(test)]

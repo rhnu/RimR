@@ -295,7 +295,6 @@ pub struct ValidateActiveOrderRequest {
 #[ts(rename_all = "camelCase")]
 pub struct ValidateOrderDto {
     pub report: ValidationReportDto,
-    pub graph: DependencyGraphDto,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -307,49 +306,6 @@ pub struct ValidationReportDto {
     pub infos: Vec<DiagnosticDto>,
     pub is_clean: bool,
     pub has_errors: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(rename_all = "camelCase")]
-pub struct DependencyGraphDto {
-    pub edges: Vec<EdgeDto>,
-    pub incompatibilities: Vec<IncompatibilityDto>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(rename_all = "camelCase")]
-pub struct EdgeDto {
-    pub from: String,
-    pub to: String,
-    pub kind: EdgeKindDto,
-    pub source: EdgeSourceDto,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(rename_all = "camelCase")]
-pub enum EdgeKindDto {
-    LoadAfter,
-    LoadBefore,
-    ForceLoadAfter,
-    ForceLoadBefore,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(rename_all = "camelCase")]
-pub enum EdgeSourceDto {
-    About,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(rename_all = "camelCase")]
-pub struct IncompatibilityDto {
-    pub package_id: String,
-    pub incompatible_with: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

@@ -1,19 +1,17 @@
 use std::{path::Path, time::UNIX_EPOCH};
 
 use rimr_bindings::dto::{
-    ActiveListLoadDto, CatalogSnapshotDto, DependencyDto, DependencyGraphDto, DiagnosticCodeDto,
-    DiagnosticDto, DiagnosticLocationDto, DuplicatePackageIdDto, EdgeDto, EdgeKindDto,
-    EdgeSourceDto, IncompatibilityDto, ModCatalogDto, ModMetadataDto, ModsConfigDto, RulesDto,
-    SeverityDto, SourceKindDto, ValidateOrderDto, ValidationReportDto,
+    ActiveListLoadDto, CatalogSnapshotDto, DependencyDto, DiagnosticCodeDto, DiagnosticDto,
+    DiagnosticLocationDto, DuplicatePackageIdDto, ModCatalogDto, ModMetadataDto, ModsConfigDto,
+    RulesDto, SeverityDto, SourceKindDto, ValidateOrderDto, ValidationReportDto,
 };
 use rimr_core::{
-    Dependency, Diagnostic, DiagnosticCode, DuplicatePackageId, EdgeKind, EdgeSource,
-    LoadOrderGraph, ModCatalog, ModMetadata, ModsConfig, Rules, Severity, SourceKind,
-    ValidationReport,
+    Dependency, Diagnostic, DiagnosticCode, DuplicatePackageId, ModCatalog, ModMetadata,
+    ModsConfig, Rules, Severity, SourceKind, ValidationReport,
 };
 
 use super::packages;
-use crate::{ActiveLoadResult, GameConfigLoadResult, ValidateOrderResult};
+use crate::{ActiveLoadResult, ValidateOrderResult};
 
 pub fn catalog_snapshot(catalog: &ModCatalog, diagnostics: &[Diagnostic]) -> CatalogSnapshotDto {
     CatalogSnapshotDto {
@@ -104,15 +102,6 @@ pub fn active_load(result: &ActiveLoadResult) -> ActiveListLoadDto {
     }
 }
 
-pub fn game_config_load(result: &GameConfigLoadResult) -> ActiveListLoadDto {
-    ActiveListLoadDto {
-        active_mods: result.active_mods.clone(),
-        config: mods_config(&result.config),
-        missing: result.missing.clone(),
-        diagnostics: result.diagnostics.iter().map(diagnostic).collect(),
-    }
-}
-
 pub fn mods_config(config: &ModsConfig) -> ModsConfigDto {
     ModsConfigDto {
         version: config.version.to_string(),
@@ -124,7 +113,6 @@ pub fn mods_config(config: &ModsConfig) -> ModsConfigDto {
 pub fn validate_order(result: &ValidateOrderResult) -> ValidateOrderDto {
     ValidateOrderDto {
         report: validation_report(&result.report),
-        graph: dependency_graph(&result.graph),
     }
 }
 
@@ -189,32 +177,6 @@ fn diagnostic_location(location: &rimr_core::DiagnosticLocation) -> DiagnosticLo
     }
 }
 
-fn dependency_graph(graph: &LoadOrderGraph) -> DependencyGraphDto {
-    let mut edges = Vec::new();
-    for graph_edges in graph.forward_map().values() {
-        for edge in graph_edges {
-            edges.push(EdgeDto {
-                from: edge.from.as_str().to_string(),
-                to: edge.to.as_str().to_string(),
-                kind: edge_kind(edge.kind),
-                source: edge_source(edge.source),
-            });
-        }
-    }
-    let incompatibilities = graph
-        .incompatibility_map()
-        .iter()
-        .map(|(package_id, incompatible_with)| IncompatibilityDto {
-            package_id: package_id.as_str().to_string(),
-            incompatible_with: packages(incompatible_with),
-        })
-        .collect();
-    DependencyGraphDto {
-        edges,
-        incompatibilities,
-    }
-}
-
 pub fn source_kind_to_core(dto: SourceKindDto) -> SourceKind {
     match dto {
         SourceKindDto::Expansion => SourceKind::Expansion,
@@ -254,20 +216,5 @@ fn diagnostic_code(code: DiagnosticCode) -> DiagnosticCodeDto {
         DiagnosticCode::OrderViolationLoadBefore => DiagnosticCodeDto::OrderViolationLoadBefore,
         DiagnosticCode::IncompatibleActive => DiagnosticCodeDto::IncompatibleActive,
         DiagnosticCode::CircularDependency => DiagnosticCodeDto::CircularDependency,
-    }
-}
-
-fn edge_kind(kind: EdgeKind) -> EdgeKindDto {
-    match kind {
-        EdgeKind::LoadAfter => EdgeKindDto::LoadAfter,
-        EdgeKind::LoadBefore => EdgeKindDto::LoadBefore,
-        EdgeKind::ForceLoadAfter => EdgeKindDto::ForceLoadAfter,
-        EdgeKind::ForceLoadBefore => EdgeKindDto::ForceLoadBefore,
-    }
-}
-
-fn edge_source(source: EdgeSource) -> EdgeSourceDto {
-    match source {
-        EdgeSource::About => EdgeSourceDto::About,
     }
 }

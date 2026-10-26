@@ -68,24 +68,11 @@ fn violated_order_produces_warning() {
     );
 }
 
-/// The returned graph contains the edge built from the catalog.
-#[test]
-fn graph_returned_with_edges() {
-    let cat = make_catalog(vec![make_mod("a", &["b"]), make_mod("b", &[])]);
-    let list = ActiveModList::from_slice(&[PackageId::new("b"), PackageId::new("a")]);
-    let result = validate_order(&cat, &list, &ValidateOpts::default());
-    assert!(!result.graph.is_empty());
-    let fwd = result.graph.forward_edges(&PackageId::new("a"));
-    assert_eq!(fwd.len(), 1);
-    assert_eq!(fwd[0].to, PackageId::new("b"));
-}
-
-/// An empty catalog yields an empty graph and clean report.
+/// An empty catalog and active list yield a clean report.
 #[test]
 fn empty_catalog_clean() {
     let cat = ModCatalog::new();
     let list = ActiveModList::empty();
     let result = validate_order(&cat, &list, &ValidateOpts::default());
     assert!(result.report.is_clean());
-    assert!(result.graph.is_empty());
 }

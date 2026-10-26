@@ -1,7 +1,5 @@
 //! Missing and inactive dependency checks.
 
-use std::collections::HashSet;
-
 use crate::{
     diagnostics::{Diagnostic, DiagnosticCode, DiagnosticLocation, Severity},
     domain::{ActiveModList, ModCatalog, PackageId},
@@ -30,7 +28,6 @@ pub(crate) fn check_active_missing(catalog: &ModCatalog, list: &ActiveModList) -
 pub(crate) fn check_missing_dependencies(
     catalog: &ModCatalog,
     list: &ActiveModList,
-    active_set: &HashSet<&PackageId>,
 ) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     for pkg in list.iter() {
@@ -40,7 +37,7 @@ pub(crate) fn check_missing_dependencies(
                     let alt_satisfied = dep
                         .alternative_package_ids
                         .iter()
-                        .any(|alt| active_set.contains(alt));
+                        .any(|alt| list.contains(alt));
                     if !alt_satisfied {
                         diagnostics.push(
                             Diagnostic::new(
@@ -76,17 +73,16 @@ pub(crate) fn check_missing_dependencies(
 pub(crate) fn check_inactive_dependencies(
     catalog: &ModCatalog,
     list: &ActiveModList,
-    active_set: &HashSet<&PackageId>,
 ) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     for pkg in list.iter() {
         if let Some(metadata) = catalog.get(pkg) {
             for dep in &metadata.rules.mod_dependencies {
-                if catalog.contains(&dep.package_id) && !active_set.contains(&dep.package_id) {
+                if catalog.contains(&dep.package_id) && !list.contains(&dep.package_id) {
                     let alt_satisfied = dep
                         .alternative_package_ids
                         .iter()
-                        .any(|alt| active_set.contains(alt));
+                        .any(|alt| list.contains(alt));
                     if !alt_satisfied {
                         diagnostics.push(
                             Diagnostic::new(

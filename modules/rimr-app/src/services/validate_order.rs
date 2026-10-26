@@ -1,13 +1,10 @@
 //! Order validation use case.
 //!
-//! Thin wrapper around [`crate::rules::build_load_order_graph`] and
-//! [`crate::rules::validate_order`] that returns both the validation
-//! report and the dependency graph, so the host can inspect edges or feed
-//! the graph to future sort strategies.
+//! Builds the catalog's load-order graph and returns validation diagnostics.
 
 use crate::{
     domain::{ActiveModList, ModCatalog},
-    rules::{self, LoadOrderGraph, ValidateOpts, ValidationReport},
+    rules::{self, ValidateOpts, ValidationReport},
 };
 
 /// Result of order validation.
@@ -15,15 +12,12 @@ use crate::{
 pub struct ValidateOrderResult {
     /// Structured diagnostics produced by validation.
     pub report: ValidationReport,
-    /// The dependency graph built from the catalog.
-    pub graph: LoadOrderGraph,
 }
 
 /// Validates the user-managed order against dependency rules.
 ///
 /// Builds a dependency graph from the catalog, then validates the active
-/// list order. Returns the report and the graph (for UI inspection or
-/// future sort strategies).
+/// list order and returns the diagnostics report.
 pub fn validate_order(
     catalog: &ModCatalog,
     list: &ActiveModList,
@@ -41,7 +35,7 @@ pub fn validate_order(
         errors = report.errors.len(),
         "mod order validation complete"
     );
-    ValidateOrderResult { report, graph }
+    ValidateOrderResult { report }
 }
 
 #[cfg(test)]

@@ -4,15 +4,12 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
     diagnostics::{Diagnostic, DiagnosticCode, Severity},
-    domain::PackageId,
+    domain::{ActiveModList, PackageId},
     rules::graph::LoadOrderGraph,
 };
 
 /// Checks for circular dependencies in the active subgraph.
-pub(crate) fn check_cycles(
-    graph: &LoadOrderGraph,
-    active: &HashSet<&PackageId>,
-) -> Vec<Diagnostic> {
+pub(crate) fn check_cycles(graph: &LoadOrderGraph, active: &ActiveModList) -> Vec<Diagnostic> {
     let cycles = find_cycles(graph, active);
     cycles
         .into_iter()
@@ -62,12 +59,12 @@ fn cycle_locations(
 
 /// Detects cycles in the active subgraph using DFS three-color marking.
 /// Returns a list of cycles, each being a path of `PackageIds`.
-fn find_cycles(graph: &LoadOrderGraph, active: &HashSet<&PackageId>) -> Vec<Vec<PackageId>> {
+fn find_cycles(graph: &LoadOrderGraph, active: &ActiveModList) -> Vec<Vec<PackageId>> {
     let mut color: HashMap<&PackageId, u8> = HashMap::new();
     let mut cycles: Vec<Vec<PackageId>> = Vec::new();
     let mut stack: Vec<&PackageId> = Vec::new();
 
-    for node in active {
+    for node in active.iter() {
         if color.get(node).copied().unwrap_or(0) == 0 {
             dfs_cycle(graph, active, node, &mut stack, &mut color, &mut cycles);
         }
@@ -80,7 +77,7 @@ fn find_cycles(graph: &LoadOrderGraph, active: &HashSet<&PackageId>) -> Vec<Vec<
 
 fn dfs_cycle<'a>(
     graph: &'a LoadOrderGraph,
-    active: &HashSet<&PackageId>,
+    active: &ActiveModList,
     node: &'a PackageId,
     stack: &mut Vec<&'a PackageId>,
     color: &mut HashMap<&'a PackageId, u8>,

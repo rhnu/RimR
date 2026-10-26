@@ -1,7 +1,7 @@
 use std::{borrow::Cow, io::Read};
 
 use flate2::read::GzDecoder;
-use quick_xml::{events::Event, reader::Reader};
+use quick_xml::{errors::IllFormedError, events::Event, reader::Reader};
 
 use crate::{
     domain::PackageId,
@@ -33,6 +33,7 @@ pub fn parse_save_mod_ids(bytes: &[u8]) -> Result<Vec<PackageId>, CoreError> {
         XmlReadError::UnknownEntity(message) => CoreError::SaveGameInvalid(message),
     })?;
     let mut reader = Reader::from_reader(bytes.as_ref());
+    reader.config_mut().expand_empty_elements = true;
     let mut buf = Vec::new();
 
     let mut found_root = false;
@@ -96,7 +97,8 @@ fn read_meta_mod_ids(reader: &mut Reader<&[u8]>) -> Result<Vec<PackageId>, CoreE
                     .read_to_end(name)
                     .map_err(|e| CoreError::SaveGameParse { source: e })?;
             },
-            Ok(Event::End(_) | Event::Eof) => break,
+            Ok(Event::End(e)) if e.name().as_ref() == "savegame" => break,
+            Ok(Event::Eof) => return Err(missing_end_tag("savegame")),
             Err(e) => return Err(CoreError::SaveGameParse { source: e }),
             _ => {},
         }
@@ -108,25 +110,33 @@ fn read_meta_mod_ids(reader: &mut Reader<&[u8]>) -> Result<Vec<PackageId>, CoreE
 
 fn read_mod_ids_in_meta(reader: &mut Reader<&[u8]>) -> Result<Vec<PackageId>, CoreError> {
     let mut buf = Vec::new();
+    let mut mod_ids = None;
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e)) => {
                 let name = e.name();
                 if name.as_ref() == "modIds" {
-                    return read_package_id_list(reader);
+                    mod_ids = Some(read_package_id_list(reader)?);
+                } else {
+                    reader
+                        .read_to_end(name)
+                        .map_err(|e| CoreError::SaveGameParse { source: e })?;
                 }
-                reader
-                    .read_to_end(name)
-                    .map_err(|e| CoreError::SaveGameParse { source: e })?;
             },
-            Ok(Event::End(_) | Event::Eof) => break,
+            // Finish the metadata, while leaving the potentially large game body unread.
+            Ok(Event::End(e)) if e.name().as_ref() == "meta" => break,
+            Ok(Event::Eof) => return Err(missing_end_tag("meta")),
             Err(e) => return Err(CoreError::SaveGameParse { source: e }),
             _ => {},
         }
         buf.clear();
     }
-    tracing::info!("save game <modIds> not found; older save without modIds");
-    Ok(Vec::new())
+    if let Some(mod_ids) = mod_ids {
+        Ok(mod_ids)
+    } else {
+        tracing::info!("save game <modIds> not found; older save without modIds");
+        Ok(Vec::new())
+    }
 }
 
 fn read_package_id_list(reader: &mut Reader<&[u8]>) -> Result<Vec<PackageId>, CoreError> {
@@ -140,13 +150,20 @@ fn read_package_id_list(reader: &mut Reader<&[u8]>) -> Result<Vec<PackageId>, Co
                     result.push(PackageId::new(&t));
                 }
             },
-            Ok(Event::End(_) | Event::Eof) => break,
+            Ok(Event::End(e)) if e.name().as_ref() == "modIds" => break,
+            Ok(Event::Eof) => return Err(missing_end_tag("modIds")),
             Ok(_) => {},
             Err(e) => return Err(CoreError::SaveGameParse { source: e }),
         }
         buf.clear();
     }
     Ok(result)
+}
+
+fn missing_end_tag(element: &str) -> CoreError {
+    CoreError::SaveGameParse {
+        source: IllFormedError::MissingEndTag(element.to_string()).into(),
+    }
 }
 
 #[cfg(test)]

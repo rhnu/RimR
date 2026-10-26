@@ -103,19 +103,9 @@ export type ModsConfigDto = { version: string, activeMods: Array<string>, knownE
 
 export type ValidateActiveOrderRequest = { activeMods: Array<string>, };
 
-export type ValidateOrderDto = { report: ValidationReportDto, graph: DependencyGraphDto, };
+export type ValidateOrderDto = { report: ValidationReportDto, };
 
 export type ValidationReportDto = { errors: Array<DiagnosticDto>, warnings: Array<DiagnosticDto>, infos: Array<DiagnosticDto>, isClean: boolean, hasErrors: boolean, };
-
-export type DependencyGraphDto = { edges: Array<EdgeDto>, incompatibilities: Array<IncompatibilityDto>, };
-
-export type EdgeDto = { from: string, to: string, kind: EdgeKindDto, source: EdgeSourceDto, };
-
-export type EdgeKindDto = "loadAfter" | "loadBefore" | "forceLoadAfter" | "forceLoadBefore";
-
-export type EdgeSourceDto = "about";
-
-export type IncompatibilityDto = { packageId: string, incompatibleWith: Array<string>, };
 
 export type ModIdentityDto = { packageId: string, sourceKind?: SourceKindDto | null, sourceKey?: string | null, steamAppId?: number | null, };
 

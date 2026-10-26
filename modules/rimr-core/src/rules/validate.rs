@@ -1,10 +1,8 @@
 //! Order validation: checks a user-managed order against dependency rules.
 
-use std::collections::HashSet;
-
 use crate::{
     diagnostics::Diagnostic,
-    domain::{ActiveModList, ModCatalog, PackageId},
+    domain::{ActiveModList, ModCatalog},
     rules::{checks, graph::LoadOrderGraph},
 };
 
@@ -57,28 +55,13 @@ pub fn validate_order(
     _opts: &ValidateOpts,
 ) -> ValidationReport {
     tracing::info!(active_mods = list.len(), "running order validation checks");
-    let active_set: HashSet<&PackageId> = list.iter().collect();
-
     let mut warnings = checks::check_order_violations(list, graph);
-    warnings.extend(checks::check_missing_dependencies(
-        catalog,
-        list,
-        &active_set,
-    ));
-    warnings.extend(checks::check_inactive_dependencies(
-        catalog,
-        list,
-        &active_set,
-    ));
+    warnings.extend(checks::check_missing_dependencies(catalog, list));
+    warnings.extend(checks::check_inactive_dependencies(catalog, list));
 
     let mut errors = checks::check_active_missing(catalog, list);
-    errors.extend(checks::check_cycles(graph, &active_set));
-    errors.extend(checks::check_incompatibles(
-        catalog,
-        list,
-        graph,
-        &active_set,
-    ));
+    errors.extend(checks::check_cycles(graph, list));
+    errors.extend(checks::check_incompatibles(catalog, list, graph));
     errors.extend(checks::check_duplicates(catalog));
 
     let report = ValidationReport {

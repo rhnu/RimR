@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn add_edge_populates_forward_and_reverse() {
+fn add_edge_preserves_direction() {
     let mut g = LoadOrderGraph::new();
     let a = PackageId::new("a");
     let b = PackageId::new("b");
@@ -10,10 +10,6 @@ fn add_edge_populates_forward_and_reverse() {
     assert_eq!(fwd.len(), 1);
     assert_eq!(fwd[0].to, b);
     assert_eq!(fwd[0].from, a);
-    let rev = g.reverse_edges(&b);
-    assert_eq!(rev.len(), 1);
-    assert_eq!(rev[0].from, a);
-    assert_eq!(rev[0].to, b);
 }
 
 #[test]
@@ -22,7 +18,6 @@ fn self_edge_ignored() {
     let a = PackageId::new("a");
     g.add_edge(a.clone(), a.clone(), EdgeKind::LoadAfter, EdgeSource::About);
     assert!(g.forward_edges(&a).is_empty());
-    assert!(g.reverse_edges(&a).is_empty());
     assert!(g.is_empty());
 }
 
@@ -62,7 +57,6 @@ fn forward_edges_unknown_pkg_empty() {
     let g = LoadOrderGraph::new();
     let z = PackageId::new("z");
     assert!(g.forward_edges(&z).is_empty());
-    assert!(g.reverse_edges(&z).is_empty());
     assert_eq!(g.incompatibilities(&z), []);
 }
 

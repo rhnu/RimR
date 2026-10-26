@@ -5,25 +5,24 @@ use crate::{
     dto::{
         ActiveListLoadDto, ApplyModListDto, ApplyModListRequest, CatalogSnapshotDto,
         CleanModsRequest, CommandError, CommandErrorCode, ConfiguredDirectoryKind,
-        CreateModListRequest, DeleteModListRequest, DependencyDto, DependencyGraphDto,
-        DiagnosticCodeDto, DiagnosticDto, DiagnosticLocationDto, DisplayAliasDto,
-        DuplicatePackageIdDto, EdgeDto, EdgeKindDto, EdgeSourceDto, ExportGameConfigBackupDto,
-        ExportGameConfigBackupRequest, ExportLibrarySettingsFileDto,
+        CreateModListRequest, DeleteModListRequest, DependencyDto, DiagnosticCodeDto,
+        DiagnosticDto, DiagnosticLocationDto, DisplayAliasDto, DuplicatePackageIdDto,
+        ExportGameConfigBackupDto, ExportGameConfigBackupRequest, ExportLibrarySettingsFileDto,
         ExportLibrarySettingsFileRequest, ExportModListFileDto, ExportModListFileRequest,
         GameConfigBackupDto, GameConfigBackupMetaDto, ImportGameConfigBackupDto,
         ImportGameConfigBackupRequest, ImportLibrarySettingsFileRequest, ImportModListFileRequest,
-        IncompatibilityDto, LibraryDto, LibrarySettingsDto, LibrarySettingsFileDto,
-        LoadModFolderSizeRequest, LoadModPreviewRequest, LoadPlayerLogRequest, LogEntryDto,
-        LogLevelDto, LogSourceDto, ModCatalogDto, ModCleanupCandidateDto, ModCleanupKindDto,
-        ModCleanupPreviewDto, ModCleanupPreviewRequest, ModCleanupReasonDto, ModCleanupResultDto,
-        ModCleanupSkippedDto, ModFolderSizeDto, ModIdentityDto, ModListDto, ModListEntryDto,
-        ModListFileDto, ModListGroupChildDto, ModListIndexDto, ModListSummaryDto, ModMetadataDto,
-        ModPreviewDto, ModTagBindingDto, ModsConfigDto, OpenConfiguredDirectoryRequest,
-        OpenModFolderRequest, OpenSteamWorkshopPageRequest, PlayerLogDto, ReadSaveModIdsDto,
-        ReadSaveModIdsRequest, RimrFileKind, RulesDto, SaveAppConfigRequest,
-        SaveLibrarySettingsRequest, SaveModListRequest, SetCurrentModListRequest, SeverityDto,
-        SourceKindDto, SteamWorkshopLogDto, SteamWorkshopLogEntryDto, SteamWorkshopOpenTarget,
-        TagDefDto, ValidateActiveOrderRequest, ValidateOrderDto, ValidationReportDto,
+        LibraryDto, LibrarySettingsDto, LibrarySettingsFileDto, LoadModFolderSizeRequest,
+        LoadModPreviewRequest, LoadPlayerLogRequest, LogEntryDto, LogLevelDto, LogSourceDto,
+        ModCatalogDto, ModCleanupCandidateDto, ModCleanupKindDto, ModCleanupPreviewDto,
+        ModCleanupPreviewRequest, ModCleanupReasonDto, ModCleanupResultDto, ModCleanupSkippedDto,
+        ModFolderSizeDto, ModIdentityDto, ModListDto, ModListEntryDto, ModListFileDto,
+        ModListGroupChildDto, ModListIndexDto, ModListSummaryDto, ModMetadataDto, ModPreviewDto,
+        ModTagBindingDto, ModsConfigDto, OpenConfiguredDirectoryRequest, OpenModFolderRequest,
+        OpenSteamWorkshopPageRequest, PlayerLogDto, ReadSaveModIdsDto, ReadSaveModIdsRequest,
+        RimrFileKind, RulesDto, SaveAppConfigRequest, SaveLibrarySettingsRequest,
+        SaveModListRequest, SetCurrentModListRequest, SeverityDto, SourceKindDto,
+        SteamWorkshopLogDto, SteamWorkshopLogEntryDto, SteamWorkshopOpenTarget, TagDefDto,
+        ValidateActiveOrderRequest, ValidateOrderDto, ValidationReportDto,
     },
     paths::{DetectedPaths, PathDetectionWarning, Platform},
 };
@@ -86,11 +85,6 @@ pub fn generate_typescript() -> String {
     push::<ValidateActiveOrderRequest>(&cfg, &mut out);
     push::<ValidateOrderDto>(&cfg, &mut out);
     push::<ValidationReportDto>(&cfg, &mut out);
-    push::<DependencyGraphDto>(&cfg, &mut out);
-    push::<EdgeDto>(&cfg, &mut out);
-    push::<EdgeKindDto>(&cfg, &mut out);
-    push::<EdgeSourceDto>(&cfg, &mut out);
-    push::<IncompatibilityDto>(&cfg, &mut out);
     push::<ModIdentityDto>(&cfg, &mut out);
     push::<DisplayAliasDto>(&cfg, &mut out);
     push::<TagDefDto>(&cfg, &mut out);

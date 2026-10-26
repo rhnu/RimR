@@ -1,48 +1,24 @@
 //! Application use cases and runtime session state.
 
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    diagnostics::Diagnostic,
     domain::{ActiveModList, ModCatalog, ModList, PackageId},
     error::{AppError, AppErrorCode, AppResult, RimrFileParseError},
     formats::ModsConfig,
-    ports::{Clock, ModSource},
+    ports::Clock,
     services,
 };
 
 pub const RIMR_FILE_FORMAT_VERSION: u32 = 3;
 
 /// Application-owned runtime state for a `RimR` workspace session.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default)]
 pub struct WorkspaceSession {
     catalog: Option<ModCatalog>,
     active_mods: Option<ActiveModList>,
     mods_config: Option<ModsConfig>,
-    source_metadata: HashMap<String, SourceMetadata>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SourceMetadata {
-    pub source_key: String,
-    pub mod_icon_path: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-pub struct GameConfigLoadResult {
-    pub active_mods: Vec<String>,
-    pub config: ModsConfig,
-    pub missing: Vec<String>,
-    pub diagnostics: Vec<Diagnostic>,
-}
-
-#[derive(Debug, Clone)]
-pub struct GameConfigWriteResult {
-    pub active_mods: Vec<String>,
-    pub config: ModsConfig,
 }
 
 impl WorkspaceSession {
@@ -52,78 +28,19 @@ impl WorkspaceSession {
 
     pub fn mods_config(&self) -> Option<&ModsConfig> { self.mods_config.as_ref() }
 
-    pub fn source_metadata(&self, source_key: &str) -> Option<&SourceMetadata> {
-        self.source_metadata.get(source_key)
-    }
-
-    /// Publishes a completed scan without overwriting game state loaded in parallel.
-    pub fn replace_catalog_from(&mut self, workspace: &Self) {
-        self.catalog.clone_from(&workspace.catalog);
-        self.source_metadata.clone_from(&workspace.source_metadata);
-    }
+    /// Publishes a completed scan without replacing loaded game state.
+    pub fn replace_catalog(&mut self, catalog: ModCatalog) { self.catalog = Some(catalog); }
 
     /// Publishes game state without replacing the latest catalog.
-    pub fn replace_game_config_from(&mut self, workspace: &Self) {
-        self.active_mods.clone_from(&workspace.active_mods);
-        self.mods_config.clone_from(&workspace.mods_config);
+    pub fn replace_game_config(&mut self, config: ModsConfig) {
+        self.active_mods = Some(ActiveModList::from_slice(&config.active_mods));
+        self.mods_config = Some(config);
     }
 
     pub fn clear(&mut self) {
         self.catalog = None;
         self.active_mods = None;
         self.mods_config = None;
-        self.source_metadata.clear();
-    }
-
-    /// # Errors
-    ///
-    /// Returns a source error if mod discovery fails.
-    pub async fn scan_mods(
-        &mut self,
-        source: &dyn ModSource,
-        opts: &crate::services::ScanOpts,
-    ) -> AppResult<crate::services::ScanReport> {
-        let report = services::scan_mod_metadata(source, opts).await?;
-        self.source_metadata = report
-            .catalog
-            .iter()
-            .map(|(_, metadata)| {
-                let source_key = metadata.source_key.as_str().to_string();
-                (
-                    source_key.clone(),
-                    SourceMetadata {
-                        source_key,
-                        mod_icon_path: metadata.mod_icon_path.as_deref().map(str::to_string),
-                    },
-                )
-            })
-            .collect();
-        self.catalog = Some(report.catalog.clone());
-        Ok(report)
-    }
-
-    /// # Errors
-    ///
-    /// Returns a source error if reading fails, or an invalid-config error if the file is missing or malformed.
-    pub async fn load_game_config(
-        &mut self,
-        source: &dyn ModSource,
-    ) -> AppResult<GameConfigLoadResult> {
-        let result = services::load_active_list(source, self.catalog.as_ref()).await?;
-        let active_mods = result
-            .list
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>();
-        let missing = result.missing.iter().map(ToString::to_string).collect();
-        self.active_mods = Some(result.list.clone());
-        self.mods_config = Some(result.config.clone());
-        Ok(GameConfigLoadResult {
-            active_mods,
-            config: result.config,
-            missing,
-            diagnostics: result.diagnostics,
-        })
     }
 
     /// # Errors
@@ -147,35 +64,6 @@ impl WorkspaceSession {
             &list,
             &crate::rules::ValidateOpts::default(),
         ))
-    }
-
-    /// # Errors
-    ///
-    /// Returns a missing-session error if no config is loaded, or a serialization or source error if writing fails.
-    pub async fn write_game_config(
-        &mut self,
-        source: &dyn ModSource,
-        active_mods: Vec<String>,
-    ) -> AppResult<GameConfigWriteResult> {
-        let original_config = self.mods_config.as_ref().ok_or_else(|| {
-            AppError::new(AppErrorCode::StateMissing, "ModsConfig.xml is not loaded")
-        })?;
-        let ids = active_mods
-            .iter()
-            .map(|package_id| PackageId::new(package_id))
-            .collect::<Vec<_>>();
-        let list = ActiveModList::from_slice(&ids);
-        let bytes = services::build_mods_config_bytes(&list, original_config)?;
-        source.write_mods_config(bytes).await?;
-
-        let mut updated_config = original_config.clone();
-        updated_config.active_mods = list.to_vec();
-        self.active_mods = Some(list);
-        self.mods_config = Some(updated_config.clone());
-        Ok(GameConfigWriteResult {
-            active_mods,
-            config: updated_config,
-        })
     }
 }
 

@@ -25,7 +25,7 @@ pub struct AppState {
     inner: RwLock<SessionState>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct SessionState {
     config: AppConfig,
     generation: u64,

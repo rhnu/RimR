@@ -36,7 +36,5 @@ mod formats {
     };
 }
 mod rules {
-    pub use rimr_core::{
-        LoadOrderGraph, ValidateOpts, ValidationReport, build_load_order_graph, validate_order,
-    };
+    pub use rimr_core::{ValidateOpts, ValidationReport, build_load_order_graph, validate_order};
 }

@@ -28,3 +28,18 @@ fn rejects_absolute_relative() {
     };
     assert!(resolve_path_case_insensitive(dir.path(), abs).is_none());
 }
+
+#[test]
+fn checked_resolution_distinguishes_missing_from_io_failure() {
+    let dir = tempdir().unwrap();
+    assert!(
+        resolve_path_case_insensitive_checked(dir.path(), Path::new("About/About.xml"))
+            .unwrap()
+            .is_none()
+    );
+
+    std::fs::write(dir.path().join("About"), b"not a directory").unwrap();
+    assert!(
+        resolve_path_case_insensitive_checked(dir.path(), Path::new("About/About.xml")).is_err()
+    );
+}

@@ -3,7 +3,9 @@ use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use rimr_core::{ModFeatures, ModSourceEntry, ModSourceKey, SourceFile, SourceKind};
 
-use crate::{error::SourceError, fs_utils::resolve_path_case_insensitive, ports::ModSource};
+use crate::{
+    error::SourceError, fs_utils::resolve_path_case_insensitive_checked, ports::ModSource,
+};
 
 #[derive(Debug, Clone)]
 pub struct SourceRoots {
@@ -88,7 +90,13 @@ impl ModSource for FsModSource {
 
     async fn read_about_xml(&self, key: &ModSourceKey) -> Result<Option<SourceFile>, SourceError> {
         let mod_dir = PathBuf::from(key.as_str());
-        let Some(about) = resolve_path_case_insensitive(&mod_dir, Path::new("About/About.xml"))
+        let Some(about) =
+            resolve_path_case_insensitive_checked(&mod_dir, Path::new("About/About.xml")).map_err(
+                |source| SourceError::Io {
+                    source_key: key.clone(),
+                    source,
+                },
+            )?
         else {
             tracing::debug!(path = ?mod_dir, "About.xml not found");
             return Ok(None);

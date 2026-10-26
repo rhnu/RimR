@@ -198,6 +198,37 @@ fn empty_active_mods_list_is_ok() {
 }
 
 #[test]
+fn self_closing_lists_are_empty_collections() {
+    let cfg = parse_mods_config(
+        b"<ModsConfigData><version>1.6</version><activeMods/><knownExpansions/></ModsConfigData>",
+    )
+    .unwrap();
+    assert_eq!(cfg.active_mods, [] as [PackageId; 0]);
+    assert_eq!(cfg.known_expansions, [] as [PackageId; 0]);
+}
+
+#[test]
+fn truncated_config_never_returns_partial_lists() {
+    for xml in [
+        "<ModsConfigData><version>1.6</version><activeMods></activeMods><knownExpansions></knownExpansions>",
+        "<ModsConfigData><version>1.6</version><knownExpansions></knownExpansions><activeMods><li>mod.a</li>",
+        "<ModsConfigData><version>1.6</version><activeMods></activeMods><knownExpansions><li>dlc.a</li>",
+        "<ModsConfigData><version>1.6</version><activeMods></activeMods><knownExpansions><li>dlc.a",
+    ] {
+        let error = parse_mods_config(xml.as_bytes()).unwrap_err();
+        assert!(
+            matches!(
+                error,
+                CoreError::ModsConfigParse {
+                    source: quick_xml::Error::IllFormed(IllFormedError::MissingEndTag(_))
+                }
+            ),
+            "expected a missing end tag for {xml}, got {error:?}"
+        );
+    }
+}
+
+#[test]
 fn xml_parse_failure_retains_quick_xml_source() {
     use std::error::Error;
 

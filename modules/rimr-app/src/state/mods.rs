@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     path::{Path, PathBuf},
 };
 
@@ -16,6 +16,7 @@ use crate::{
     },
     error::{AppError, AppErrorCode, AppResult},
     mod_file_info,
+    ports::ModSource,
     source::{FsModSource, SourceRoots},
 };
 
@@ -46,8 +47,7 @@ impl AppState {
             },
             ..crate::ScanOpts::default()
         };
-        let mut workspace = self.read_state()?.workspace.clone();
-        let mut report = workspace.scan_mods(&source, &opts).await?;
+        let mut report = crate::services::scan_mod_metadata(&source, &opts).await?;
 
         if version_unknown {
             report.diagnostics.push(rimr_core::Diagnostic::new(
@@ -64,7 +64,7 @@ impl AppState {
         );
         let mut state = self.write_state()?;
         state.generation += 1;
-        state.workspace.replace_catalog_from(&workspace);
+        state.workspace.replace_catalog(report.catalog);
         state.canonical_source_roots = Some(canonical_source_roots);
         state.mod_previews.clear();
         state.mod_folder_sizes.clear();
@@ -202,7 +202,7 @@ impl AppState {
     /// Revalidates requested cleanup candidates and moves eligible folders to trash.
     ///
     /// # Errors
-    /// Returns an error if catalog access, candidate inspection, or cache invalidation fails; individual trash failures are reported as skipped entries.
+    /// Returns an error if catalog access or cache invalidation fails; individual inspection and trash failures are reported as skipped entries.
     pub async fn clean_mods(&self, request: CleanModsRequest) -> AppResult<ModCleanupResultDto> {
         let _operation = self.operations.lock().await;
         tracing::info!(
@@ -210,38 +210,49 @@ impl AppState {
             requested = request.source_keys.len(),
             "cleaning mods"
         );
-        let requested: Vec<String> = request.source_keys.into_iter().collect();
-        let requested_set: HashSet<String> = requested.iter().cloned().collect();
-        let (catalog, roots) = {
+        let source = FsModSource::new(self.source_roots()?);
+        let (requested, roots) = {
             let state = self.read_state()?;
+            let catalog = state.workspace.catalog().ok_or_else(|| {
+                AppError::new(AppErrorCode::StateMissing, "catalog is not loaded")
+            })?;
             (
-                state.workspace.catalog().cloned().ok_or_else(|| {
-                    AppError::new(AppErrorCode::StateMissing, "catalog is not loaded")
-                })?,
+                select_cleanup_sources(catalog, request.source_keys),
                 canonical_source_roots_for_state(&state)?,
             )
         };
 
-        let eligible = cleanup_candidates(&catalog, request.kind, &roots)
-            .await?
-            .into_iter()
-            .filter(|candidate| requested_set.contains(&candidate.source_key))
-            .map(|candidate| (candidate.source_key.clone(), candidate))
-            .collect::<HashMap<_, _>>();
-
         let mut cleaned = Vec::new();
         let mut skipped = Vec::new();
-        for source_key in requested {
-            let Some(candidate) = eligible.get(&source_key).cloned() else {
-                let path = catalog
-                    .get_by_source_key(&ModSourceKey::new(source_key.as_str()))
-                    .map(|metadata| metadata.source_key.as_str().to_string());
-                skipped.push(ModCleanupSkippedDto {
-                    source_key,
-                    path,
-                    message: "mod is no longer eligible for cleanup".to_string(),
-                });
-                continue;
+        for selected in requested {
+            let metadata = match selected {
+                Ok(metadata) => metadata,
+                Err(entry) => {
+                    skipped.push(entry);
+                    continue;
+                },
+            };
+            let source_key = metadata.source_key.as_str().to_string();
+            let candidate = match revalidate_cleanup_candidate(
+                &metadata,
+                request.kind,
+                &roots,
+                &source,
+            )
+            .await
+            {
+                Ok(Some(candidate)) => candidate,
+                result => {
+                    skipped.push(ModCleanupSkippedDto {
+                        source_key,
+                        path: Some(metadata.source_key.as_str().to_string()),
+                        message: match result {
+                            Err(error) => error.report(),
+                            _ => "mod is no longer eligible for cleanup".to_string(),
+                        },
+                    });
+                    continue;
+                },
             };
 
             let path = PathBuf::from(&candidate.path);
@@ -318,6 +329,65 @@ impl AppState {
             SteamWorkshopOpenTarget::Web => links.web_url(),
         })
     }
+}
+
+fn select_cleanup_sources(
+    catalog: &ModCatalog,
+    requested: Vec<String>,
+) -> Vec<Result<ModMetadata, ModCleanupSkippedDto>> {
+    let mut seen = HashSet::new();
+    requested
+        .into_iter()
+        .map(|source_key| {
+            let metadata = catalog.get_by_source_key(&ModSourceKey::new(source_key.as_str()));
+            let message = if !seen.insert(source_key.clone()) {
+                "sourceKey was requested more than once"
+            } else if let Some(metadata) = metadata {
+                return Ok(metadata.clone());
+            } else {
+                "sourceKey is not in the current catalog"
+            };
+            Err(ModCleanupSkippedDto {
+                path: metadata.map(|metadata| metadata.source_key.as_str().to_string()),
+                source_key,
+                message: message.to_string(),
+            })
+        })
+        .collect()
+}
+
+async fn revalidate_cleanup_candidate(
+    metadata: &ModMetadata,
+    kind: ModCleanupKindDto,
+    roots: &CanonicalSourceRoots,
+    source: &dyn ModSource,
+) -> AppResult<Option<ModCleanupCandidateDto>> {
+    if metadata.valid
+        || !matches!(
+            metadata.source_kind,
+            SourceKind::Local | SourceKind::Workshop
+        )
+    {
+        return Ok(None);
+    }
+    ensure_mod_path_in_roots(Path::new(metadata.source_key.as_str()), roots)?;
+
+    // A preview can become stale while Steam completes a download or About.xml is repaired.
+    // Keep read failures distinct from genuinely absent or malformed metadata.
+    let current = match source.read_about_xml(&metadata.source_key).await? {
+        Some(file) => match rimr_core::parse_about_xml(&file.bytes) {
+            Ok(raw) => rimr_core::compile_metadata(
+                raw,
+                metadata.source_key.clone(),
+                metadata.source_kind,
+                // Cleanup only uses validity, which is independent of versioned rules.
+                &rimr_core::CompileOpts::default(),
+            ),
+            Err(_) => ModMetadata::invalid(metadata.source_key.clone(), metadata.source_kind),
+        },
+        None => ModMetadata::invalid(metadata.source_key.clone(), metadata.source_kind),
+    };
+    cleanup_candidate(&current, kind, roots).await
 }
 
 async fn cleanup_candidates(
@@ -525,3 +595,6 @@ fn canonicalize_for_check(path: &Path) -> AppResult<PathBuf> {
             .with_path(path.to_path_buf())
     })
 }
+
+#[cfg(test)]
+mod tests;

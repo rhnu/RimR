@@ -120,6 +120,20 @@ fn circular_dependency_detected() {
 }
 
 #[test]
+fn inactive_mod_rules_do_not_report_cycles_or_incompatibilities() {
+    let cat = make_catalog(vec![
+        make_mod("a", &["b"], &[], &["b"]),
+        make_mod("b", &["a"], &[], &[]),
+    ]);
+    let graph = build_load_order_graph(&cat);
+    let list = ActiveModList::from_slice(&[PackageId::new("a")]);
+
+    let report = validate_order(&cat, &list, &graph, &ValidateOpts::default());
+
+    assert!(report.is_clean());
+}
+
+#[test]
 fn self_dependency_not_a_cycle() {
     let cat = make_catalog(vec![make_mod("a", &["a"], &[], &[])]);
     let g = build_load_order_graph(&cat);

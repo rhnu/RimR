@@ -36,15 +36,15 @@ impl AppState {
         tracing::info!("loading active mod list");
         let roots = self.source_roots()?;
         let source = FsModSource::new(roots);
-        let mut workspace = self.read_state()?.workspace.clone();
-        let result = workspace.load_game_config(&source).await?;
-        let dto = dto::game_config_load(&result);
+        let catalog = self.read_state()?.workspace.catalog().cloned();
+        let result = crate::services::load_active_list(&source, catalog.as_ref()).await?;
+        let dto = dto::active_load(&result);
         tracing::info!(
             active_mods = dto.active_mods.len(),
             "active mod list loaded"
         );
         let mut state = self.write_state()?;
-        state.workspace.replace_game_config_from(&workspace);
+        state.workspace.replace_game_config(result.config);
         Ok(dto)
     }
 
@@ -193,17 +193,15 @@ impl AppState {
         tracing::info!(mod_list_id = %request.mod_list.id, "applying mod list to game");
         let _operation = self.operations.lock().await;
         let mod_list = dto::mod_list_to_core(&request.mod_list)?;
-        let (catalog, generation) = {
+        let projection = {
             let state = self.read_state()?;
-            (state.workspace.catalog().cloned(), state.generation)
+            let catalog = state.workspace.catalog().ok_or_else(|| {
+                AppError::new(AppErrorCode::StateMissing, "catalog is not loaded")
+            })?;
+            apply_projection(&flatten_active_mods(&mod_list.entries), catalog)
         };
-        let projection =
-            apply_projection(&flatten_active_mods(&mod_list.entries), catalog.as_ref());
         let saved = self
-            .write_active_list_to_game(
-                dto::active_list_from_strings(projection.active_mods.clone()),
-                generation,
-            )
+            .write_active_list_to_game(dto::active_list_from_strings(projection.active_mods))
             .await?;
         tracing::info!(
             mod_list_id = %mod_list.id,
@@ -423,7 +421,6 @@ impl AppState {
     async fn write_active_list_to_game(
         &self,
         list: ActiveModList,
-        generation: u64,
     ) -> AppResult<ActiveListWriteDto> {
         tracing::info!(
             active_mods = list.as_slice().len(),
@@ -431,20 +428,15 @@ impl AppState {
         );
         let roots = self.source_roots()?;
         let source = FsModSource::new(roots);
-        let active_mods = dto::packages(list.as_slice());
-        let mut workspace = self.read_state()?.workspace.clone();
-        if self.read_state()?.generation != generation {
-            return Err(super::conflict());
-        }
-        let written = workspace.write_game_config(&source, active_mods).await?;
+        let config = crate::services::write_active_list(&source, &list).await?;
         tracing::info!("mods config written");
 
         let dto = ActiveListWriteDto {
-            active_mods: written.active_mods,
-            config: dto::mods_config(&written.config),
+            active_mods: dto::packages(list.as_slice()),
+            config: dto::mods_config(&config),
         };
         let mut state = self.write_state()?;
-        state.workspace.replace_game_config_from(&workspace);
+        state.workspace.replace_game_config(config);
         Ok(dto)
     }
 }
@@ -455,13 +447,7 @@ struct ApplyProjection {
     skipped_missing_packages: Vec<String>,
 }
 
-fn apply_projection(active_mods: &[String], catalog: Option<&ModCatalog>) -> ApplyProjection {
-    let Some(catalog) = catalog else {
-        return ApplyProjection {
-            active_mods: active_mods.to_vec(),
-            skipped_missing_packages: Vec::new(),
-        };
-    };
+fn apply_projection(active_mods: &[String], catalog: &ModCatalog) -> ApplyProjection {
     let mut writeable = Vec::new();
     let mut skipped = Vec::new();
     for package_id in active_mods {
@@ -511,3 +497,6 @@ async fn write_text(path: &Path, text: &str) -> AppResult<()> {
             .with_path(path.to_path_buf())
     })
 }
+
+#[cfg(test)]
+mod tests;

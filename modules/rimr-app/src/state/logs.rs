@@ -190,7 +190,7 @@ impl AppState {
             .and_then(|time| time.duration_since(std::time::UNIX_EPOCH).ok())
             .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
 
-        let result = player_log::parse_player_log(&content, source);
+        let result = player_log::parse_player_log(&content);
 
         let dto = PlayerLogDto {
             entries: result

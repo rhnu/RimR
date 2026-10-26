@@ -27,7 +27,7 @@ pub struct ActiveLoadResult {
 /// Loads the active mod list from the game's `ModsConfig.xml` via the source.
 ///
 /// When `catalog` is `Some`, package ids in the config but not installed are
-/// reported as `DependencyMissing` warnings in `diagnostics` and collected in
+/// reported as `ConfigModMissing` warnings in `diagnostics` and collected in
 /// `missing`. When `catalog` is `None`, no missing-mod analysis is performed.
 /// # Errors
 ///
@@ -37,15 +37,7 @@ pub async fn load_active_list(
     catalog: Option<&ModCatalog>,
 ) -> AppResult<ActiveLoadResult> {
     tracing::info!("loading active mod list");
-    let file = source.read_mods_config().await?;
-    let Some(file) = file else {
-        return Err(AppError::new(
-            AppErrorCode::ModsConfigInvalid,
-            "ModsConfig.xml not found",
-        ));
-    };
-
-    let config = parse_mods_config(&file.bytes)?;
+    let (config, file) = load_mods_config(source).await?;
     let list = ActiveModList::from_slice(&config.active_mods);
 
     let mut missing = Vec::new();
@@ -91,6 +83,21 @@ pub async fn load_active_list(
         missing,
         diagnostics,
     })
+}
+
+pub(super) async fn load_mods_config(
+    source: &dyn ModSource,
+) -> AppResult<(ModsConfig, crate::ports::SourceFile)> {
+    let file = source.read_mods_config().await?;
+    let Some(file) = file else {
+        return Err(AppError::new(
+            AppErrorCode::ModsConfigInvalid,
+            "ModsConfig.xml not found",
+        ));
+    };
+
+    let config = parse_mods_config(&file.bytes)?;
+    Ok((config, file))
 }
 
 #[cfg(test)]

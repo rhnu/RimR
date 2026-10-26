@@ -1,8 +1,7 @@
-//! Service orchestration functions for rimr-core.
+//! Application use cases for scanning, validation and library/game configuration operations.
 //!
-//! These are the primary entry points the host (rimr-tauri) calls. IO goes
-//! through [`crate::ports::ModSource`] and [`crate::ports::LibraryStore`];
-//! CPU work is synchronous.
+//! Game I/O goes through [`crate::ports::ModSource`]. Library mutations operate
+//! on candidate snapshots that the application coordinator commits.
 
 mod library;
 mod load_active;
@@ -15,7 +14,7 @@ pub use library::{
     set_current_mod_list,
 };
 pub use load_active::{ActiveLoadResult, load_active_list};
-pub use save_active::build_mods_config_bytes;
+pub use save_active::{build_mods_config_bytes, write_active_list};
 pub use scan::{ScanOpts, ScanReport, scan_mod_metadata};
 pub use validate_order::{ValidateOrderResult, validate_order};
 

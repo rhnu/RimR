@@ -119,14 +119,43 @@ fn missing_mod_ids_returns_empty() {
 
 #[test]
 fn empty_mod_ids_list_is_ok() {
-    let xml = r#"<?xml version="1.0" encoding="utf-8"?>
-<savegame>
-  <meta>
-    <modIds></modIds>
-  </meta>
-</savegame>"#;
-    let mods = parse_save_mod_ids(xml.as_bytes()).expect("empty modIds should parse");
-    assert_eq!(mods, [] as [crate::PackageId; 0]);
+    for mod_ids in ["<modIds></modIds>", "<modIds/>"] {
+        let xml = format!("<savegame><meta>{mod_ids}</meta></savegame>");
+        let mods = parse_save_mod_ids(xml.as_bytes()).expect("empty modIds should parse");
+        assert_eq!(mods, [] as [PackageId; 0]);
+    }
+}
+
+#[test]
+fn truncated_metadata_never_returns_empty_or_partial_ids() {
+    for xml in [
+        "<savegame>",
+        "<savegame><meta>",
+        "<savegame><meta><gameVersion>1.6</gameVersion>",
+        "<savegame><meta><modIds><li>mod.a</li>",
+        "<savegame><meta><modIds><li>mod.a",
+        "<savegame><meta><modIds><li>mod.a</li></modIds>",
+    ] {
+        let error = parse_save_mod_ids(xml.as_bytes()).unwrap_err();
+        assert!(
+            matches!(
+                error,
+                CoreError::SaveGameParse {
+                    source: quick_xml::Error::IllFormed(IllFormedError::MissingEndTag(_))
+                }
+            ),
+            "expected a missing end tag for {xml}, got {error:?}"
+        );
+    }
+}
+
+#[test]
+fn completed_metadata_leaves_game_body_unread() {
+    let ids = parse_save_mod_ids(
+        b"<savegame><meta><modIds><li>mod.a</li></modIds></meta><game><unfinished",
+    )
+    .unwrap();
+    assert_eq!(ids, [PackageId::new("mod.a")]);
 }
 
 #[test]

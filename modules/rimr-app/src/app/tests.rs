@@ -170,35 +170,14 @@ fn config(package: &str) -> ModsConfig {
 #[test]
 fn partial_session_publication_preserves_independent_state() {
     let original_config = config("original");
-    let mut published = WorkspaceSession {
-        mods_config: Some(original_config.clone()),
-        active_mods: Some(ActiveModList::from_slice(&original_config.active_mods)),
-        ..WorkspaceSession::default()
-    };
-    let scan = WorkspaceSession {
-        catalog: Some(ModCatalog::new()),
-        source_metadata: HashMap::from([(
-            "source".into(),
-            SourceMetadata {
-                source_key: "source".into(),
-                mod_icon_path: Some("icon".into()),
-            },
-        )]),
-        ..WorkspaceSession::default()
-    };
-    published.replace_catalog_from(&scan);
+    let mut published = WorkspaceSession::default();
+    published.replace_game_config(original_config.clone());
+    published.replace_catalog(ModCatalog::new());
     assert_eq!(published.mods_config(), Some(&original_config));
     assert!(published.catalog().is_some());
-    assert!(published.source_metadata("source").is_some());
     let updated_config = config("updated");
-    let game = WorkspaceSession {
-        mods_config: Some(updated_config.clone()),
-        active_mods: Some(ActiveModList::from_slice(&updated_config.active_mods)),
-        ..WorkspaceSession::default()
-    };
-    published.replace_game_config_from(&game);
+    published.replace_game_config(updated_config.clone());
     assert!(published.catalog().is_some());
-    assert!(published.source_metadata("source").is_some());
     assert_eq!(published.mods_config(), Some(&updated_config));
     assert_eq!(
         published.active_mods().unwrap().as_slice(),

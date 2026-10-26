@@ -119,7 +119,7 @@ NullReferenceException: Object reference not set
 [Ref 602EAE42] Duplicate stacktrace, see ref for original
 
 ";
-    let result = parse_player_log(sample, LogSource::PlayerLog);
+    let result = parse_player_log(sample);
     assert_eq!(result.total_lines, 9);
     assert_eq!(result.exception_count, 3);
     assert_eq!(result.error_count, 1);

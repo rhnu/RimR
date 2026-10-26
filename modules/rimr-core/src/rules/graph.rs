@@ -36,17 +36,15 @@ pub struct Edge {
     pub location: Option<DiagnosticLocation>,
 }
 
-/// Dependency graph with forward and reverse adjacency lists.
+/// Dependency graph with load-order edges and incompatible pairs.
 ///
 /// - **forward**: `A -> [B, C]` means A depends on B and C (B, C must load
 ///   before A).
-/// - **reverse**: `B -> [A]` means A depends on B (reverse of forward).
 /// - **incompatibilities**: bidirectional — if A declares incompatible with B,
 ///   both `A -> [B]` and `B -> [A]` are present.
 #[derive(Debug, Clone, Default)]
 pub struct LoadOrderGraph {
     forward: IndexMap<PackageId, Vec<Edge>>,
-    reverse: IndexMap<PackageId, Vec<Edge>>,
     incompatibilities: IndexMap<PackageId, Vec<PackageId>>,
 }
 
@@ -72,13 +70,12 @@ impl LoadOrderGraph {
         }
         let edge = Edge {
             from: from.clone(),
-            to: to.clone(),
+            to,
             kind,
             source,
             location,
         };
-        self.forward.entry(from).or_default().push(edge.clone());
-        self.reverse.entry(to).or_default().push(edge);
+        self.forward.entry(from).or_default().push(edge);
     }
 
     /// Adds a bidirectional incompatibility between two mods.
@@ -102,11 +99,6 @@ impl LoadOrderGraph {
         self.forward.get(pkg).map_or(&[], std::vec::Vec::as_slice)
     }
 
-    /// Returns the reverse edges to `pkg` (things that depend on pkg).
-    pub fn reverse_edges(&self, pkg: &PackageId) -> &[Edge] {
-        self.reverse.get(pkg).map_or(&[], std::vec::Vec::as_slice)
-    }
-
     /// Returns the list of mods incompatible with `pkg`.
     pub fn incompatibilities(&self, pkg: &PackageId) -> &[PackageId] {
         self.incompatibilities
@@ -119,14 +111,6 @@ impl LoadOrderGraph {
 
     /// Returns true if the graph has no edges.
     pub fn is_empty(&self) -> bool { self.forward.is_empty() && self.incompatibilities.is_empty() }
-
-    /// Returns a reference to the forward adjacency map.
-    pub fn forward_map(&self) -> &IndexMap<PackageId, Vec<Edge>> { &self.forward }
-
-    /// Returns a reference to the incompatibility map.
-    pub fn incompatibility_map(&self) -> &IndexMap<PackageId, Vec<PackageId>> {
-        &self.incompatibilities
-    }
 }
 
 #[cfg(test)]

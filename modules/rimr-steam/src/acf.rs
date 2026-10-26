@@ -76,9 +76,8 @@ pub fn parse_appworkshop_acf(content: &str) -> Result<Vec<WorkshopUpdateEntry>, 
         })
         .collect();
 
-    let installed_ids: std::collections::HashSet<&String> = acf.items_installed.keys().collect();
     for (pfid, details) in &acf.item_details {
-        if !installed_ids.contains(pfid) {
+        if !acf.items_installed.contains_key(pfid) {
             entries.push(WorkshopUpdateEntry {
                 published_file_id: pfid.clone(),
                 time_updated: parse_u64(details.time_updated.as_deref()),
