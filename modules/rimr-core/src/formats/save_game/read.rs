@@ -11,9 +11,11 @@ use crate::{
 
 fn read_text(reader: &mut Reader<&[u8]>) -> Result<Option<String>, CoreError> {
     shared_read_text(reader).map_err(|e| match e {
-        XmlReadError::Xml(m) | XmlReadError::Decoding(m) | XmlReadError::UnknownEntity(m) => {
-            CoreError::SaveGameInvalid(format!("XML error: {m}"))
+        XmlReadError::Xml(source) => CoreError::SaveGameParse { source },
+        XmlReadError::Decoding(source) => CoreError::SaveGameParse {
+            source: quick_xml::Error::Encoding(source),
         },
+        XmlReadError::UnknownEntity(message) => CoreError::SaveGameInvalid(message),
     })
 }
 
@@ -24,9 +26,11 @@ pub fn parse_save_mod_ids(bytes: &[u8]) -> Result<Vec<PackageId>, CoreError> {
     tracing::debug!(bytes = bytes.len(), "parsing save game modIds");
     let bytes = decompress_save_bytes(bytes)?;
     let bytes = decode_xml_bytes(bytes.as_ref()).map_err(|e| match e {
-        XmlReadError::Xml(m) | XmlReadError::Decoding(m) | XmlReadError::UnknownEntity(m) => {
-            CoreError::SaveGameInvalid(format!("XML error: {m}"))
+        XmlReadError::Xml(source) => CoreError::SaveGameParse { source },
+        XmlReadError::Decoding(source) => CoreError::SaveGameParse {
+            source: quick_xml::Error::Encoding(source),
         },
+        XmlReadError::UnknownEntity(message) => CoreError::SaveGameInvalid(message),
     })?;
     let mut reader = Reader::from_reader(bytes.as_ref());
     let mut buf = Vec::new();
@@ -39,7 +43,7 @@ pub fn parse_save_mod_ids(bytes: &[u8]) -> Result<Vec<PackageId>, CoreError> {
                 break;
             },
             Ok(Event::Eof) => break,
-            Err(e) => return Err(CoreError::SaveGameInvalid(format!("XML error: {e}"))),
+            Err(e) => return Err(CoreError::SaveGameParse { source: e }),
             _ => {},
         }
         buf.clear();
@@ -60,14 +64,19 @@ fn decompress_save_bytes(bytes: &[u8]) -> Result<Cow<'_, [u8]>, CoreError> {
         let mut gzip = GzDecoder::new(bytes);
         let mut decoded = Vec::new();
         gzip.read_to_end(&mut decoded)
-            .map_err(|e| CoreError::SaveGameInvalid(format!("gzip decompression failed: {e}")))?;
+            .map_err(|e| CoreError::SaveGameDecode {
+                compression: "gzip",
+                source: e,
+            })?;
         return Ok(Cow::Owned(decoded));
     }
 
     if bytes.starts_with(&[0x28, 0xB5, 0x2F, 0xFD]) {
         tracing::debug!(bytes = bytes.len(), "decompressing zstd save game");
-        let decoded = zstd::stream::decode_all(bytes)
-            .map_err(|e| CoreError::SaveGameInvalid(format!("zstd decompression failed: {e}")))?;
+        let decoded = zstd::stream::decode_all(bytes).map_err(|e| CoreError::SaveGameDecode {
+            compression: "zstd",
+            source: e,
+        })?;
         return Ok(Cow::Owned(decoded));
     }
 
@@ -85,10 +94,10 @@ fn read_meta_mod_ids(reader: &mut Reader<&[u8]>) -> Result<Vec<PackageId>, CoreE
                 }
                 reader
                     .read_to_end(name)
-                    .map_err(|e| CoreError::SaveGameInvalid(format!("XML error: {e}")))?;
+                    .map_err(|e| CoreError::SaveGameParse { source: e })?;
             },
             Ok(Event::End(_) | Event::Eof) => break,
-            Err(e) => return Err(CoreError::SaveGameInvalid(format!("XML error: {e}"))),
+            Err(e) => return Err(CoreError::SaveGameParse { source: e }),
             _ => {},
         }
         buf.clear();
@@ -108,10 +117,10 @@ fn read_mod_ids_in_meta(reader: &mut Reader<&[u8]>) -> Result<Vec<PackageId>, Co
                 }
                 reader
                     .read_to_end(name)
-                    .map_err(|e| CoreError::SaveGameInvalid(format!("XML error: {e}")))?;
+                    .map_err(|e| CoreError::SaveGameParse { source: e })?;
             },
             Ok(Event::End(_) | Event::Eof) => break,
-            Err(e) => return Err(CoreError::SaveGameInvalid(format!("XML error: {e}"))),
+            Err(e) => return Err(CoreError::SaveGameParse { source: e }),
             _ => {},
         }
         buf.clear();
@@ -133,7 +142,7 @@ fn read_package_id_list(reader: &mut Reader<&[u8]>) -> Result<Vec<PackageId>, Co
             },
             Ok(Event::End(_) | Event::Eof) => break,
             Ok(_) => {},
-            Err(e) => return Err(CoreError::SaveGameInvalid(format!("XML error: {e}"))),
+            Err(e) => return Err(CoreError::SaveGameParse { source: e }),
         }
         buf.clear();
     }

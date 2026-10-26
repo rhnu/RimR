@@ -1,19 +1,13 @@
 //! Library and mod list domain types.
 //!
-//! These types model `RimR`'s user-managed mod lists (`Library`, `ModList`,
-//! `LibrarySettings`) and the pure domain functions that operate on them
-//! (`slugify`, `normalize_mod_list`, `flatten_active_mods`, etc.).
-//!
-//! Serialization uses `camelCase` field names to match the on-disk JSON
-//! file layout (`settings.json`, `mod-lists/<id>.json`,
-//! `mod-lists/index.json`).
+//! Entries own list structure and order; persistence belongs to the application.
 
 use serde::{Deserialize, Serialize};
 
-use crate::{domain::ModCatalog, ports::SourceKind};
-
-/// `RimR` library file format version.
-pub const RIMR_FORMAT_VERSION: u32 = 2;
+use crate::{
+    domain::{EntryId, ModCatalog, ModListId, TagId},
+    ports::SourceKind,
+};
 
 /// Base-game Core package id.
 const CORE_PACKAGE_ID: &str = "ludeon.rimworld";
@@ -44,7 +38,7 @@ pub struct ModIdentity {
     pub steam_app_id: Option<u32>,
 }
 
-/// A user-defined display alias for a mod identity, stored in `settings.json`.
+/// A user-defined display alias for a logical mod.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Alias {
@@ -52,7 +46,7 @@ pub struct Alias {
     pub display_alias: String,
 }
 
-/// A user-defined tag definition stored in `settings.json`.
+/// A user-defined shared tag.
 ///
 /// Tags are global (shared across all mod lists). A tag may have an
 /// optional color used for the left color bar on mod rows; tags without
@@ -60,7 +54,7 @@ pub struct Alias {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TagDef {
-    pub id: String,
+    pub id: TagId,
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
@@ -69,19 +63,19 @@ pub struct TagDef {
 /// Binds a mod identity to an ordered list of tag ids.
 ///
 /// The order of `tag_ids` determines the vertical segment order of the
-/// left color bar. Stored in `settings.json` as part of `LibrarySettings`.
+/// left color bar.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModTagBinding {
     pub identity: ModIdentity,
-    pub tag_ids: Vec<String>,
+    pub tag_ids: Vec<TagId>,
 }
 
-/// Library settings (`settings.json`).
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Shared user settings and their concurrency revision.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LibrarySettings {
-    pub format_version: u32,
+    pub revision: u32,
     pub aliases: Vec<Alias>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tag_defs: Vec<TagDef>,
@@ -93,7 +87,7 @@ pub struct LibrarySettings {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GroupChild {
-    pub id: String,
+    pub id: EntryId,
     #[serde(default = "default_active")]
     pub active: bool,
     pub identity: ModIdentity,
@@ -104,19 +98,19 @@ pub struct GroupChild {
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ModListEntry {
     Mod {
-        id: String,
+        id: EntryId,
         #[serde(default = "default_active")]
         active: bool,
         identity: ModIdentity,
     },
     Group {
-        id: String,
+        id: EntryId,
         name: String,
         collapsed: bool,
         entries: Vec<GroupChild>,
     },
     Separator {
-        id: String,
+        id: EntryId,
         title: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         note: Option<String>,
@@ -125,24 +119,23 @@ pub enum ModListEntry {
     },
 }
 
-/// A user-managed mod list (`mod-lists/<id>.json`).
+/// A user-managed mod list and its concurrency revision.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModList {
-    pub format_version: u32,
-    pub id: String,
+    pub revision: u32,
+    pub id: ModListId,
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
     pub entries: Vec<ModListEntry>,
-    pub active_mods: Vec<String>,
 }
 
-/// Summary of a mod list in the index (`mod-lists/index.json`).
+/// Summary of a mod list in the index.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModListSummary {
-    pub id: String,
+    pub id: ModListId,
     pub name: String,
 }
 
@@ -150,9 +143,8 @@ pub struct ModListSummary {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModListIndex {
-    pub format_version: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub current_mod_list_id: Option<String>,
+    pub current_mod_list_id: Option<ModListId>,
     pub mod_lists: Vec<ModListSummary>,
 }
 
@@ -170,46 +162,6 @@ fn default_active() -> bool { true }
 // ---------------------------------------------------------------------------
 // Pure domain functions
 // ---------------------------------------------------------------------------
-
-/// Converts a human-readable name into a URL-safe slug.
-pub fn slugify(name: &str) -> String { slugish(name, "mod-list") }
-
-/// Generates a stable token from a package id (used for entry ids).
-pub fn stable_entry_token(value: &str) -> String { slugish(value, "entry") }
-
-fn slugish(value: &str, fallback: &str) -> String {
-    let mut slug = String::new();
-    for ch in value.chars() {
-        if ch.is_ascii_alphanumeric() {
-            slug.push(ch.to_ascii_lowercase());
-        } else if !slug.ends_with('-') {
-            slug.push('-');
-        }
-    }
-    let slug = slug.trim_matches('-').to_string();
-    if slug.is_empty() {
-        fallback.to_string()
-    } else {
-        slug
-    }
-}
-
-/// Generates a unique mod list id from a name, avoiding collisions with
-/// existing ids in the index.
-pub fn unique_mod_list_id(name: &str, index: &ModListIndex) -> String {
-    let base = slugify(name);
-    if !index.mod_lists.iter().any(|s| s.id == base) {
-        return base;
-    }
-    let mut n = 2;
-    loop {
-        let candidate = format!("{base}-{n}");
-        if !index.mod_lists.iter().any(|s| s.id == candidate) {
-            return candidate;
-        }
-        n += 1;
-    }
-}
 
 /// Flattens mod list entries into a flat list of active package ids.
 ///
@@ -239,10 +191,21 @@ pub fn flatten_active_mods(entries: &[ModListEntry]) -> Vec<String> {
     active
 }
 
-/// Recomputes `active_mods` from `entries` so they never drift.
-pub fn normalize_mod_list(mut mod_list: ModList) -> ModList {
-    mod_list.active_mods = flatten_active_mods(&mod_list.entries);
-    mod_list
+/// Assigns fresh identity to every entry and group child when copying or importing.
+pub fn regenerate_entry_ids(entries: &mut [ModListEntry]) {
+    for entry in entries {
+        match entry {
+            ModListEntry::Mod { id, .. } | ModListEntry::Separator { id, .. } => {
+                *id = EntryId::new();
+            },
+            ModListEntry::Group { id, entries, .. } => {
+                *id = EntryId::new();
+                for child in entries {
+                    child.id = EntryId::new();
+                }
+            },
+        }
+    }
 }
 
 /// Builds a [`ModIdentity`] by looking up the catalog for source info.
@@ -259,7 +222,7 @@ pub fn mod_identity_from_catalog(package_id: &str, catalog: Option<&ModCatalog>)
 /// Creates a new mod list from a flat list of active package ids, looking up
 /// source info from the catalog when available.
 pub fn mod_list_from_active_mods(
-    id: impl Into<String>,
+    id: ModListId,
     name: impl Into<String>,
     active_mods: &[String],
     catalog: Option<&ModCatalog>,
@@ -267,19 +230,18 @@ pub fn mod_list_from_active_mods(
     let entries = active_mods
         .iter()
         .map(|package_id| ModListEntry::Mod {
-            id: format!("mod-{}", stable_entry_token(package_id)),
+            id: EntryId::new(),
             active: true,
             identity: mod_identity_from_catalog(package_id, catalog),
         })
         .collect::<Vec<_>>();
-    normalize_mod_list(ModList {
-        format_version: RIMR_FORMAT_VERSION,
-        id: id.into(),
+    ModList {
+        revision: 0,
+        id,
         name: name.into(),
         note: None,
         entries,
-        active_mods: Vec::new(),
-    })
+    }
 }
 
 /// Creates a new mod list pre-populated with official `RimWorld` content only:
@@ -290,7 +252,7 @@ pub fn mod_list_from_active_mods(
 /// When `catalog` is `None` or Core is not found in it, a single Core entry
 /// built from a bare package id is produced (no source enrichment).
 pub fn mod_list_from_official_content(
-    id: impl Into<String>,
+    id: ModListId,
     name: impl Into<String>,
     catalog: Option<&ModCatalog>,
 ) -> ModList {
@@ -303,14 +265,14 @@ pub fn mod_list_from_official_content(
             catalog.is_some_and(|c| c.contains(&crate::domain::PackageId::new(package_id)))
         })
         .map(|package_id| ModListEntry::Mod {
-            id: format!("mod-{}", stable_entry_token(package_id)),
+            id: EntryId::new(),
             active: true,
             identity: mod_identity_from_catalog(package_id, catalog),
         })
         .collect::<Vec<_>>();
     let entries = if entries.is_empty() {
         vec![ModListEntry::Mod {
-            id: format!("mod-{}", stable_entry_token(CORE_PACKAGE_ID)),
+            id: EntryId::new(),
             active: true,
             identity: ModIdentity {
                 package_id: CORE_PACKAGE_ID.to_string(),
@@ -322,14 +284,13 @@ pub fn mod_list_from_official_content(
     } else {
         entries
     };
-    normalize_mod_list(ModList {
-        format_version: RIMR_FORMAT_VERSION,
-        id: id.into(),
+    ModList {
+        revision: 0,
+        id,
         name: name.into(),
         note: None,
         entries,
-        active_mods: Vec::new(),
-    })
+    }
 }
 
 /// Returns a stable string key for comparing two [`ModIdentity`] values.
@@ -340,7 +301,7 @@ pub fn mod_list_from_official_content(
 /// the game is reinstalled, or when a folder is renamed. Keying on them made
 /// aliases and tag bindings silently detach from their mod.
 pub fn identity_key(identity: &ModIdentity) -> String {
-    identity.package_id.trim().to_ascii_lowercase()
+    crate::domain::PackageId::new(&identity.package_id).to_string()
 }
 
 /// Merges imported library settings aliases into local ones.
@@ -363,7 +324,7 @@ pub fn merge_library_settings_aliases(
         .chain(imported.aliases)
         .collect();
     LibrarySettings {
-        format_version: local.format_version,
+        revision: local.revision,
         aliases,
         tag_defs: local.tag_defs,
         mod_tags: local.mod_tags,
@@ -391,8 +352,8 @@ pub fn merge_library_settings(
         .chain(imported.aliases)
         .collect();
 
-    let imported_tag_ids: std::collections::HashSet<String> =
-        imported.tag_defs.iter().map(|t| t.id.clone()).collect();
+    let imported_tag_ids: std::collections::HashSet<TagId> =
+        imported.tag_defs.iter().map(|t| t.id).collect();
     let tag_defs = local
         .tag_defs
         .into_iter()
@@ -413,7 +374,7 @@ pub fn merge_library_settings(
         .collect();
 
     LibrarySettings {
-        format_version: local.format_version,
+        revision: local.revision,
         aliases,
         tag_defs,
         mod_tags,

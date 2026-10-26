@@ -27,16 +27,20 @@ fn name_matches(name: &str, expected: &str) -> bool { name.eq_ignore_ascii_case(
 fn read_text(reader: &mut Reader<&[u8]>) -> Result<Option<String>, ParseError> {
     shared_read_text(reader).map_err(|e| match e {
         XmlReadError::Decoding(m) => ParseError::Encoding(m),
-        XmlReadError::Xml(m) | XmlReadError::UnknownEntity(m) => ParseError::Xml(m),
+        XmlReadError::Xml(source) => ParseError::Xml(source),
+        XmlReadError::UnknownEntity(message) => ParseError::UnknownEntity(message),
     })
 }
 
 /// Parses About.xml bytes into a [`RawAboutXml`].
+/// # Errors
+/// Returns a source, parsing, validation, or state error if the operation cannot complete.
 pub fn parse_about_xml(bytes: &[u8]) -> Result<RawAboutXml, ParseError> {
     tracing::debug!(bytes = bytes.len(), "parsing About.xml");
     let bytes = decode_xml_bytes(bytes).map_err(|e| match e {
         XmlReadError::Decoding(m) => ParseError::Encoding(m),
-        XmlReadError::Xml(m) | XmlReadError::UnknownEntity(m) => ParseError::Xml(m),
+        XmlReadError::Xml(source) => ParseError::Xml(source),
+        XmlReadError::UnknownEntity(message) => ParseError::UnknownEntity(message),
     })?;
     let mut reader = Reader::from_reader(bytes.as_ref());
 
@@ -48,16 +52,14 @@ pub fn parse_about_xml(bytes: &[u8]) -> Result<RawAboutXml, ParseError> {
                 if name_matches(e.name().as_ref(), "ModMetaData") {
                     parse_mod_metadata(&mut reader, &mut result)?;
                 } else {
-                    reader
-                        .read_to_end(e.name())
-                        .map_err(|e| ParseError::Xml(e.to_string()))?;
+                    reader.read_to_end(e.name()).map_err(ParseError::Xml)?;
                 }
             },
             Ok(Event::Eof) => break,
             Err(e) => {
                 tracing::warn!(error = %e, "About.xml parse error");
                 return Err(ParseError::XmlAt {
-                    message: e.to_string(),
+                    source: e,
                     byte_offset: reader.error_position(),
                 });
             },
@@ -119,14 +121,12 @@ fn parse_mod_metadata(
                     result.mod_dependencies_by_version = read_versioned_dependency_list(reader)?;
                 },
                 _ => {
-                    reader
-                        .read_to_end(e.name())
-                        .map_err(|e| ParseError::Xml(e.to_string()))?;
+                    reader.read_to_end(e.name()).map_err(ParseError::Xml)?;
                 },
             },
             Ok(Event::End(_) | Event::Eof) => break,
             Ok(_) => {},
-            Err(e) => return Err(ParseError::Xml(e.to_string())),
+            Err(e) => return Err(ParseError::Xml(e)),
         }
     }
     Ok(())
@@ -145,7 +145,7 @@ fn read_string_list(reader: &mut Reader<&[u8]>) -> Result<Vec<String>, ParseErro
             },
             Ok(Event::End(_) | Event::Eof) => break,
             Ok(_) => {},
-            Err(e) => return Err(ParseError::Xml(e.to_string())),
+            Err(e) => return Err(ParseError::Xml(e)),
         }
     }
     Ok(result)
@@ -167,14 +167,12 @@ fn read_dependency(reader: &mut Reader<&[u8]>) -> Result<RawDependency, ParseErr
                     dep.alternative_package_ids = read_string_list(reader)?;
                 },
                 _ => {
-                    reader
-                        .read_to_end(e.name())
-                        .map_err(|e| ParseError::Xml(e.to_string()))?;
+                    reader.read_to_end(e.name()).map_err(ParseError::Xml)?;
                 },
             },
             Ok(Event::End(_) | Event::Eof) => break,
             Ok(_) => {},
-            Err(e) => return Err(ParseError::Xml(e.to_string())),
+            Err(e) => return Err(ParseError::Xml(e)),
         }
     }
     Ok(dep)
@@ -191,7 +189,7 @@ fn read_dependency_list(reader: &mut Reader<&[u8]>) -> Result<Vec<RawDependency>
             },
             Ok(Event::End(_) | Event::Eof) => break,
             Ok(_) => {},
-            Err(e) => return Err(ParseError::Xml(e.to_string())),
+            Err(e) => return Err(ParseError::Xml(e)),
         }
     }
     Ok(result)
@@ -222,7 +220,7 @@ fn read_versioned_string_list(
                         },
                         Ok(Event::End(_) | Event::Eof) => break,
                         Ok(_) => {},
-                        Err(e) => return Err(ParseError::Xml(e.to_string())),
+                        Err(e) => return Err(ParseError::Xml(e)),
                     }
                 }
                 if let Some(vk) = version_key {
@@ -234,7 +232,7 @@ fn read_versioned_string_list(
             },
             Ok(Event::End(_) | Event::Eof) => break,
             Ok(_) => {},
-            Err(e) => return Err(ParseError::Xml(e.to_string())),
+            Err(e) => return Err(ParseError::Xml(e)),
         }
     }
     Ok(entries)
@@ -266,7 +264,7 @@ fn read_versioned_string(reader: &mut Reader<&[u8]>) -> Result<Vec<VersionedStri
                         },
                         Ok(Event::End(_) | Event::Eof) => break,
                         Ok(_) => {},
-                        Err(e) => return Err(ParseError::Xml(e.to_string())),
+                        Err(e) => return Err(ParseError::Xml(e)),
                     }
                 }
                 if let Some(vk) = version_key
@@ -280,7 +278,7 @@ fn read_versioned_string(reader: &mut Reader<&[u8]>) -> Result<Vec<VersionedStri
             },
             Ok(Event::End(_) | Event::Eof) => break,
             Ok(_) => {},
-            Err(e) => return Err(ParseError::Xml(e.to_string())),
+            Err(e) => return Err(ParseError::Xml(e)),
         }
     }
     Ok(entries)
@@ -316,7 +314,7 @@ fn read_versioned_dependency_list(
                         },
                         Ok(Event::End(_) | Event::Eof) => break,
                         Ok(_) => {},
-                        Err(e) => return Err(ParseError::Xml(e.to_string())),
+                        Err(e) => return Err(ParseError::Xml(e)),
                     }
                 }
                 if let Some(vk) = version_key {
@@ -328,7 +326,7 @@ fn read_versioned_dependency_list(
             },
             Ok(Event::End(_) | Event::Eof) => break,
             Ok(_) => {},
-            Err(e) => return Err(ParseError::Xml(e.to_string())),
+            Err(e) => return Err(ParseError::Xml(e)),
         }
     }
     Ok(entries)
@@ -361,16 +359,17 @@ fn read_versioned_dependency_item(
             },
             Ok(Event::GeneralRef(e)) if !saw_dependency_child => {
                 shared_push_general_ref(&mut text, e.as_ref()).map_err(|e| match e {
-                    XmlReadError::UnknownEntity(m) => ParseError::Xml(m),
-                    _ => ParseError::Xml(format!("{e:?}")),
+                    XmlReadError::UnknownEntity(message) => ParseError::UnknownEntity(message),
+                    XmlReadError::Xml(source) => ParseError::Xml(source),
+                    XmlReadError::Decoding(source) => ParseError::Encoding(source),
                 })?;
             },
             Ok(Event::End(_) | Event::Eof) => break,
             Ok(_) => {},
             Err(quick_xml::Error::Encoding(e)) => {
-                return Err(ParseError::Encoding(e.to_string()));
+                return Err(ParseError::Encoding(e));
             },
-            Err(e) => return Err(ParseError::Xml(e.to_string())),
+            Err(e) => return Err(ParseError::Xml(e)),
         }
     }
 
@@ -403,7 +402,7 @@ fn handle_dep_child(
         _ => {
             reader
                 .read_to_end(child_start.name())
-                .map_err(|e| ParseError::Xml(e.to_string()))?;
+                .map_err(ParseError::Xml)?;
         },
     }
     Ok(())

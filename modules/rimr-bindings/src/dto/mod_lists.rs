@@ -49,7 +49,7 @@ pub struct ModTagBindingDto {
 #[serde(rename_all = "camelCase")]
 #[ts(rename_all = "camelCase")]
 pub struct LibrarySettingsDto {
-    pub format_version: u32,
+    pub revision: u32,
     pub aliases: Vec<DisplayAliasDto>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub tag_defs: Vec<TagDefDto>,
@@ -106,13 +106,12 @@ pub enum ModListEntryDto {
 #[serde(rename_all = "camelCase")]
 #[ts(rename_all = "camelCase")]
 pub struct ModListDto {
-    pub format_version: u32,
+    pub revision: u32,
     pub id: String,
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
     pub entries: Vec<ModListEntryDto>,
-    pub active_mods: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -127,7 +126,6 @@ pub struct ModListSummaryDto {
 #[serde(rename_all = "camelCase")]
 #[ts(rename_all = "camelCase")]
 pub struct ModListIndexDto {
-    pub format_version: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current_mod_list_id: Option<String>,
     pub mod_lists: Vec<ModListSummaryDto>,

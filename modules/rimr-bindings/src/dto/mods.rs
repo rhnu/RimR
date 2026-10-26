@@ -222,6 +222,7 @@ pub enum SeverityDto {
 #[serde(rename_all = "camelCase")]
 #[ts(rename_all = "camelCase")]
 pub enum DiagnosticCodeDto {
+    GameVersionUnknown,
     XmlMalformed,
     PackageIdMissing,
     PackageIdDuplicate,

@@ -6,6 +6,8 @@
 /// Categorizes a [`super::Diagnostic`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DiagnosticCode {
+    /// No readable target game version was available.
+    GameVersionUnknown,
     /// `About.xml` could not be parsed as valid XML.
     XmlMalformed,
     /// `packageId` is missing, empty, or not a string.

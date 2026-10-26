@@ -1,6 +1,6 @@
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { ResultAsync } from 'neverthrow';
-import type { RimrClientError, RimrResult } from './rimrClient';
+import type { RimrClientError, RimrResult } from './rimr-client';
 
 type PickDirectoryOptions = {
   title: string;
@@ -25,12 +25,12 @@ export function pickDirectory(options: PickDirectoryOptions): RimrResult<string 
   );
 }
 
-export function pickRimrGameConfigBackupFile(options: PickFileOptions): RimrResult<string | null> {
+export function pickRimrFile(options: PickFileOptions): RimrResult<string | null> {
   return ResultAsync.fromPromise(
     open({
       title: options.title,
       defaultPath: options.defaultPath,
-      filters: [{ name: 'RimR game config backup', extensions: options.extensions }],
+      filters: [{ name: 'RimR', extensions: options.extensions }],
       multiple: false,
     }).then(singlePath),
     toTransportError,
@@ -49,14 +49,12 @@ export function pickSaveGameFile(options: PickFileOptions): RimrResult<string | 
   );
 }
 
-export function chooseRimrGameConfigBackupSavePath(
-  options: PickFileOptions,
-): RimrResult<string | null> {
+export function chooseRimrSavePath(options: PickFileOptions): RimrResult<string | null> {
   return ResultAsync.fromPromise(
     save({
       title: options.title,
       defaultPath: options.defaultPath,
-      filters: [{ name: 'RimR game config backup', extensions: options.extensions }],
+      filters: [{ name: 'RimR', extensions: options.extensions }],
     }),
     toTransportError,
   );

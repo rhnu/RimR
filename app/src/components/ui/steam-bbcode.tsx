@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { parseSteamBbcode, type SteamBbcodeNode } from '@/lib/steamBbcode';
+import { parseSteamBbcode, type SteamBbcodeNode } from '@/lib/steam-bbcode';
 import { cn } from '@/lib/utils';
 
 interface SteamBbcodeProps {

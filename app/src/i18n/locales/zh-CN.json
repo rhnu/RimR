@@ -129,7 +129,8 @@
     "orderViolationLoadAfter": "{{targetPackageId}} 必须在 {{packageId}} 之前加载（{{rule}}）。",
     "orderViolationLoadBefore": "{{targetPackageId}} 必须在 {{packageId}} 之前加载（{{rule}}）。",
     "incompatibleActive": "{{packageId}} 与 {{incompatiblePackageId}} 不兼容，但两者都已启用。",
-    "circularDependency": "循环依赖：{{cycle}}"
+    "circularDependency": "循环依赖：{{cycle}}",
+    "gameVersionUnknown": "无法检测目标游戏版本，模组的按版本元数据可能不完整。"
   },
   "settings": {
     "title": "设置",
@@ -306,7 +307,9 @@
       "errors": "{{count}} 个错误",
       "warnings": "{{count}} 个警告",
       "infos": "{{count}} 条信息",
-      "summaryTitle": "验证汇总"
+      "summaryTitle": "验证汇总",
+      "unchecked": "尚未校验",
+      "failed": "校验失败"
     },
     "aria": {
       "separatorTitle": "分隔符标题",
@@ -315,7 +318,10 @@
       "selectForGrouping": "选择 {{name}} 进行分组",
       "addMod": "添加 {{name}}",
       "removeEntry": "移除 {{id}}"
-    }
+    },
+    "conflict": "此列表在编辑期间发生了变更。你的编辑已保留；请重置为已保存版本后继续编辑。",
+    "conflictLabel": "保存版本已变更",
+    "previewExpired": "预览打开后列表已发生变更，请重新打开预览后继续。"
   },
   "catalog": {
     "title": "目录",
@@ -450,5 +456,9 @@
   },
   "error": {
     "transport": "传输错误"
+  },
+  "bootstrap": {
+    "failed": "RimR 启动失败",
+    "recovery": "现有数据已保留。请处理上述数据问题后重新启动 RimR。"
   }
 }

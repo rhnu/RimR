@@ -17,16 +17,18 @@ use crate::{
 /// Returns `None` if the trimmed text is empty.
 fn read_text(reader: &mut Reader<&[u8]>) -> Result<Option<String>, CoreError> {
     shared_read_text(reader).map_err(|e| match e {
-        XmlReadError::Xml(m) | XmlReadError::Decoding(m) | XmlReadError::UnknownEntity(m) => {
-            CoreError::ModsConfigInvalid(format!("XML error: {m}"))
+        XmlReadError::Xml(source) => CoreError::ModsConfigParse { source },
+        XmlReadError::Decoding(source) => CoreError::ModsConfigParse {
+            source: quick_xml::Error::Encoding(source),
         },
+        XmlReadError::UnknownEntity(message) => CoreError::ModsConfigInvalid(message),
     })
 }
 
 /// Parses ModsConfig.xml bytes into a `ModsConfig`.
 ///
+/// Returns `CoreError::ModsConfigParse` for XML or encoding failures.
 /// Returns `CoreError::ModsConfigInvalid` if:
-/// - The XML is not valid
 /// - The root element is not `ModsConfigData`
 /// - Any of `version`, `activeMods`, `knownExpansions` is missing
 /// - `version` is empty
@@ -36,9 +38,11 @@ fn read_text(reader: &mut Reader<&[u8]>) -> Result<Option<String>, CoreError> {
 pub fn parse_mods_config(bytes: &[u8]) -> Result<ModsConfig, CoreError> {
     tracing::debug!(bytes = bytes.len(), "parsing ModsConfig.xml");
     let bytes = decode_xml_bytes(bytes).map_err(|e| match e {
-        XmlReadError::Xml(m) | XmlReadError::Decoding(m) | XmlReadError::UnknownEntity(m) => {
-            CoreError::ModsConfigInvalid(format!("XML error: {m}"))
+        XmlReadError::Xml(source) => CoreError::ModsConfigParse { source },
+        XmlReadError::Decoding(source) => CoreError::ModsConfigParse {
+            source: quick_xml::Error::Encoding(source),
         },
+        XmlReadError::UnknownEntity(message) => CoreError::ModsConfigInvalid(message),
     })?;
     let mut reader = Reader::from_reader(bytes.as_ref());
 
@@ -55,7 +59,7 @@ pub fn parse_mods_config(bytes: &[u8]) -> Result<ModsConfig, CoreError> {
                 break;
             },
             Ok(Event::Eof) => break,
-            Err(e) => return Err(CoreError::ModsConfigInvalid(format!("XML error: {e}"))),
+            Err(e) => return Err(CoreError::ModsConfigParse { source: e }),
             _ => {},
         }
         buf.clear();
@@ -84,12 +88,12 @@ pub fn parse_mods_config(bytes: &[u8]) -> Result<ModsConfig, CoreError> {
                     _ => {
                         reader
                             .read_to_end(name)
-                            .map_err(|e| CoreError::ModsConfigInvalid(format!("XML error: {e}")))?;
+                            .map_err(|e| CoreError::ModsConfigParse { source: e })?;
                     },
                 }
             },
             Ok(Event::End(_) | Event::Eof) => break,
-            Err(e) => return Err(CoreError::ModsConfigInvalid(format!("XML error: {e}"))),
+            Err(e) => return Err(CoreError::ModsConfigParse { source: e }),
             _ => {},
         }
         buf.clear();
@@ -131,7 +135,7 @@ fn read_package_id_list(reader: &mut Reader<&[u8]>) -> Result<Vec<PackageId>, Co
             },
             Ok(Event::End(_) | Event::Eof) => break,
             Ok(_) => {},
-            Err(e) => return Err(CoreError::ModsConfigInvalid(format!("XML error: {e}"))),
+            Err(e) => return Err(CoreError::ModsConfigParse { source: e }),
         }
         buf.clear();
     }

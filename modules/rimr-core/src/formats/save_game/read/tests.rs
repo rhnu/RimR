@@ -150,3 +150,62 @@ fn skips_unknown_siblings_in_meta() {
     assert_eq!(mods[0], PackageId::new("brrainz.harmony"));
     assert_eq!(mods[1], PackageId::new("ludeon.rimworld"));
 }
+
+#[test]
+fn truncated_compressed_saves_retain_io_errors() {
+    use std::error::Error;
+
+    for (bytes, expected) in [
+        (&[0x1F, 0x8B, 0x08][..], "gzip"),
+        (&[0x28, 0xB5, 0x2F, 0xFD][..], "zstd"),
+    ] {
+        let error = parse_save_mod_ids(bytes).unwrap_err();
+        assert!(
+            matches!(&error, CoreError::SaveGameDecode { compression, .. } if *compression == expected)
+        );
+        assert!(
+            error
+                .source()
+                .unwrap()
+                .downcast_ref::<std::io::Error>()
+                .is_some()
+        );
+    }
+}
+
+#[test]
+fn malformed_save_xml_retains_parser_source() {
+    use std::error::Error;
+
+    let error = parse_save_mod_ids(b"<savegame><meta><modIds><li>a</wrong>").unwrap_err();
+    assert!(matches!(error, CoreError::SaveGameParse { .. }));
+    assert!(
+        error
+            .source()
+            .unwrap()
+            .downcast_ref::<quick_xml::Error>()
+            .is_some()
+    );
+}
+
+#[test]
+fn declared_save_encoding_failure_retains_encoding_cause() {
+    use std::error::Error;
+
+    let error = parse_save_mod_ids(
+        b"<?xml version=\"1.0\" encoding=\"shift_jis\"?><savegame>\x82</savegame>",
+    )
+    .unwrap_err();
+    let xml = error
+        .source()
+        .unwrap()
+        .downcast_ref::<quick_xml::Error>()
+        .unwrap();
+    assert!(matches!(xml, quick_xml::Error::Encoding(_)));
+    assert!(
+        xml.source()
+            .unwrap()
+            .downcast_ref::<quick_xml::encoding::EncodingError>()
+            .is_some()
+    );
+}

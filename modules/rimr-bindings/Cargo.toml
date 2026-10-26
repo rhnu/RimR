@@ -8,7 +8,6 @@ publish = false
 export = []
 
 [dependencies]
-directories = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 ts-rs = { workspace = true, features = ["serde-json-impl"] }

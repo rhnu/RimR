@@ -231,3 +231,17 @@ fn mixed_case_child_tags_are_accepted() {
     assert_eq!(raw.supported_versions, vec!["1.5"]);
     assert_eq!(raw.load_after, vec!["base.mod"]);
 }
+
+#[test]
+fn malformed_metadata_retains_parser_source() {
+    use std::error::Error;
+
+    let error = parse_about_xml(b"<ModMetaData><name>a</wrong>").unwrap_err();
+    assert!(
+        error
+            .source()
+            .unwrap()
+            .downcast_ref::<quick_xml::Error>()
+            .is_some()
+    );
+}

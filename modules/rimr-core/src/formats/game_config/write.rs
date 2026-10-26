@@ -9,10 +9,8 @@ use crate::{
 ///
 /// Format: 2-space indented XML, UTF-8, with XML declaration.
 /// Field order: version, activeMods, knownExpansions.
-#[expect(
-    clippy::unnecessary_wraps,
-    reason = "preserve the public fallible serialization API"
-)]
+/// # Errors
+/// Returns a source, parsing, validation, or state error if the operation cannot complete.
 pub fn serialize_mods_config(config: &ModsConfig) -> Result<String, CoreError> {
     tracing::debug!(
         version = %config.version,

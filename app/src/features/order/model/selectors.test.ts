@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { DisplayAliasDto, ModMetadataDto, ModTagBindingDto, TagDefDto } from '@/commands';
-import { baseEntries, mod } from './testFixtures';
+import { baseEntries, mod } from '@/domain/mod-list/test-fixtures';
 import {
   activeModEntryIds,
-  activeModsKey,
   buildActiveRenderRows,
   buildInactiveRenderRows,
   canCreateActiveGroup,
@@ -14,7 +13,7 @@ import {
   selectedDragIds,
   updateSelectionForClick,
 } from './selectors';
-import { compileSmartModSearch } from './smartSearch';
+import { compileSmartModSearch } from '@/domain/mod-list/smart-search';
 
 describe('order model selector helpers', () => {
   it('updates row selections from plain, toggle, and range clicks', () => {
@@ -57,8 +56,7 @@ describe('order model selector helpers', () => {
     expect(formatFileSize(2 * 1024 * 1024)).toBe('2 MB');
   });
 
-  it('builds stable active mod keys and top-level mod entry ids', () => {
-    expect(activeModsKey(['core', 'harmony', 'ui'])).toBe('core\u0000harmony\u0000ui');
+  it('collects top-level mod entry ids', () => {
     expect(activeModEntryIds(baseEntries())).toEqual(['entry-a']);
   });
 });
@@ -207,7 +205,7 @@ describe('order model render selectors', () => {
       'inactive:entry:group-mixed',
       'inactive:child:group-mixed:child-inactive',
       'inactive:child:group-mixed:child-missing',
-      'inactive:catalog:package:c.extra',
+      'inactive:catalog:source:local:c.extra',
     ]);
     expect(rows[1]).toMatchObject({ kind: 'child', missing: false });
     expect(rows[2]).toMatchObject({ kind: 'child', missing: true });
@@ -243,7 +241,7 @@ describe('order model inactive render sorting', () => {
     );
 
     expect(rows.map((row) => row.id)).toEqual([
-      'inactive:catalog:package:a.core',
+      'inactive:catalog:source:local:a.core',
       'inactive:entry:entry-z',
     ]);
   });
@@ -297,8 +295,8 @@ describe('order model inactive render sorting', () => {
       'inactive:child:group-hot:child-c',
       'inactive:entry:group-cold',
       'inactive:child:group-cold:child-b',
-      'inactive:catalog:package:m.mid',
-      'inactive:catalog:package:z.low',
+      'inactive:catalog:source:local:m.mid',
+      'inactive:catalog:source:local:z.low',
       'inactive:entry:entry-missing',
     ]);
   });

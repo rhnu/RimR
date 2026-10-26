@@ -7,17 +7,14 @@ edition.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
+uuid.workspace = true
 quick-xml = { workspace = true, features = ["encoding"] }
 serde = { workspace = true }
-serde_json = { workspace = true, features = ["preserve_order"] }
-async-trait = { workspace = true }
 flate2 = { workspace = true }
 thiserror = { workspace = true }
-futures = { workspace = true }
-indexmap = { workspace = true, features = ["serde"] }
-time = { workspace = true, features = ["formatting"] }
+indexmap.workspace = true
 tracing = { workspace = true }
 zstd = { workspace = true }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+serde_json.workspace = true

@@ -20,7 +20,7 @@ pub(crate) fn decode_xml_bytes(bytes: &[u8]) -> Result<Cow<'_, [u8]>, XmlReadErr
                         Cow::Borrowed(text) => Cow::Borrowed(text.as_bytes()),
                         Cow::Owned(text) => Cow::Owned(text.into_bytes()),
                     })
-                    .map_err(|e| XmlReadError::Decoding(e.to_string()));
+                    .map_err(XmlReadError::Decoding);
             },
             Ok(Event::Text(text)) if text.trim().is_empty() => {},
             Ok(Event::Comment(_) | Event::PI(_)) => {},
@@ -36,6 +36,8 @@ pub(crate) fn decode_xml_bytes(bytes: &[u8]) -> Result<Cow<'_, [u8]>, XmlReadErr
 /// if the trimmed text is empty.
 ///
 /// Unknown entity references are returned as an error string.
+/// # Errors
+/// Returns a source, parsing, validation, or state error if the operation cannot complete.
 pub fn read_text(reader: &mut Reader<&[u8]>) -> Result<Option<String>, XmlReadError> {
     let mut text = String::new();
     let mut depth = 0;
@@ -66,9 +68,9 @@ pub fn read_text(reader: &mut Reader<&[u8]>) -> Result<Option<String>, XmlReadEr
             Ok(Event::Eof) => break,
             Ok(_) => {},
             Err(quick_xml::Error::Encoding(e)) => {
-                return Err(XmlReadError::Decoding(e.to_string()));
+                return Err(XmlReadError::Decoding(e));
             },
-            Err(e) => return Err(XmlReadError::Xml(e.to_string())),
+            Err(e) => return Err(XmlReadError::Xml(e)),
         }
     }
     let trimmed = text.trim();
@@ -82,8 +84,8 @@ pub fn read_text(reader: &mut Reader<&[u8]>) -> Result<Option<String>, XmlReadEr
 /// Error from XML text reading.
 #[derive(Debug)]
 pub enum XmlReadError {
-    Xml(String),
-    Decoding(String),
+    Xml(quick_xml::Error),
+    Decoding(quick_xml::encoding::EncodingError),
     UnknownEntity(String),
 }
 

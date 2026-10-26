@@ -1,68 +1,53 @@
-# RimR 基础设计
+# 设计说明
 
-## 产品目标
+## 三份不同的数据
 
-RimR 是一个小型的 RimWorld mod list manager。核心数据边界是：
+RimR 将已安装模组目录、RimR 列表与游戏配置分开管理。
 
-- **库设置（Library Settings）**：跨模组列表的配置，例如 Display Alias（保存为 `settings.json`）。
-- **模组列表（Mod List）**：RimR 内部可编辑的 mod 排序、Group 和 Separator。
-- **ModsConfig.xml**：官方游戏配置文件，只在用户执行 **Apply** 时写入。
+扫描得到的模组目录描述“当前安装了什么”，可以重新构建。RimR 库保存“用户怎样组织模组”，包括多份列表、别名、标签和当前列表选择。`ModsConfig.xml` 保存“游戏实际读取什么顺序”。在排序页面编辑的是列表草稿。
 
-详细分层设计见 [RimR 应用架构设计](crate-architecture.md)。
+Save 将草稿保存进 RimR 库。Apply 通过当前安装目录解析草稿，预览后仅写游戏配置；Apply 不隐式 Save，允许应用仍有未保存修改的草稿。同步和导入先更新草稿或库，不能借此绕过明确的 Apply 操作。
 
-## 已落地内容
+诊断提供信息而不接管顺序。依赖错误、循环或互斥关系均不阻止用户应用；未安装项会被报告并从写入游戏的顺序中跳过，而不是静默从 RimR 列表删除。
 
-- 扫描 mod 来源并解析 `About.xml` 全字段集，包括 `*ByVersion`、`forceLoad*`、`incompatibleWith`。
-- 加载游戏当前 `ModsConfig.xml`，用于初始化默认模组列表和比较是否已 Apply。
-- 在 RimR data dir 中保存 `settings.json`、`mod-lists/index.json`、`mod-lists/<id>.json`。
-- 校验模组列表展开后的 active mod 顺序并展示非阻塞诊断。
-- Apply 当前模组列表到游戏 `ModsConfig.xml`。
-- 导出和导入 `.rimr.json` 游戏配置备份；导入备份会创建模组列表，不直接写游戏配置。
-- 英文 / 简体中文 UI。
+## 列表结构与身份
 
-## 数据语义
+列表的 `entries` 是顺序的唯一事实来源。普通模组条目携带启用状态；分组按子项顺序展开其中启用的模组；分隔线只服务于组织。`activeMods` 是展开结果，不与条目顺序分别维护或持久化为另一份事实。
 
-库设置保存跨模组列表的信息。Display Alias 绑定到 `packageId + source` 身份，`packageId` 为主标识，`sourceKind`、`sourceKey`、`steamAppId` 用于区分重复或分叉 mod。
+列表、条目和标签使用独立 UUID v4 身份。名称、package ID、分组位置和来源路径都不能充当这些对象的 ID；重命名、移动或解组不会因此生成碰撞。不同对象分别使用 `ModListId`、`EntryId` 和 `TagId` 强类型。
 
-模组列表保存 RimR 自有排序结构：
+package ID 表示逻辑模组，经过统一规范化后用于依赖、顺序、别名和标签关联。来源表示具体安装副本，用于读取元数据、显示文件信息、打开目录和清理。本地副本和创意工坊副本可以共享逻辑模组的别名和标签，文件操作则必须指向具体来源。
 
-- `mod` entry：一个 active mod。
-- `group` entry：一组一起管理的 mod；Apply 时按组内顺序展开。
-- `separator` entry：纯视觉分隔符，只存在于 RimR，不写入 `ModsConfig.xml`。
+扫描按稳定顺序处理来源，使相同输入的重复项选择与诊断保持一致。目标游戏版本是扫描与规则编译的显式输入，不能依赖隐藏默认版本。当前产品范围不增加安装副本选择界面。
 
-模组列表有两个独立状态：
+## 持久化与并发
 
-- **mod list unsaved**：当前 UI draft 与 RimR 模组列表 JSON 不一致，需要 Save Mod List。
-- **Not applied**：模组列表展开后的 active mods 与游戏 `ModsConfig.xml` 不一致，需要 Apply。
+RimR 库以一个版本化 JSON 快照保存列表、当前选择与共享设置，避免多文件写入留下互相不一致的索引和内容。保存先校验完整快照，再通过临时文件和原子替换提交。写入串行执行；失败保留上一份完整数据。
 
-排序页交互细节见 [RimR UI 交互规约](ui-interaction-spec.md)。
+保存请求必须带上它所编辑的 revision。只有与当前版本匹配的请求可以提交，成功后获得新 revision；过期请求被明确拒绝，不能覆盖更新的修改。列表与共享设置分别携带 revision。前端的异步扫描、验证和保存同样使用 revision 或 generation 丢弃过期结果。
 
-## 前端工作流
+主题与语言属于本机界面偏好，由前端持久化存储负责。后端不常驻维护另一份双向镜像。游戏路径与库数据由应用层仓储负责；扫描缓存与运行时会话不等同于持久化库。
 
-RimR 使用桌面软件式布局：自绘标题栏和顶部菜单承载 File、View、Settings、Help。
-`/order` 是默认主工作区：
+## 启动与旧数据
 
-- 顶部工具条承载当前模组列表切换、状态摘要、Save Mod List、Apply 和 Reset to Saved。
-- 主视图是三栏工作区：左侧常驻元数据栏，中间是未引入 mods，右侧是当前模组列表 entries。
-- 主视图不直接放置文本输入框；模组列表新建/重命名/删除、Display Alias、Group 和 Separator 编辑都通过二级界面完成。
-- 编辑类操作以列表 ContextMenu 作为入口，以 Dialog 收集文本或确认破坏性操作。
-- 选中 mod/group/separator 时左侧元数据栏实时刷新；可编辑字段不在元数据栏内直接修改。
-- 校验实时运行，诊断以内联图标显示在相关 active mod/group child 上。
-- 排序页不使用虚拟化；1000 多条 mod 内优先保证拖拽定位、按钮 fallback 和可测试性。
+新配置保存于原配置目录下的 `current/config.json`；库快照保存于 RimR 数据目录的 `current/library.json`。二者使用独立于旧源的命名空间。
 
-Catalog 不再有独立浏览页；它作为会话内 snapshot 由排序页启动加载和手动重建动作刷新，并供未引入 mod、校验、预览和文件系统操作共享。
+启动先识别当前命名空间；存在当前数据时只按当前格式读取。当前数据无法解析、版本不支持或校验失败时，应进入需要恢复的状态并报告错误，不能回退到旧源并覆盖它。
 
-Setup 只在 `gameDir`、`configDir` 或 `rimrDataDir` 缺失时作为首屏向导显示。`rimrDataDir` 默认位于用户 `Documents/RimR`。配置完整后 Setup 会重定向到 Settings。
+只有尚未建立当前数据时，bootstrap 才检测旧配置 v1–v4 和旧库 v1–v2。旧 portable v1/v2 通过手动文件导入处理，不在启动时扫描和重复导入。legacy 模块只读取、解码并生成迁移候选；它没有改写旧源或保存当前数据的职责。候选经过整体校验后，由 current 仓储写入新的命名空间。正常 load 不调用 legacy。
 
-模组列表/库设置的导入导出通过 File 菜单执行。
+迁移必须保留列表、条目、别名和标签的有效关联；某一项失败不能通过跳过它来伪装整体成功。旧源始终不变，失败不会留下被当作完整新库读取的部分结果；重启后可以重新继续启动流程。历史主题和语言通过可重启的移交进入前端偏好存储，不建立长期同步通道。
 
-前端 UI 文案使用 react-i18next 实现英文/简体中文切换。语言偏好通过 zustand 持久化（`rimr-locale`），首次启动按 `navigator.language` 自动检测并回退英文。翻译资源为 `app/src/i18n/locales/` 下的静态 JSON，单命名空间 + 嵌套分组。后端 Rust 诊断 `diagnostic.message` 与 mod 自身元数据（名称、描述等）不纳入前端 i18n，原样展示。
+手动导入也先解码和校验，再交给应用用例合并或保存。portable 文件是交换格式，与内部快照的演进边界分开；支持旧文件不意味着让每次正常读取都执行兼容迁移。
 
-## 设计约束
+## 分层职责
 
-- UI 不解析 XML、不构建依赖图、不序列化 `ModsConfig.xml`。
-- Tauri 负责文件系统、RimR JSON 持久化、command 编排和 DTO。
-- Core 拥有 RimWorld 领域能力和 RimR 库/模组列表领域类型，但不知道真实路径、Tauri 或 RimR data dir。
-- 所有跨层数据都经过 DTO 或 core services 类型。
+| 层              | 负责                                        | 不应负责                         |
+| --------------- | ------------------------------------------- | -------------------------------- |
+| `rimr-core`     | 纯领域对象、规则、RimWorld 文件格式         | 文件系统、桌面宿主、会话与库仓储 |
+| `rimr-app`      | 用例、会话、bootstrap、当前仓储、来源适配器 | Tauri 命令注册与界面状态         |
+| `rimr-bindings` | IPC DTO 与 TypeScript 生成                  | 领域模型的事实定义、存储策略     |
+| Tauri 宿主      | 薄命令转换、插件和桌面集成                  | 重复实现用例或迁移               |
+| 前端            | 草稿交互、预览、状态展示与明确用户操作      | 绕过应用层直接修改游戏或存储文件 |
 
-质量门禁见 [quality-gates.md](quality-gates.md)。
+`rimr-steam` 提供 Steam 相关格式与发现能力，由来源适配器使用。IPC DTO 在边界转换；领域和持久化不依赖它。更多维护约束见 [开发说明](development.md)。

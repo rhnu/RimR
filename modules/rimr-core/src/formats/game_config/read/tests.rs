@@ -196,3 +196,38 @@ fn empty_active_mods_list_is_ok() {
     assert_eq!(cfg.active_mods, [] as [crate::PackageId; 0]);
     assert_eq!(cfg.known_expansions.len(), 1);
 }
+
+#[test]
+fn xml_parse_failure_retains_quick_xml_source() {
+    use std::error::Error;
+
+    let error = parse_mods_config(b"<ModsConfigData><version>1.6</wrong>").unwrap_err();
+    assert!(matches!(error, CoreError::ModsConfigParse { .. }));
+    assert!(
+        error
+            .source()
+            .unwrap()
+            .downcast_ref::<quick_xml::Error>()
+            .is_some()
+    );
+}
+
+#[test]
+fn text_encoding_failure_retains_encoding_cause() {
+    use std::error::Error;
+
+    let error =
+        parse_mods_config(b"<ModsConfigData><version>\xFF</version></ModsConfigData>").unwrap_err();
+    let xml = error
+        .source()
+        .unwrap()
+        .downcast_ref::<quick_xml::Error>()
+        .unwrap();
+    assert!(matches!(xml, quick_xml::Error::Encoding(_)));
+    assert!(
+        xml.source()
+            .unwrap()
+            .downcast_ref::<quick_xml::encoding::EncodingError>()
+            .is_some()
+    );
+}

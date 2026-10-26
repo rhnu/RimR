@@ -6,14 +6,14 @@ import type {
   ModTagBindingDto,
   TagDefDto,
 } from '@/commands';
-import { childSortableId, entrySortableId } from '@/features/order/dndIds';
-import { compileSmartModSearch, type CompiledSmartSearch } from './smartSearch';
+import { childSortableId, entrySortableId } from '@/features/order/dnd-ids';
+import { compileSmartModSearch, type CompiledSmartSearch } from '@/domain/mod-list/smart-search';
 
 export {
   buildInactiveRenderRows,
   filterInactiveMods,
   type InactiveRenderRow,
-} from './inactiveSelectors';
+} from './inactive-selectors';
 
 export type SelectionClickModifiers = {
   ctrlKey?: boolean;
@@ -76,10 +76,6 @@ export function canCreateActiveGroup(selectedEntryIds: Set<string>): boolean {
 
 export function canCreateInactiveGroup(selectedPackageIds: Set<string>): boolean {
   return selectedPackageIds.size > 0;
-}
-
-export function activeModsKey(activeMods: string[]): string {
-  return activeMods.join('\u0000');
 }
 
 export function activeModEntryIds(entries: ModListEntryDto[]): string[] {

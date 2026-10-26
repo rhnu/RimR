@@ -1,7 +1,7 @@
 use ts_rs::{Config, TS};
 
 use crate::{
-    app_config::{AppConfig, Locale, PathsConfig, Theme, UiConfig},
+    app_config::{AppConfig, BootstrapStatusDto, Locale, PathsConfig, Theme, UiConfig},
     dto::{
         ActiveListLoadDto, ApplyModListDto, ApplyModListRequest, CatalogSnapshotDto,
         CleanModsRequest, CommandError, CommandErrorCode, ConfiguredDirectoryKind,
@@ -35,6 +35,7 @@ pub fn generate_typescript() -> String {
     );
     out.push_str("export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };\n\n");
     push::<AppConfig>(&cfg, &mut out);
+    push::<BootstrapStatusDto>(&cfg, &mut out);
     push::<PathsConfig>(&cfg, &mut out);
     push::<UiConfig>(&cfg, &mut out);
     push::<Theme>(&cfg, &mut out);

@@ -34,6 +34,8 @@ pub enum CommandErrorCode {
     Json,
     StateMissing,
     Internal,
+    Conflict,
+    RecoveryRequired,
 }
 
 impl CommandError {

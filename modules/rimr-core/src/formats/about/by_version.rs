@@ -42,6 +42,8 @@ impl IsEmpty for Vec<crate::formats::about::raw::RawDependency> {
 /// 2. `prefer_versioned=true` && `version_key` matches && versioned value non-empty → Replaced.
 /// 3. `prefer_versioned=true` && `version_key` matches && versioned value empty → Suppressed.
 /// 4. `prefer_versioned=true` && no matching `version_key` → Base (fallback).
+/// # Errors
+/// Returns a source, parsing, validation, or state error if the operation cannot complete.
 pub fn resolve_by_version<T>(
     base: T,
     versioned_entries: &[ByVersionEntry<T>],

@@ -1,17 +1,13 @@
 import type { ModIdentityDto, ModListDto } from '@/commands';
-import type { GameSyncResult, OrderDiff } from '@/features/order/model';
+import type { GameSyncResult, OrderDiff } from '@/domain/mod-list/types';
 
 export type Selection =
-  | { kind: 'mod'; identity: ModIdentityDto }
+  | { kind: 'mod'; identity: ModIdentityDto; sourceKey?: string }
   | { kind: 'group'; entryId: string }
   | { kind: 'separator'; entryId: string }
   | null;
 
 export type OrderDialog =
-  | { kind: 'newModList'; value: string }
-  | { kind: 'renameModList'; value: string }
-  | { kind: 'saveAsModList'; value: string }
-  | { kind: 'deleteModList' }
   | {
       kind: 'editAlias';
       identity: ModIdentityDto;
@@ -44,22 +40,15 @@ export type OrderDialog =
 
 export type OrderDialogWithValue = Extract<Exclude<OrderDialog, null>, { value: string }>;
 
-export type ModListDialog = Extract<
-  Exclude<OrderDialog, null>,
-  { kind: 'newModList' | 'renameModList' | 'saveAsModList' | 'deleteModList' }
->;
-
-const MOD_LIST_DIALOG_KINDS = new Set([
-  'newModList',
-  'renameModList',
-  'saveAsModList',
-  'deleteModList',
-]);
-
 export function dialogHasValue(dialog: Exclude<OrderDialog, null>): dialog is OrderDialogWithValue {
   return 'value' in dialog;
 }
 
-export function isModListDialog(dialog: Exclude<OrderDialog, null>): dialog is ModListDialog {
-  return MOD_LIST_DIALOG_KINDS.has(dialog.kind);
+export function isOrderDialog(
+  dialog: { kind: string } | null,
+): dialog is Exclude<OrderDialog, null> {
+  return (
+    dialog != null &&
+    !['newModList', 'renameModList', 'saveAsModList', 'deleteModList'].includes(dialog.kind)
+  );
 }

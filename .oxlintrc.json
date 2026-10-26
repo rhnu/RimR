@@ -25,7 +25,7 @@
         "paths": [
           {
             "name": "zustand",
-            "message": "zustand stores must live in app/src/stores/. See docs/state-management.md."
+            "message": "zustand stores must live in app/src/stores/. See docs/development.md#前端状态归属."
           }
         ]
       }
@@ -60,7 +60,7 @@
       }
     },
     {
-      "files": ["app/src/features/*/model/**"],
+      "files": ["app/src/domain/**", "app/src/features/*/model/**"],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -68,19 +68,19 @@
             "paths": [
               {
                 "name": "react",
-                "message": "model/ must stay pure: do not import React or state libraries here. See docs/state-management.md."
+                "message": "model/ must stay pure: do not import React or state libraries here. See docs/development.md#前端状态归属."
               },
               {
                 "name": "react-dom",
-                "message": "model/ must stay pure: do not import React or state libraries here. See docs/state-management.md."
+                "message": "model/ must stay pure: do not import React or state libraries here. See docs/development.md#前端状态归属."
               },
               {
                 "name": "zustand",
-                "message": "model/ must stay pure: do not import React or state libraries here. See docs/state-management.md."
+                "message": "model/ must stay pure: do not import React or state libraries here. See docs/development.md#前端状态归属."
               },
               {
                 "name": "@tanstack/react-query",
-                "message": "model/ must stay pure: do not import React or state libraries here. See docs/state-management.md."
+                "message": "model/ must stay pure: do not import React or state libraries here. See docs/development.md#前端状态归属."
               }
             ]
           }

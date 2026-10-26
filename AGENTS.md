@@ -1,58 +1,15 @@
 # AGENTS
 
-## Capabilities
+## 项目约束
 
-Quick index of what RimR currently implements. For the latest details, explore the code and the user's request.
+- 产品行为和操作边界以 [使用说明](docs/features.md) 为入口；修改保存、应用、导入或同步时，遵守 [设计说明](docs/design.md) 中的数据与写入边界。
+- Rust 分层、前端状态归属、生成绑定和持久化约束见 [开发说明](docs/development.md)。不要在不同层维护同一份可变事实，也不要手工编辑生成的 TypeScript 绑定。
+- 界面改动遵守 [界面规范](docs/ui-style.md)：保持紧凑桌面风格，`rounded-slight` 仅用于按钮和区域边界，不使用胶囊徽章，详情优先放在上下文菜单、顶栏菜单和对话框中。
+- Save 仅保存 RimR 列表；Apply 仅在用户明确操作后写入游戏配置，不隐式保存列表。诊断非阻断，导入不直接修改游戏配置。
+- 不覆盖用户已有修改，不将旧数据升级失败降级成空库，不用旧源覆盖损坏的新数据。
 
-- Parse RimWorld `About.xml` mod metadata, including version-keyed fields (`*ByVersion`), `forceLoad*`, and `incompatibleWith`.
-- Build a dependency graph and validate a user-managed mod order, producing structured, non-blocking diagnostics.
-- Load and save the game's `ModsConfig.xml` only through explicit Apply actions.
-- Manage a local library in the RimR data dir: `settings.json`, `mod-lists/index.json`, `mod-lists/<id>.json`.
-- Edit mod lists with mod, group, and separator entries; apply the expanded order to the game.
-- Export/import `.rimr.json` files for mod lists, library settings, and game config backups.
-- English / Simplified Chinese UI via `react-i18next`.
+## 必需检查
 
-## UI Style
+工作中按改动范围执行检查：前端运行格式、lint、类型检查和测试；Rust 运行 workspace 检查、Rusteward 格式与 lint、workspace 测试。完整命令统一维护于 [质量检查](docs/development.md#质量检查)。
 
-When changing frontend components, follow the conventions in [`docs/ui-style.md`](docs/ui-style.md): keep the UI compact and desktop-like, use `rounded-slight` only for buttons and section boundaries, avoid pill badges, and prefer context menus / top menus / dialogs for details.
-
-## Frontend State Management
-
-When adding or refactoring frontend state, follow [`docs/state-management.md`](docs/state-management.md). Highlights:
-
-- Server / IPC data lives in React Query via `hooks/commands.ts`; do not duplicate it elsewhere.
-- Persisted user preferences live in `app/src/stores/` as Zustand `persist` stores.
-- Cross-page session state (e.g. order draft, dialog, cross-module intents) lives in `app/src/stores/` Zustand stores.
-- Single-page interaction state (selection, filter, drag, etc.) lives in the feature's `context/` provider.
-- Pure business rules live in `features/<x>/model/` and must not import `react` or `zustand`.
-- Do not introduce mirror effects between `useState` and a store; pick one source of truth.
-
-## Quality Gates
-
-Run checks scoped to the area you changed while you work:
-
-- Frontend changes:
-
-  ```powershell
-  pnpm fmt:check
-  pnpm lint
-  pnpm typecheck
-  pnpm test
-  ```
-
-- Rust changes:
-
-  ```powershell
-  cargo check --workspace --locked
-  cargo dev format --check --diff --locked
-  cargo dev lint --locked
-  cargo test --workspace --locked
-  ```
-
-Before finishing a session, also run the full aggregate check as a safety net:
-
-```powershell
-pnpm check
-```
-
-Note: `pnpm check` runs `bindings:check` → `fmt:check` → `lint` → `typecheck` → `build` → `test` → `cargo check` → Rusteward format → Rusteward lint (including Clippy) → `cargo test`. It is broad and slower than scoped checks, so use it to catch cross-layer omissions rather than for every small change.
+结束会话前必须运行完整汇总检查 `pnpm check`，作为跨层安全检查。它不能替代工作中的范围检查；若环境阻碍检查，交付时明确说明失败或未执行的部分。

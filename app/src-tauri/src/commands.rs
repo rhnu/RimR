@@ -14,6 +14,7 @@ pub use saves::*;
 
 pub fn handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool {
     tauri::generate_handler![
+        get_bootstrap_status,
         get_app_config,
         save_app_config,
         autodetect_paths,

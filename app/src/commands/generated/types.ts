@@ -3,7 +3,9 @@
 
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
-export type AppConfig = { formatVersion: number, paths: PathsConfig, ui: UiConfig, };
+export type AppConfig = { paths: PathsConfig, };
+
+export type BootstrapStatusDto = { "status": "ready", config: AppConfig, importedPreferences: UiConfig | null, migrated: boolean, } | { "status": "recoveryRequired", error: CommandError, };
 
 export type PathsConfig = { gameDir: string | null, gameDataDir: string | null, localModsDir: string | null, workshopModsDir: string | null, rimrDataDir: string | null, };
 
@@ -21,7 +23,7 @@ export type Platform = "windows" | "macos" | "linux";
 
 export type CommandError = { code: CommandErrorCode, message: string, path?: string | null, sourceKey?: string | null, };
 
-export type CommandErrorCode = "configReadFailed" | "configWriteFailed" | "pathAutodetectFailed" | "pathNotConfigured" | "pathInvalid" | "sourceIo" | "modsConfigInvalid" | "saveGameInvalid" | "backupInvalid" | "json" | "stateMissing" | "internal";
+export type CommandErrorCode = "configReadFailed" | "configWriteFailed" | "pathAutodetectFailed" | "pathNotConfigured" | "pathInvalid" | "sourceIo" | "modsConfigInvalid" | "saveGameInvalid" | "backupInvalid" | "json" | "stateMissing" | "internal" | "conflict" | "recoveryRequired";
 
 export type SaveAppConfigRequest = { config: AppConfig, };
 
@@ -89,7 +91,7 @@ export type SourceKindDto = "expansion" | "local" | "workshop";
 
 export type SeverityDto = "error" | "warning" | "info";
 
-export type DiagnosticCodeDto = "xmlMalformed" | "packageIdMissing" | "packageIdDuplicate" | "sourceReadFailed" | "dependencyMissing" | "configModMissing" | "activeModMissing" | "dependencyInactive" | "orderViolationLoadAfter" | "orderViolationLoadBefore" | "incompatibleActive" | "circularDependency";
+export type DiagnosticCodeDto = "gameVersionUnknown" | "xmlMalformed" | "packageIdMissing" | "packageIdDuplicate" | "sourceReadFailed" | "dependencyMissing" | "configModMissing" | "activeModMissing" | "dependencyInactive" | "orderViolationLoadAfter" | "orderViolationLoadBefore" | "incompatibleActive" | "circularDependency";
 
 export type DiagnosticLocationDto = { sourceKey: string | null, path: string, xmlPath: string | null, line: number | null, col: number | null, byteOffset: number | null, };
 
@@ -123,7 +125,7 @@ export type TagDefDto = { id: string, name: string, color?: string, };
 
 export type ModTagBindingDto = { identity: ModIdentityDto, tagIds: Array<string>, };
 
-export type LibrarySettingsDto = { formatVersion: number, aliases: Array<DisplayAliasDto>, tagDefs?: Array<TagDefDto>, modTags?: Array<ModTagBindingDto>, };
+export type LibrarySettingsDto = { revision: number, aliases: Array<DisplayAliasDto>, tagDefs?: Array<TagDefDto>, modTags?: Array<ModTagBindingDto>, };
 
 export type RimrFileKind = "gameConfigBackup" | "modList" | "librarySettings";
 
@@ -131,11 +133,11 @@ export type ModListGroupChildDto = { id: string, active: boolean, identity: ModI
 
 export type ModListEntryDto = { "kind": "mod", id: string, active: boolean, identity: ModIdentityDto, } | { "kind": "group", id: string, name: string, collapsed: boolean, entries: Array<ModListGroupChildDto>, } | { "kind": "separator", id: string, title: string, note?: string | null, color?: string | null, };
 
-export type ModListDto = { formatVersion: number, id: string, name: string, note?: string | null, entries: Array<ModListEntryDto>, activeMods: Array<string>, };
+export type ModListDto = { revision: number, id: string, name: string, note?: string | null, entries: Array<ModListEntryDto>, };
 
 export type ModListSummaryDto = { id: string, name: string, };
 
-export type ModListIndexDto = { formatVersion: number, currentModListId?: string | null, modLists: Array<ModListSummaryDto>, };
+export type ModListIndexDto = { currentModListId?: string | null, modLists: Array<ModListSummaryDto>, };
 
 export type LibraryDto = { dataDir: string, settings: LibrarySettingsDto, modListsIndex: ModListIndexDto, currentModList: ModListDto, };
 

@@ -129,7 +129,8 @@
     "orderViolationLoadAfter": "{{targetPackageId}} must load before {{packageId}} ({{rule}}).",
     "orderViolationLoadBefore": "{{targetPackageId}} must load before {{packageId}} ({{rule}}).",
     "incompatibleActive": "{{packageId}} and {{incompatiblePackageId}} are incompatible but both active.",
-    "circularDependency": "Circular dependency: {{cycle}}"
+    "circularDependency": "Circular dependency: {{cycle}}",
+    "gameVersionUnknown": "The target game version could not be detected. Version-specific mod metadata may be incomplete."
   },
   "settings": {
     "title": "Settings",
@@ -306,7 +307,9 @@
       "errors": "{{count}} errors",
       "warnings": "{{count}} warnings",
       "infos": "{{count}} infos",
-      "summaryTitle": "Validation Summary"
+      "summaryTitle": "Validation Summary",
+      "unchecked": "Not checked",
+      "failed": "Validation failed"
     },
     "aria": {
       "separatorTitle": "Separator title",
@@ -315,7 +318,10 @@
       "selectForGrouping": "Select {{name}} for grouping",
       "addMod": "Add {{name}}",
       "removeEntry": "Remove {{id}}"
-    }
+    },
+    "conflict": "This list changed after editing began. Your edits are preserved; reset to the saved version before editing again.",
+    "conflictLabel": "Saved version changed",
+    "previewExpired": "The list changed after this preview opened. Open the preview again to continue."
   },
   "catalog": {
     "title": "Catalog",
@@ -450,5 +456,9 @@
   },
   "error": {
     "transport": "transport error"
+  },
+  "bootstrap": {
+    "failed": "RimR could not start",
+    "recovery": "Your existing data has been preserved. Resolve the reported data problem, then restart RimR."
   }
 }

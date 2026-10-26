@@ -1,15 +1,8 @@
-//! IO abstraction trait for rimr-core.
-//!
-//! [`ModSource`] is the async contract between the app/core layer and the
-//! host. `rimr-core` defines it; `rimr-tauri` implements it with `tokio::fs`.
-//! This keeps the core free of filesystem, path, and permission concerns.
+//! Source descriptions and opaque identifiers used by metadata and diagnostics.
 
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-
-use crate::error::SourceError;
 
 /// Opaque identifier for a single mod discovered by the host.
 ///
@@ -79,32 +72,4 @@ impl SourceFile {
             bytes,
         }
     }
-}
-
-/// Async IO contract between the domain layer and the host.
-///
-/// All methods are async because they involve host-side I/O. The core calls
-/// these methods; it never touches the filesystem directly.
-#[async_trait]
-pub trait ModSource: Sync {
-    /// Discovers all mod entries available from this source.
-    async fn discover_mods(&self) -> Result<Vec<ModSourceEntry>, SourceError>;
-
-    /// Reads the `About.xml` bytes for a specific mod.
-    ///
-    /// Returns `Ok(None)` if the mod has no `About.xml` (the host should still
-    /// report the entry via `discover_mods`; the core will create an invalid
-    /// metadata record).
-    async fn read_about_xml(&self, key: &ModSourceKey) -> Result<Option<SourceFile>, SourceError>;
-
-    /// Reads the game's `ModsConfig.xml` bytes, if present.
-    async fn read_mods_config(&self) -> Result<Option<SourceFile>, SourceError>;
-
-    /// Writes the game's `ModsConfig.xml`.
-    async fn write_mods_config(&self, bytes: Vec<u8>) -> Result<(), SourceError>;
-
-    /// Best-effort detection of mod features that require filesystem inspection
-    /// beyond `About.xml`. The host should return `ModFeatures::default()` on
-    /// any error; failures here must not abort a scan.
-    async fn read_mod_features(&self, key: &ModSourceKey) -> Result<ModFeatures, SourceError>;
 }

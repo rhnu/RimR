@@ -1,6 +1,6 @@
 import { createRootRoute, createRouter, Outlet } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
-import { AppShell } from '@/app/AppShell';
+import { AppShell } from '@/app/app-shell';
 import { Route as IndexRoute } from '@/app/routes/index';
 import { Route as SetupRoute } from '@/app/routes/setup';
 import { Route as LogsRoute } from '@/app/routes/logs';

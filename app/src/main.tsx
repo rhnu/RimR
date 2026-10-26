@@ -5,11 +5,11 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toast } from '@/components/ui/toast';
 import { RouterProvider } from '@tanstack/react-router';
 import { router } from '@/app/router';
-import { LocaleBootstrap } from '@/app/LocaleBootstrap';
-import { ThemeBootstrap } from '@/app/ThemeBootstrap';
-import { SettingsSync } from '@/app/SettingsSync';
-import { queryClient } from '@/lib/queryClient';
-import { disableDefaultContextMenu } from '@/lib/disableDefaultContextMenu';
+import { LocaleBootstrap } from '@/app/locale-bootstrap';
+import { ThemeBootstrap } from '@/app/theme-bootstrap';
+import { AppBootstrap } from '@/app/app-bootstrap';
+import { queryClient } from '@/queries/client';
+import { disableDefaultContextMenu } from '@/app/native-context-menu';
 import '@/i18n';
 import './styles.css';
 
@@ -20,8 +20,9 @@ createRoot(document.getElementById('root') as HTMLElement).render(
     <QueryClientProvider client={queryClient}>
       <ThemeBootstrap />
       <LocaleBootstrap />
-      <SettingsSync />
-      <RouterProvider router={router} />
+      <AppBootstrap>
+        <RouterProvider router={router} />
+      </AppBootstrap>
       <Toast />
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>

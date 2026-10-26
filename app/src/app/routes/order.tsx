@@ -1,6 +1,6 @@
 import { createRoute } from '@tanstack/react-router';
 import { rootRoute } from '@/app/router';
-import { OrderPage } from '@/features/order/OrderPage';
+import { OrderPage } from '@/features/order/order-page';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,

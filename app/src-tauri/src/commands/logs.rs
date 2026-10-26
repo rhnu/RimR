@@ -1,22 +1,25 @@
-use tauri::State;
-
-use crate::{
+use rimr_app::{
     dto::{LoadPlayerLogRequest, PlayerLogDto, SteamWorkshopLogDto},
-    error::CommandResult,
     state::AppState,
 };
+use tauri::State;
+
+use crate::error::CommandResult;
 
 #[tauri::command]
+#[tracing::instrument(skip_all)]
 pub async fn load_steam_workshop_log(
     state: State<'_, AppState>,
 ) -> CommandResult<SteamWorkshopLogDto> {
     tracing::info!(command = "load_steam_workshop_log", "command invoked");
-    state.load_steam_workshop_log().await.inspect_err(
-        |e| tracing::error!(command = "load_steam_workshop_log", error = ?e, "command failed"),
-    )
+    state
+        .load_steam_workshop_log()
+        .await
+        .map_err(crate::error::from_app)
 }
 
 #[tauri::command]
+#[tracing::instrument(skip_all)]
 pub async fn load_player_log(
     state: State<'_, AppState>,
     request: LoadPlayerLogRequest,
@@ -25,5 +28,5 @@ pub async fn load_player_log(
     state
         .load_player_log(request)
         .await
-        .inspect_err(|e| tracing::error!(command = "load_player_log", error = ?e, "command failed"))
+        .map_err(crate::error::from_app)
 }

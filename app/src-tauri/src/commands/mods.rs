@@ -1,7 +1,4 @@
-use tauri::{Manager, State};
-use tauri_plugin_opener::OpenerExt;
-
-use crate::{
+use rimr_app::{
     app_config::default_data_dir,
     dto::{
         ActiveListLoadDto, CatalogSnapshotDto, CleanModsRequest, ConfiguredDirectoryKind,
@@ -10,52 +7,64 @@ use crate::{
         OpenConfiguredDirectoryRequest, OpenModFolderRequest, OpenSteamWorkshopPageRequest,
         ValidateActiveOrderRequest, ValidateOrderDto,
     },
-    error::CommandResult,
     state::AppState,
 };
+use tauri::{Manager, State};
+use tauri_plugin_opener::OpenerExt;
+
+use crate::error::CommandResult;
 
 #[tauri::command]
+#[tracing::instrument(skip_all)]
 pub async fn rebuild_mod_catalog(state: State<'_, AppState>) -> CommandResult<CatalogSnapshotDto> {
     tracing::info!(command = "rebuild_mod_catalog", "command invoked");
-    state.rebuild_mod_catalog().await.inspect_err(
-        |e| tracing::error!(command = "rebuild_mod_catalog", error = ?e, "command failed"),
-    )
+    state
+        .rebuild_mod_catalog()
+        .await
+        .map_err(crate::error::from_app)
 }
 
 #[tauri::command]
+#[tracing::instrument(skip_all)]
 pub async fn load_mod_preview(
     state: State<'_, AppState>,
     request: LoadModPreviewRequest,
 ) -> CommandResult<ModPreviewDto> {
     tracing::info!(command = "load_mod_preview", source_key = %request.source_key, "command invoked");
-    state.load_mod_preview(request).await.inspect_err(
-        |e| tracing::error!(command = "load_mod_preview", error = ?e, "command failed"),
-    )
+    state
+        .load_mod_preview(request)
+        .await
+        .map_err(crate::error::from_app)
 }
 
 #[tauri::command]
+#[tracing::instrument(skip_all)]
 pub async fn load_mod_folder_size(
     state: State<'_, AppState>,
     request: LoadModFolderSizeRequest,
 ) -> CommandResult<ModFolderSizeDto> {
     tracing::info!(command = "load_mod_folder_size", source_key = %request.source_key, "command invoked");
-    state.load_mod_folder_size(request).await.inspect_err(
-        |e| tracing::error!(command = "load_mod_folder_size", error = ?e, "command failed"),
-    )
+    state
+        .load_mod_folder_size(request)
+        .await
+        .map_err(crate::error::from_app)
 }
 
 #[tauri::command]
+#[tracing::instrument(skip_all)]
 pub async fn preview_mod_cleanup(
     state: State<'_, AppState>,
     request: ModCleanupPreviewRequest,
 ) -> CommandResult<ModCleanupPreviewDto> {
     tracing::info!(command = "preview_mod_cleanup", kind = ?request.kind, "command invoked");
-    state.preview_mod_cleanup(request).await.inspect_err(
-        |e| tracing::error!(command = "preview_mod_cleanup", error = ?e, "command failed"),
-    )
+    state
+        .preview_mod_cleanup(request)
+        .await
+        .map_err(crate::error::from_app)
 }
 
 #[tauri::command]
+#[tracing::instrument(skip_all)]
 pub async fn clean_mods(
     state: State<'_, AppState>,
     request: CleanModsRequest,
@@ -69,18 +78,21 @@ pub async fn clean_mods(
     state
         .clean_mods(request)
         .await
-        .inspect_err(|e| tracing::error!(command = "clean_mods", error = ?e, "command failed"))
+        .map_err(crate::error::from_app)
 }
 
 #[tauri::command]
+#[tracing::instrument(skip_all)]
 pub async fn load_active_list(state: State<'_, AppState>) -> CommandResult<ActiveListLoadDto> {
     tracing::info!(command = "load_active_list", "command invoked");
-    state.load_active_list().await.inspect_err(
-        |e| tracing::error!(command = "load_active_list", error = ?e, "command failed"),
-    )
+    state
+        .load_active_list()
+        .await
+        .map_err(crate::error::from_app)
 }
 
 #[tauri::command]
+#[tracing::instrument(skip_all)]
 #[expect(
     clippy::needless_pass_by_value,
     reason = "Tauri extracts command arguments by value"
@@ -94,12 +106,13 @@ pub fn validate_active_order(
         active_mods = request.active_mods.len(),
         "command invoked"
     );
-    state.validate_active_order(request).inspect_err(
-        |e| tracing::error!(command = "validate_active_order", error = ?e, "command failed"),
-    )
+    state
+        .validate_active_order(request)
+        .map_err(crate::error::from_app)
 }
 
 #[tauri::command]
+#[tracing::instrument(skip_all)]
 #[expect(
     clippy::needless_pass_by_value,
     reason = "Tauri extracts command arguments by value"
@@ -132,6 +145,7 @@ pub fn open_mod_folder(
 }
 
 #[tauri::command]
+#[tracing::instrument(skip_all)]
 #[expect(
     clippy::needless_pass_by_value,
     reason = "Tauri extracts command arguments by value"
@@ -156,6 +170,7 @@ pub fn open_steam_workshop_page(
 }
 
 #[tauri::command]
+#[tracing::instrument(skip_all)]
 #[expect(
     clippy::needless_pass_by_value,
     reason = "Tauri extracts command arguments by value"
@@ -176,6 +191,7 @@ pub fn launch_game(app: tauri::AppHandle) -> CommandResult<()> {
 }
 
 #[tauri::command]
+#[tracing::instrument(skip_all)]
 #[expect(
     clippy::needless_pass_by_value,
     reason = "Tauri extracts command arguments by value"
@@ -204,7 +220,7 @@ pub fn open_configured_directory(
             .paths
             .rimr_data_dir
             .or_else(default_data_dir)
-            .map(|path| path.join("mod-lists")),
+            .map(|path| path.join("current")),
         ConfiguredDirectoryKind::RimrLogsDir => {
             Some(app.path().app_log_dir().map_err(|error| {
                 crate::error::CommandError::new(
