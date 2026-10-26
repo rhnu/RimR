@@ -1,7 +1,36 @@
 //! Shared XML reader/writer helpers.
 
+use std::borrow::Cow;
+
+use quick_xml::encoding::decode;
 use quick_xml::events::Event;
 use quick_xml::reader::Reader;
+
+/// Transcodes declared non-UTF-8 input before constructing string-based XML events.
+/// UTF-8 input stays borrowed so parsing and byte-offset diagnostics remain lazy.
+pub(crate) fn decode_xml_bytes(bytes: &[u8]) -> Result<Cow<'_, [u8]>, XmlReadError> {
+    let mut reader = Reader::from_reader(bytes);
+    loop {
+        match reader.read_event() {
+            Ok(Event::Decl(_)) => {
+                let encoding = reader.encoding();
+                if encoding.name() == "UTF-8" {
+                    return Ok(Cow::Borrowed(bytes));
+                }
+                return decode(bytes, encoding)
+                    .map(|text| match text {
+                        Cow::Borrowed(text) => Cow::Borrowed(text.as_bytes()),
+                        Cow::Owned(text) => Cow::Owned(text.into_bytes()),
+                    })
+                    .map_err(|e| XmlReadError::Decoding(e.to_string()));
+            }
+            Ok(Event::Text(text)) if text.trim().is_empty() => {}
+            Ok(Event::Comment(_) | Event::PI(_)) => {}
+            // Let the actual parser report malformed XML and encoding failures.
+            _ => return Ok(Cow::Borrowed(bytes)),
+        }
+    }
+}
 
 /// Reads text content of the current element (after its Start event) until
 /// the matching End event. Decodes text, CDATA, and standard XML entity
@@ -16,18 +45,12 @@ pub fn read_text(reader: &mut Reader<&[u8]>) -> Result<Option<String>, XmlReadEr
         match reader.read_event() {
             Ok(Event::Text(t)) => {
                 if depth == 0 {
-                    let s = t
-                        .decode()
-                        .map_err(|e| XmlReadError::Decoding(e.to_string()))?;
-                    text.push_str(&s);
+                    text.push_str(t.as_ref());
                 }
             }
             Ok(Event::CData(t)) => {
                 if depth == 0 {
-                    let s = t
-                        .decode()
-                        .map_err(|e| XmlReadError::Decoding(e.to_string()))?;
-                    text.push_str(&s);
+                    text.push_str(t.as_ref());
                 }
             }
             Ok(Event::GeneralRef(e)) => {
@@ -44,6 +67,9 @@ pub fn read_text(reader: &mut Reader<&[u8]>) -> Result<Option<String>, XmlReadEr
             }
             Ok(Event::Eof) => break,
             Ok(_) => {}
+            Err(quick_xml::Error::Encoding(e)) => {
+                return Err(XmlReadError::Decoding(e.to_string()));
+            }
             Err(e) => return Err(XmlReadError::Xml(e.to_string())),
         }
     }
@@ -65,17 +91,17 @@ pub enum XmlReadError {
 
 /// Resolves a standard XML general entity reference into its character and
 /// appends it to `text`. Unknown entities return an error.
-pub(crate) fn push_general_ref(text: &mut String, entity: &[u8]) -> Result<(), XmlReadError> {
+pub(crate) fn push_general_ref(text: &mut String, entity: &str) -> Result<(), XmlReadError> {
     match entity {
-        b"amp" => text.push('&'),
-        b"lt" => text.push('<'),
-        b"gt" => text.push('>'),
-        b"quot" => text.push('"'),
-        b"apos" => text.push('\''),
+        "amp" => text.push('&'),
+        "lt" => text.push('<'),
+        "gt" => text.push('>'),
+        "quot" => text.push('"'),
+        "apos" => text.push('\''),
         other => {
             return Err(XmlReadError::UnknownEntity(format!(
                 "unknown XML entity: &{};",
-                String::from_utf8_lossy(other)
+                other
             )));
         }
     }
@@ -123,6 +149,37 @@ mod tests {
         skip_to_first_start(&mut reader);
         let text = read_text(&mut reader).unwrap();
         assert_eq!(text.as_deref(), Some("raw <xml> & text"));
+    }
+
+    #[test]
+    fn declared_encoding_applies_to_text_and_cdata() {
+        let xml = b"<?xml version=\"1.0\" encoding=\"windows-1252\"?><x>Caf\xE9 <![CDATA[cr\xE8me]]> &amp; tea</x>";
+        let bytes = decode_xml_bytes(xml).unwrap();
+        let mut reader = Reader::from_reader(bytes.as_ref());
+        skip_to_first_start(&mut reader);
+        assert_eq!(
+            read_text(&mut reader).unwrap().as_deref(),
+            Some("Café crème & tea")
+        );
+    }
+
+    #[test]
+    fn malformed_declared_encoding_is_rejected() {
+        let xml = b"<?xml version=\"1.0\" encoding=\"shift_jis\"?><x>\x82</x>";
+        assert!(matches!(
+            decode_xml_bytes(xml),
+            Err(XmlReadError::Decoding(_))
+        ));
+    }
+
+    #[test]
+    fn invalid_utf8_text_reports_decoding_error() {
+        let mut reader = Reader::from_reader(b"<x>\xFF</x>".as_slice());
+        skip_to_first_start(&mut reader);
+        assert!(matches!(
+            read_text(&mut reader),
+            Err(XmlReadError::Decoding(_))
+        ));
     }
 
     #[test]

@@ -6,7 +6,7 @@
   "author": "Rhynia",
   "license": "GPL-3.0",
   "type": "module",
-  "packageManager": "pnpm@11.8.0+sha512.c1f5e7c4cb241c8f174b743851d82f42b802324afc8b0f116b96adb15aa06664948dde36960a3ba1079ba5b4b29dd0140135b94b5b5f5263592249d68e555f26",
+  "packageManager": "pnpm@12.15.0",
   "scripts": {
     "tauri": "pnpm --filter rimr tauri",
     "dev": "pnpm --filter rimr dev",
@@ -23,10 +23,13 @@
     "check": "pnpm bindings:check && pnpm fmt:check && pnpm lint && pnpm typecheck && pnpm build && pnpm test && cargo fmt --all -- --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace"
   },
   "devDependencies": {
-    "tsx": "^4.22.4",
+    "tsx": "^4.23.15",
     "semver": "^7.8.5",
-    "@types/semver": "^7.7.1",
-    "@types/node": "^24.0.14",
-    "typescript": "~5.8.3"
+    "@types/semver": "^7.8.0",
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=24.0.0"
   }
 }

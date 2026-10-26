@@ -5,6 +5,6 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-anyhow = "1"
-clap = { version = "4", features = ["derive"] }
-rimr-bindings = { path = "../modules/rimr-bindings", features = ["export"] }
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+rimr-bindings = { workspace = true, features = ["export"] }

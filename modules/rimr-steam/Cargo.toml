@@ -7,6 +7,6 @@ edition.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-keyvalues-serde = "0.2"
-serde = { version = "1", features = ["derive"] }
-thiserror = "2"
+keyvalues-serde = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }

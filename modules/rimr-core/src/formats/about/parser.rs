@@ -8,14 +8,15 @@ use super::raw::{
     RawAboutXml, RawDependency, VersionedDependencyList, VersionedString, VersionedStringList,
 };
 use crate::formats::xml::{
-    XmlReadError, push_general_ref as shared_push_general_ref, read_text as shared_read_text,
+    XmlReadError, decode_xml_bytes, push_general_ref as shared_push_general_ref,
+    read_text as shared_read_text,
 };
 
 /// Compares an XML element name against an expected ASCII name, ignoring
 /// ASCII case. RimWorld's own loader tolerates mixed-case tag names (e.g.
 /// `<modMetaData>` vs `<ModMetaData>`), so rimr accepts them too rather than
 /// silently dropping mods with non-canonical casing.
-fn name_matches(name: &[u8], expected: &[u8]) -> bool {
+fn name_matches(name: &str, expected: &str) -> bool {
     name.eq_ignore_ascii_case(expected)
 }
 
@@ -32,14 +33,18 @@ fn read_text(reader: &mut Reader<&[u8]>) -> Result<Option<String>, ParseError> {
 /// Parses About.xml bytes into a [`RawAboutXml`].
 pub fn parse_about_xml(bytes: &[u8]) -> Result<RawAboutXml, ParseError> {
     tracing::debug!(bytes = bytes.len(), "parsing About.xml");
-    let mut reader = Reader::from_reader(bytes);
+    let bytes = decode_xml_bytes(bytes).map_err(|e| match e {
+        XmlReadError::Decoding(m) => ParseError::Encoding(m),
+        XmlReadError::Xml(m) | XmlReadError::UnknownEntity(m) => ParseError::Xml(m),
+    })?;
+    let mut reader = Reader::from_reader(bytes.as_ref());
 
     let mut result = RawAboutXml::default();
 
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) => {
-                if name_matches(e.name().as_ref(), b"ModMetaData") {
+                if name_matches(e.name().as_ref(), "ModMetaData") {
                     parse_mod_metadata(&mut reader, &mut result)?;
                 } else {
                     reader
@@ -69,47 +74,47 @@ fn parse_mod_metadata(
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) => match e.name().as_ref() {
-                n if name_matches(n, b"packageId") => result.package_id = read_text(reader)?,
-                n if name_matches(n, b"name") => result.name = read_text(reader)?,
-                n if name_matches(n, b"author") => result.author = read_text(reader)?,
-                n if name_matches(n, b"authors") => result.authors = read_string_list(reader)?,
-                n if name_matches(n, b"supportedVersions") => {
+                n if name_matches(n, "packageId") => result.package_id = read_text(reader)?,
+                n if name_matches(n, "name") => result.name = read_text(reader)?,
+                n if name_matches(n, "author") => result.author = read_text(reader)?,
+                n if name_matches(n, "authors") => result.authors = read_string_list(reader)?,
+                n if name_matches(n, "supportedVersions") => {
                     result.supported_versions = read_string_list(reader)?
                 }
-                n if name_matches(n, b"description") => result.description = read_text(reader)?,
-                n if name_matches(n, b"descriptionsByVersion") => {
+                n if name_matches(n, "description") => result.description = read_text(reader)?,
+                n if name_matches(n, "descriptionsByVersion") => {
                     result.descriptions_by_version = read_versioned_string(reader)?;
                 }
-                n if name_matches(n, b"modVersion") => result.mod_version = read_text(reader)?,
-                n if name_matches(n, b"url") => result.url = read_text(reader)?,
-                n if name_matches(n, b"modIconPath") => result.mod_icon_path = read_text(reader)?,
-                n if name_matches(n, b"steamAppId") => result.steam_app_id = read_text(reader)?,
-                n if name_matches(n, b"loadAfter") => result.load_after = read_string_list(reader)?,
-                n if name_matches(n, b"loadBefore") => {
+                n if name_matches(n, "modVersion") => result.mod_version = read_text(reader)?,
+                n if name_matches(n, "url") => result.url = read_text(reader)?,
+                n if name_matches(n, "modIconPath") => result.mod_icon_path = read_text(reader)?,
+                n if name_matches(n, "steamAppId") => result.steam_app_id = read_text(reader)?,
+                n if name_matches(n, "loadAfter") => result.load_after = read_string_list(reader)?,
+                n if name_matches(n, "loadBefore") => {
                     result.load_before = read_string_list(reader)?
                 }
-                n if name_matches(n, b"forceLoadAfter") => {
+                n if name_matches(n, "forceLoadAfter") => {
                     result.force_load_after = read_string_list(reader)?
                 }
-                n if name_matches(n, b"forceLoadBefore") => {
+                n if name_matches(n, "forceLoadBefore") => {
                     result.force_load_before = read_string_list(reader)?
                 }
-                n if name_matches(n, b"incompatibleWith") => {
+                n if name_matches(n, "incompatibleWith") => {
                     result.incompatible_with = read_string_list(reader)?
                 }
-                n if name_matches(n, b"modDependencies") => {
+                n if name_matches(n, "modDependencies") => {
                     result.mod_dependencies = read_dependency_list(reader)?
                 }
-                n if name_matches(n, b"loadAfterByVersion") => {
+                n if name_matches(n, "loadAfterByVersion") => {
                     result.load_after_by_version = read_versioned_string_list(reader)?;
                 }
-                n if name_matches(n, b"loadBeforeByVersion") => {
+                n if name_matches(n, "loadBeforeByVersion") => {
                     result.load_before_by_version = read_versioned_string_list(reader)?;
                 }
-                n if name_matches(n, b"incompatibleWithByVersion") => {
+                n if name_matches(n, "incompatibleWithByVersion") => {
                     result.incompatible_with_by_version = read_versioned_string_list(reader)?;
                 }
-                n if name_matches(n, b"modDependenciesByVersion") => {
+                n if name_matches(n, "modDependenciesByVersion") => {
                     result.mod_dependencies_by_version = read_versioned_dependency_list(reader)?;
                 }
                 _ => {
@@ -132,7 +137,7 @@ fn read_string_list(reader: &mut Reader<&[u8]>) -> Result<Vec<String>, ParseErro
     let mut result = Vec::new();
     loop {
         match reader.read_event() {
-            Ok(Event::Start(e)) if name_matches(e.name().as_ref(), b"li") => {
+            Ok(Event::Start(e)) if name_matches(e.name().as_ref(), "li") => {
                 let text = read_text(reader)?;
                 if let Some(t) = text {
                     result.push(t);
@@ -153,13 +158,13 @@ fn read_dependency(reader: &mut Reader<&[u8]>) -> Result<RawDependency, ParseErr
     loop {
         match reader.read_event() {
             Ok(Event::Start(e)) => match e.name().as_ref() {
-                n if name_matches(n, b"packageId") => dep.package_id = read_text(reader)?,
-                n if name_matches(n, b"displayName") => dep.display_name = read_text(reader)?,
-                n if name_matches(n, b"steamWorkshopUrl") => {
+                n if name_matches(n, "packageId") => dep.package_id = read_text(reader)?,
+                n if name_matches(n, "displayName") => dep.display_name = read_text(reader)?,
+                n if name_matches(n, "steamWorkshopUrl") => {
                     dep.steam_workshop_url = read_text(reader)?
                 }
-                n if name_matches(n, b"downloadUrl") => dep.download_url = read_text(reader)?,
-                n if name_matches(n, b"alternativePackageIds") => {
+                n if name_matches(n, "downloadUrl") => dep.download_url = read_text(reader)?,
+                n if name_matches(n, "alternativePackageIds") => {
                     dep.alternative_package_ids = read_string_list(reader)?;
                 }
                 _ => {
@@ -182,7 +187,7 @@ fn read_dependency_list(reader: &mut Reader<&[u8]>) -> Result<Vec<RawDependency>
     let mut result = Vec::new();
     loop {
         match reader.read_event() {
-            Ok(Event::Start(e)) if name_matches(e.name().as_ref(), b"li") => {
+            Ok(Event::Start(e)) if name_matches(e.name().as_ref(), "li") => {
                 let dep = read_dependency(reader)?;
                 result.push(dep);
             }
@@ -205,12 +210,12 @@ fn read_versioned_string_list(
     let mut entries = Vec::new();
     loop {
         match reader.read_event() {
-            Ok(Event::Start(e)) if name_matches(e.name().as_ref(), b"li") => {
+            Ok(Event::Start(e)) if name_matches(e.name().as_ref(), "li") => {
                 let mut version_key: Option<String> = None;
                 let mut values: Vec<String> = Vec::new();
                 loop {
                     match reader.read_event() {
-                        Ok(Event::Start(inner)) if name_matches(inner.name().as_ref(), b"li") => {
+                        Ok(Event::Start(inner)) if name_matches(inner.name().as_ref(), "li") => {
                             let text = read_text(reader)?;
                             if version_key.is_none() {
                                 version_key = text;
@@ -249,13 +254,13 @@ fn read_versioned_string(reader: &mut Reader<&[u8]>) -> Result<Vec<VersionedStri
     let mut entries = Vec::new();
     loop {
         match reader.read_event() {
-            Ok(Event::Start(e)) if name_matches(e.name().as_ref(), b"li") => {
+            Ok(Event::Start(e)) if name_matches(e.name().as_ref(), "li") => {
                 let mut version_key: Option<String> = None;
                 let mut value = String::new();
                 let mut value_seen = false;
                 loop {
                     match reader.read_event() {
-                        Ok(Event::Start(inner)) if name_matches(inner.name().as_ref(), b"li") => {
+                        Ok(Event::Start(inner)) if name_matches(inner.name().as_ref(), "li") => {
                             let text = read_text(reader)?;
                             if version_key.is_none() {
                                 version_key = text;
@@ -301,12 +306,12 @@ fn read_versioned_dependency_list(
     let mut entries = Vec::new();
     loop {
         match reader.read_event() {
-            Ok(Event::Start(e)) if name_matches(e.name().as_ref(), b"li") => {
+            Ok(Event::Start(e)) if name_matches(e.name().as_ref(), "li") => {
                 let mut version_key: Option<String> = None;
                 let mut deps: Vec<RawDependency> = Vec::new();
                 loop {
                     match reader.read_event() {
-                        Ok(Event::Start(inner)) if name_matches(inner.name().as_ref(), b"li") => {
+                        Ok(Event::Start(inner)) if name_matches(inner.name().as_ref(), "li") => {
                             match read_versioned_dependency_item(reader)? {
                                 VersionedDependencyItem::VersionKey(v) if version_key.is_none() => {
                                     version_key = Some(v);
@@ -358,16 +363,10 @@ fn read_versioned_dependency_item(
                 handle_dep_child(&mut dep, reader, &child_start)?;
             }
             Ok(Event::Text(t)) if !saw_dependency_child => {
-                let s = t
-                    .decode()
-                    .map_err(|e| ParseError::Encoding(e.to_string()))?;
-                text.push_str(&s);
+                text.push_str(t.as_ref());
             }
             Ok(Event::CData(t)) if !saw_dependency_child => {
-                let s = t
-                    .decode()
-                    .map_err(|e| ParseError::Encoding(e.to_string()))?;
-                text.push_str(&s);
+                text.push_str(t.as_ref());
             }
             Ok(Event::GeneralRef(e)) if !saw_dependency_child => {
                 shared_push_general_ref(&mut text, e.as_ref()).map_err(|e| match e {
@@ -378,6 +377,9 @@ fn read_versioned_dependency_item(
             Ok(Event::End(_)) => break,
             Ok(Event::Eof) => break,
             Ok(_) => {}
+            Err(quick_xml::Error::Encoding(e)) => {
+                return Err(ParseError::Encoding(e.to_string()));
+            }
             Err(e) => return Err(ParseError::Xml(e.to_string())),
         }
     }
@@ -401,11 +403,11 @@ fn handle_dep_child(
     child_start: &BytesStart,
 ) -> Result<(), ParseError> {
     match child_start.name().as_ref() {
-        n if name_matches(n, b"packageId") => dep.package_id = read_text(reader)?,
-        n if name_matches(n, b"displayName") => dep.display_name = read_text(reader)?,
-        n if name_matches(n, b"steamWorkshopUrl") => dep.steam_workshop_url = read_text(reader)?,
-        n if name_matches(n, b"downloadUrl") => dep.download_url = read_text(reader)?,
-        n if name_matches(n, b"alternativePackageIds") => {
+        n if name_matches(n, "packageId") => dep.package_id = read_text(reader)?,
+        n if name_matches(n, "displayName") => dep.display_name = read_text(reader)?,
+        n if name_matches(n, "steamWorkshopUrl") => dep.steam_workshop_url = read_text(reader)?,
+        n if name_matches(n, "downloadUrl") => dep.download_url = read_text(reader)?,
+        n if name_matches(n, "alternativePackageIds") => {
             dep.alternative_package_ids = read_string_list(reader)?;
         }
         _ => {

@@ -46,7 +46,12 @@
         "skipBlankLines": true,
         "skipComments": true
       }
-    ]
+    ],
+    "react/refs": "off",
+    "react/set-state-in-effect": "off",
+    "react/preserve-manual-memoization": "off",
+    "react/incompatible-library": "off",
+    "react/use-memo": "off"
   },
   "overrides": [
     {

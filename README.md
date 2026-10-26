@@ -51,7 +51,7 @@ Windows is the primary supported release target. Linux and macOS builds are expe
 
 Requirements:
 
-- [Node.js](https://nodejs.org/) and [pnpm](https://pnpm.io/)
+- [Node.js 24+](https://nodejs.org/) and [pnpm](https://pnpm.io/)
 - [Rust](https://www.rust-lang.org/tools/install)
 
 The application lives in `app/` (frontend and `src-tauri/`); Cargo and pnpm workspaces and shared commands live at the repository root.

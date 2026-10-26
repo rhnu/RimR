@@ -6,7 +6,7 @@ use quick_xml::reader::Reader;
 use crate::domain::PackageId;
 use crate::error::CoreError;
 use crate::formats::game_config::ModsConfig;
-use crate::formats::xml::{XmlReadError, read_text as shared_read_text};
+use crate::formats::xml::{XmlReadError, decode_xml_bytes, read_text as shared_read_text};
 use std::sync::Arc;
 
 /// Reads text content of the current element (after Start) until its End.
@@ -28,7 +28,12 @@ fn read_text(reader: &mut Reader<&[u8]>) -> Result<Option<String>, CoreError> {
 /// - `version` is empty
 pub fn parse_mods_config(bytes: &[u8]) -> Result<ModsConfig, CoreError> {
     tracing::debug!(bytes = bytes.len(), "parsing ModsConfig.xml");
-    let mut reader = Reader::from_reader(bytes);
+    let bytes = decode_xml_bytes(bytes).map_err(|e| match e {
+        XmlReadError::Xml(m) | XmlReadError::Decoding(m) | XmlReadError::UnknownEntity(m) => {
+            CoreError::ModsConfigInvalid(format!("XML error: {}", m))
+        }
+    })?;
+    let mut reader = Reader::from_reader(bytes.as_ref());
 
     let mut version: Option<String> = None;
     let mut active_mods: Option<Vec<PackageId>> = None;
@@ -38,7 +43,7 @@ pub fn parse_mods_config(bytes: &[u8]) -> Result<ModsConfig, CoreError> {
     let mut found_root = false;
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(e)) if e.name().as_ref() == b"ModsConfigData" => {
+            Ok(Event::Start(e)) if e.name().as_ref() == "ModsConfigData" => {
                 found_root = true;
                 break;
             }
@@ -60,13 +65,13 @@ pub fn parse_mods_config(bytes: &[u8]) -> Result<ModsConfig, CoreError> {
             Ok(Event::Start(e)) => {
                 let name = e.name();
                 match name.as_ref() {
-                    b"version" => {
+                    "version" => {
                         version = read_text(&mut reader)?;
                     }
-                    b"activeMods" => {
+                    "activeMods" => {
                         active_mods = Some(read_package_id_list(&mut reader)?);
                     }
-                    b"knownExpansions" => {
+                    "knownExpansions" => {
                         known_expansions = Some(read_package_id_list(&mut reader)?);
                     }
                     _ => {
@@ -112,7 +117,7 @@ fn read_package_id_list(reader: &mut Reader<&[u8]>) -> Result<Vec<PackageId>, Co
     let mut buf = Vec::new();
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(e)) if e.name().as_ref() == b"li" => {
+            Ok(Event::Start(e)) if e.name().as_ref() == "li" => {
                 let text = read_text(reader)?;
                 if let Some(t) = text {
                     result.push(PackageId::new(&t));

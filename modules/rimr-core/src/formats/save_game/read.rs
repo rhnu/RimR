@@ -7,7 +7,7 @@ use quick_xml::reader::Reader;
 
 use crate::domain::PackageId;
 use crate::error::CoreError;
-use crate::formats::xml::{XmlReadError, read_text as shared_read_text};
+use crate::formats::xml::{XmlReadError, decode_xml_bytes, read_text as shared_read_text};
 
 fn read_text(reader: &mut Reader<&[u8]>) -> Result<Option<String>, CoreError> {
     shared_read_text(reader).map_err(|e| match e {
@@ -20,13 +20,18 @@ fn read_text(reader: &mut Reader<&[u8]>) -> Result<Option<String>, CoreError> {
 pub fn parse_save_mod_ids(bytes: &[u8]) -> Result<Vec<PackageId>, CoreError> {
     tracing::debug!(bytes = bytes.len(), "parsing save game modIds");
     let bytes = decompress_save_bytes(bytes)?;
+    let bytes = decode_xml_bytes(bytes.as_ref()).map_err(|e| match e {
+        XmlReadError::Xml(m) | XmlReadError::Decoding(m) | XmlReadError::UnknownEntity(m) => {
+            CoreError::SaveGameInvalid(format!("XML error: {}", m))
+        }
+    })?;
     let mut reader = Reader::from_reader(bytes.as_ref());
     let mut buf = Vec::new();
 
     let mut found_root = false;
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(e)) if e.name().as_ref() == b"savegame" => {
+            Ok(Event::Start(e)) if e.name().as_ref() == "savegame" => {
                 found_root = true;
                 break;
             }
@@ -73,7 +78,7 @@ fn read_meta_mod_ids(reader: &mut Reader<&[u8]>) -> Result<Vec<PackageId>, CoreE
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e)) => {
                 let name = e.name();
-                if name.as_ref() == b"meta" {
+                if name.as_ref() == "meta" {
                     return read_mod_ids_in_meta(reader);
                 }
                 reader
@@ -97,7 +102,7 @@ fn read_mod_ids_in_meta(reader: &mut Reader<&[u8]>) -> Result<Vec<PackageId>, Co
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e)) => {
                 let name = e.name();
-                if name.as_ref() == b"modIds" {
+                if name.as_ref() == "modIds" {
                     return read_package_id_list(reader);
                 }
                 reader
@@ -120,7 +125,7 @@ fn read_package_id_list(reader: &mut Reader<&[u8]>) -> Result<Vec<PackageId>, Co
     let mut buf = Vec::new();
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(e)) if e.name().as_ref() == b"li" => {
+            Ok(Event::Start(e)) if e.name().as_ref() == "li" => {
                 let text = read_text(reader)?;
                 if let Some(t) = text {
                     result.push(PackageId::new(&t));

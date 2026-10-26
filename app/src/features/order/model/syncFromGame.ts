@@ -33,13 +33,11 @@ export function syncModListFromGame(
       title,
     }),
   );
-  const groupSplits = groups.splitGroups.map(
-    (group): OrderStructureEvent => ({
-      kind: 'groupSplit',
-      groupName: group.name,
-      packageIds: group.packageIds,
-    }),
-  );
+  const groupSplits = groups.splitGroups.map((group): OrderStructureEvent => ({
+    kind: 'groupSplit',
+    groupName: group.name,
+    packageIds: group.packageIds,
+  }));
 
   return {
     modList: next,

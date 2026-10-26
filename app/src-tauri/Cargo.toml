@@ -16,33 +16,33 @@ name = "rimr_tauri_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { workspace = true }
 
 [dependencies]
-async-trait = "0.1"
-base64 = "0.22"
-directories = "6"
-image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
-regex = "1"
-rimr-bindings = { path = "../../modules/rimr-bindings" }
-rimr-core = { path = "../../modules/rimr-core" }
-rimr-steam = { path = "../../modules/rimr-steam" }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-steamlocate = "2.1"
-tauri = { version = "2", features = [] }
-tauri-plugin-log = "2"
-tauri-plugin-opener = "2"
-tracing = { version = "0.1", features = ["log"] }
-log = "0.4"
-tauri-plugin-dialog = "2"
-thiserror = "2"
-tokio = { version = "1", features = ["fs", "io-util", "macros", "rt-multi-thread", "sync"] }
-trash = "5"
+async-trait = { workspace = true }
+base64 = { workspace = true }
+directories = { workspace = true }
+image = { workspace = true, features = ["jpeg", "png", "webp"] }
+regex = { workspace = true }
+rimr-bindings = { workspace = true }
+rimr-core = { workspace = true }
+rimr-steam = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+steamlocate = { workspace = true }
+tauri = { workspace = true }
+tauri-plugin-log = { workspace = true }
+tauri-plugin-opener = { workspace = true }
+tracing = { workspace = true, features = ["log"] }
+log = { workspace = true }
+tauri-plugin-dialog = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["fs", "io-util", "macros", "rt-multi-thread", "sync"] }
+trash = { workspace = true }
 
 [dev-dependencies]
-tempfile = "3"
+tempfile = { workspace = true }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-single-instance = "2"
-tauri-plugin-window-state = "2"
+tauri-plugin-single-instance = { workspace = true }
+tauri-plugin-window-state = { workspace = true }

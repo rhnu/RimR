@@ -37,6 +37,8 @@ pnpm check
 
 `.oxfmtrc.json` 中已将 `app/src/commands/generated` 等自动生成的文件加入忽略列表。
 
+项目未启用 React Compiler，因此关闭其专用诊断（`refs`、`set-state-in-effect`、`preserve-manual-memoization`、`incompatible-library`、`use-memo`）；Hooks 调用顺序、依赖和 JSX 正确性检查继续启用。
+
 `pnpm test` 使用 Vitest 跑纯逻辑单测（`profileModel` / `ordering` / `formatError` / `orderDraft` 等），不渲染组件、不依赖 DOM。
 
 ## Tauri 桌面构建验证

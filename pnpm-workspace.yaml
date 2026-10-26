@@ -3,5 +3,11 @@ packages:
 
 allowBuilds:
   esbuild: true
+
 minimumReleaseAgeExclude:
-  - lucide-react@1.21.0
+  - '@tanstack/query-core@5.105.0'
+  - '@tanstack/query-devtools@5.105.0'
+  - '@tanstack/react-query-devtools@5.105.0'
+  - '@tanstack/react-query@5.105.0'
+  - i18next@26.5.11
+  - react-i18next@17.1.9

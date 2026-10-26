@@ -7,17 +7,17 @@ edition.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-quick-xml = { version = "0.39", features = ["encoding"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1", features = ["preserve_order"] }
-async-trait = "0.1"
-flate2 = "1"
-thiserror = "2"
-futures = "0.3"
-indexmap = { version = "2", features = ["serde"] }
-time = { version = "0.3", features = ["formatting"] }
-tracing = "0.1"
-zstd = "0.13"
+quick-xml = { workspace = true, features = ["encoding"] }
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["preserve_order"] }
+async-trait = { workspace = true }
+flate2 = { workspace = true }
+thiserror = { workspace = true }
+futures = { workspace = true }
+indexmap = { workspace = true, features = ["serde"] }
+time = { workspace = true, features = ["formatting"] }
+tracing = { workspace = true }
+zstd = { workspace = true }
 
 [dev-dependencies]
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

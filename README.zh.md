@@ -51,7 +51,7 @@ Windows 是主要支持的发行目标。Linux 与 macOS 构建目前为实验�
 
 环境要求：
 
-- [Node.js](https://nodejs.org/) 与 [pnpm](https://pnpm.io/)
+- [Node.js 24+](https://nodejs.org/) 与 [pnpm](https://pnpm.io/)
 - [Rust](https://www.rust-lang.org/tools/install)
 
 应用位于 `app/`（前端与 `src-tauri/`）；Cargo、pnpm workspace 和统一命令保留在仓库根目录。
