@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { useVirtualizer, type Virtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
 import { Loader2, RefreshCw } from 'lucide-react';
@@ -10,8 +10,13 @@ import { useSteamWorkshopLog } from '@/queries/logs';
 
 export function SteamWorkshopTab() {
   const query = useSteamWorkshopLog();
+  const { refetch } = query;
   const [search, setSearch] = useState('');
   const parentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
 
   const entries = useMemo(() => query.data?.entries ?? [], [query.data]);
   const filtered = useMemo(() => filterWorkshopEntries(entries, search), [entries, search]);
@@ -23,7 +28,7 @@ export function SteamWorkshopTab() {
   });
 
   const hasData = query.data != null;
-  const onRefresh = () => void query.refetch();
+  const onRefresh = () => void refetch();
 
   return (
     <div className="space-y-2">
