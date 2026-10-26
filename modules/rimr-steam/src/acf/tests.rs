@@ -67,10 +67,10 @@ fn handles_empty_acf() {
 
 #[test]
 fn computes_acf_path_for_library() {
-    let path = appworkshop_acf_path(Path::new("D:/SteamLibrary"));
+    let path = appworkshop_acf_path(Path::new("SteamLibrary"));
     assert_eq!(
         path,
-        PathBuf::from("D:/SteamLibrary/steamapps/workshop/appworkshop_294100.acf")
+        PathBuf::from("SteamLibrary/steamapps/workshop/appworkshop_294100.acf")
     );
 }
 

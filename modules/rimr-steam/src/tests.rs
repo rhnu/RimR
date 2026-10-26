@@ -2,7 +2,12 @@ use super::*;
 
 #[test]
 fn parses_workshop_file_id_from_mod_path() {
-    let path = r"C:\Steam\steamapps\workshop\content\294100\2009463077";
+    let path = Path::new("SteamLibrary")
+        .join("steamapps")
+        .join("workshop")
+        .join("content")
+        .join("294100")
+        .join("2009463077");
 
     let file_id = workshop_file_id_from_mod_path(path).expect("workshop id should parse");
 
@@ -11,7 +16,12 @@ fn parses_workshop_file_id_from_mod_path() {
 
 #[test]
 fn rejects_non_numeric_workshop_directory_names() {
-    let path = r"C:\Steam\steamapps\workshop\content\294100\not-a-number";
+    let path = Path::new("SteamLibrary")
+        .join("steamapps")
+        .join("workshop")
+        .join("content")
+        .join("294100")
+        .join("not-a-number");
 
     assert!(workshop_file_id_from_mod_path(path).is_none());
 }
