@@ -1,5 +1,8 @@
-use super::mods_conv::{source_kind, source_kind_to_core};
-use rimr_bindings::dto::*;
+use rimr_bindings::dto::{
+    DisplayAliasDto, LibraryDto, LibrarySettingsDto, LibrarySettingsFileDto, ModIdentityDto,
+    ModListDto, ModListEntryDto, ModListFileDto, ModListGroupChildDto, ModListIndexDto,
+    ModListSummaryDto, ModTagBindingDto, RimrFileKind, TagDefDto,
+};
 use rimr_core::{
     Alias, GroupChild, Library as CoreLibrary, LibrarySettings as CoreLibrarySettings,
     LibrarySettingsFile as CoreLibrarySettingsFile, ModIdentity as CoreModIdentity,
@@ -7,6 +10,8 @@ use rimr_core::{
     ModListIndex as CoreModListIndex, ModListSummary as CoreModListSummary,
     ModTagBinding as CoreModTagBinding, TagDef as CoreTagDef,
 };
+
+use super::mods_conv::{source_kind, source_kind_to_core};
 
 pub fn mod_identity_to_core(dto: &ModIdentityDto) -> CoreModIdentity {
     CoreModIdentity {

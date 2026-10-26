@@ -1,19 +1,22 @@
 //! Application use cases and runtime session state.
 
-use crate::diagnostics::Diagnostic;
-use crate::domain::{ActiveModList, ModCatalog, ModList, PackageId};
-use crate::error::{CoreError, RimrFileParseError};
-use crate::formats::ModsConfig;
-use crate::ports::{Clock, ModSource};
-use crate::rules::ValidationReport;
-use crate::services;
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
+
+use crate::{
+    diagnostics::Diagnostic,
+    domain::{ActiveModList, ModCatalog, ModList, PackageId},
+    error::{CoreError, RimrFileParseError},
+    formats::ModsConfig,
+    ports::{Clock, ModSource},
+    services,
+};
 
 pub const RIMR_FILE_FORMAT_VERSION: u32 = 2;
 
-/// Core-owned runtime state for a RimR workspace session.
+/// Core-owned runtime state for a `RimR` workspace session.
 #[derive(Debug, Default, Clone)]
 pub struct WorkspaceSession {
     catalog: Option<ModCatalog>,
@@ -43,17 +46,11 @@ pub struct GameConfigWriteResult {
 }
 
 impl WorkspaceSession {
-    pub fn catalog(&self) -> Option<&ModCatalog> {
-        self.catalog.as_ref()
-    }
+    pub fn catalog(&self) -> Option<&ModCatalog> { self.catalog.as_ref() }
 
-    pub fn active_mods(&self) -> Option<&ActiveModList> {
-        self.active_mods.as_ref()
-    }
+    pub fn active_mods(&self) -> Option<&ActiveModList> { self.active_mods.as_ref() }
 
-    pub fn mods_config(&self) -> Option<&ModsConfig> {
-        self.mods_config.as_ref()
-    }
+    pub fn mods_config(&self) -> Option<&ModsConfig> { self.mods_config.as_ref() }
 
     pub fn source_metadata(&self, source_key: &str) -> Option<&SourceMetadata> {
         self.source_metadata.get(source_key)
@@ -66,6 +63,9 @@ impl WorkspaceSession {
         self.source_metadata.clear();
     }
 
+    /// # Errors
+    ///
+    /// Returns a source error if mod discovery fails.
     pub async fn scan_mods(
         &mut self,
         source: &dyn ModSource,
@@ -90,6 +90,9 @@ impl WorkspaceSession {
         Ok(report)
     }
 
+    /// # Errors
+    ///
+    /// Returns a source error if reading fails, or an invalid-config error if the file is missing or malformed.
     pub async fn load_game_config(
         &mut self,
         source: &dyn ModSource,
@@ -111,6 +114,9 @@ impl WorkspaceSession {
         })
     }
 
+    /// # Errors
+    ///
+    /// Returns a missing-session error if the catalog has not been loaded.
     pub fn validate_active_order(
         &self,
         active_mods: Vec<String>,
@@ -120,8 +126,8 @@ impl WorkspaceSession {
             .as_ref()
             .ok_or(CoreError::SessionMissing("catalog is not loaded"))?;
         let ids = active_mods
-            .iter()
-            .map(|package_id| PackageId::new(package_id))
+            .into_iter()
+            .map(|package_id| PackageId::new(&package_id))
             .collect::<Vec<_>>();
         let list = ActiveModList::from_slice(&ids);
         Ok(services::validate_order(
@@ -131,6 +137,9 @@ impl WorkspaceSession {
         ))
     }
 
+    /// # Errors
+    ///
+    /// Returns a missing-session error if no config is loaded, or a serialization or source error if writing fails.
     pub async fn write_game_config(
         &mut self,
         source: &dyn ModSource,
@@ -167,7 +176,7 @@ pub enum RimrFileKind {
     LibrarySettings,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GameConfigBackupFile {
     pub kind: RimrFileKind,
@@ -184,7 +193,7 @@ pub struct GameConfigBackupFile {
     pub groups: Vec<Value>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModListFile {
     pub kind: RimrFileKind,
@@ -195,7 +204,7 @@ pub struct ModListFile {
     pub mod_list: ModList,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LibrarySettingsFile {
     pub kind: RimrFileKind,
@@ -215,10 +224,11 @@ pub struct RimrFileSerializer<'a> {
 }
 
 impl<'a> RimrFileSerializer<'a> {
-    pub fn new(clock: &'a dyn Clock) -> Self {
-        Self { clock }
-    }
+    pub fn new(clock: &'a dyn Clock) -> Self { Self { clock } }
 
+    /// # Errors
+    ///
+    /// Returns a JSON error if the backup cannot be serialized.
     pub fn export_game_config_backup(
         &self,
         list: &ActiveModList,
@@ -243,6 +253,9 @@ impl<'a> RimrFileSerializer<'a> {
         serialize(file)
     }
 
+    /// # Errors
+    ///
+    /// Returns a file-parse error if JSON, kind, version, or required fields are invalid.
     pub fn import_game_config_backup(
         &self,
         bytes: &[u8],
@@ -250,6 +263,9 @@ impl<'a> RimrFileSerializer<'a> {
         parse_versioned_file(bytes, RimrFileKind::GameConfigBackup, "gameConfigBackup")
     }
 
+    /// # Errors
+    ///
+    /// Returns a JSON error if the mod list cannot be serialized.
     pub fn export_mod_list(
         &self,
         mod_list: &ModList,
@@ -265,10 +281,16 @@ impl<'a> RimrFileSerializer<'a> {
         serialize(file)
     }
 
+    /// # Errors
+    ///
+    /// Returns a file-parse error if JSON, kind, version, or required fields are invalid.
     pub fn import_mod_list(&self, bytes: &[u8]) -> Result<ModListFile, CoreError> {
         parse_versioned_file(bytes, RimrFileKind::ModList, "modList")
     }
 
+    /// # Errors
+    ///
+    /// Returns a JSON error if library settings cannot be serialized.
     pub fn export_library_settings(
         &self,
         settings: &crate::domain::LibrarySettings,
@@ -282,6 +304,9 @@ impl<'a> RimrFileSerializer<'a> {
         serialize(file)
     }
 
+    /// # Errors
+    ///
+    /// Returns a file-parse error if JSON, kind, version, or required fields are invalid.
     pub fn import_library_settings(&self, bytes: &[u8]) -> Result<LibrarySettingsFile, CoreError> {
         parse_versioned_file(bytes, RimrFileKind::LibrarySettings, "librarySettings")
     }
@@ -315,7 +340,9 @@ where
         .get("formatVersion")
         .or_else(|| value.get("format_version"))
         .and_then(Value::as_u64)
-        .ok_or(RimrFileParseError::MissingField("formatVersion"))? as u32;
+        .ok_or(RimrFileParseError::MissingField("formatVersion"))?;
+    let found_version: u32 =
+        serde_json::from_value(Value::from(found_version)).map_err(RimrFileParseError::Json)?;
     if found_version != RIMR_FILE_FORMAT_VERSION {
         return Err(RimrFileParseError::UnsupportedFormatVersion {
             kind: kind_name,
@@ -337,5 +364,5 @@ fn kind_value(kind: RimrFileKind) -> &'static str {
     }
 }
 
-#[allow(dead_code)]
-fn _assert_validation_report_send_sync(_: &ValidationReport) {}
+#[cfg(test)]
+mod tests;

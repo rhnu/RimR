@@ -1,6 +1,7 @@
+use std::path::PathBuf;
+
 use anyhow::{Result, anyhow};
 use clap::{Parser, Subcommand};
-use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 #[command(author, version, about = "RimR workspace automation tasks")]
@@ -48,6 +49,6 @@ fn main() -> Result<()> {
             }
             std::fs::write(output_path, contents)?;
             Ok(())
-        }
+        },
     }
 }

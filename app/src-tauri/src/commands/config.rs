@@ -1,11 +1,15 @@
-use crate::app_config::AppConfig;
-use crate::dto::SaveAppConfigRequest;
-use crate::error::CommandResult;
-use crate::paths::DetectedPaths;
-use crate::state::AppState;
 use tauri::State;
 
+use crate::{
+    app_config::AppConfig, dto::SaveAppConfigRequest, error::CommandResult, paths::DetectedPaths,
+    state::AppState,
+};
+
 #[tauri::command]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri extracts command arguments by value"
+)]
 pub fn get_app_config(state: State<'_, AppState>) -> CommandResult<AppConfig> {
     tracing::info!(command = "get_app_config", "command invoked");
     state
@@ -14,6 +18,10 @@ pub fn get_app_config(state: State<'_, AppState>) -> CommandResult<AppConfig> {
 }
 
 #[tauri::command]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri extracts command arguments by value"
+)]
 pub fn save_app_config(
     state: State<'_, AppState>,
     request: SaveAppConfigRequest,
@@ -25,6 +33,10 @@ pub fn save_app_config(
 }
 
 #[tauri::command]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri extracts command arguments by value"
+)]
 pub fn autodetect_paths(state: State<'_, AppState>) -> CommandResult<DetectedPaths> {
     tracing::info!(command = "autodetect_paths", "command invoked");
     state.apply_detected_paths().inspect_err(
@@ -33,6 +45,10 @@ pub fn autodetect_paths(state: State<'_, AppState>) -> CommandResult<DetectedPat
 }
 
 #[tauri::command]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri extracts command arguments by value"
+)]
 pub fn clear_session_cache(state: State<'_, AppState>) -> CommandResult<()> {
     tracing::info!(command = "clear_session_cache", "command invoked");
     state.clear_session_cache().inspect_err(

@@ -1,7 +1,11 @@
-use crate::dto::{ReadSaveModIdsDto, ReadSaveModIdsRequest};
-use crate::error::{CommandError, CommandErrorCode, CommandResult};
-use rimr_core::parse_save_mod_ids;
 use std::path::PathBuf;
+
+use rimr_core::parse_save_mod_ids;
+
+use crate::{
+    dto::{ReadSaveModIdsDto, ReadSaveModIdsRequest},
+    error::{CommandError, CommandErrorCode, CommandResult},
+};
 
 #[tauri::command]
 pub async fn read_save_mod_ids(request: ReadSaveModIdsRequest) -> CommandResult<ReadSaveModIdsDto> {
@@ -20,14 +24,14 @@ async fn read_save_mod_ids_impl(path: PathBuf) -> CommandResult<ReadSaveModIdsDt
                 format!("save file not found: {}", path.display()),
             )
             .with_path(path));
-        }
+        },
         Err(e) => {
             return Err(CommandError::new(
                 CommandErrorCode::SourceIo,
-                format!("failed to read save file: {}", e),
+                format!("failed to read save file: {e}"),
             )
             .with_path(path));
-        }
+        },
     };
     let mod_ids = parse_save_mod_ids(&bytes).map_err(crate::error::core_error)?;
     Ok(ReadSaveModIdsDto {

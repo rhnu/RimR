@@ -1,11 +1,14 @@
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
+
 use async_trait::async_trait;
 use rimr_core::{
     ActiveModList, AppClock, Clock, CoreError, GameVersion, ModFeatures, ModList, ModSource,
     ModSourceEntry, ModSourceKey, PackageId, RimrFileKind, RimrFileParseError, RimrFileSerializer,
     SourceError, SourceFile, SourceKind, WorkspaceSession,
 };
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 
 #[derive(Default)]
 struct MemorySource {
@@ -34,13 +37,16 @@ impl ModSource for MemorySource {
         Ok(self
             .mods_config
             .lock()
-            .unwrap()
+            .expect("test configuration mutex is not poisoned")
             .clone()
             .map(|bytes| SourceFile::new(None, "ModsConfig.xml", bytes)))
     }
 
     async fn write_mods_config(&self, bytes: Vec<u8>) -> Result<(), SourceError> {
-        *self.mods_config.lock().unwrap() = Some(bytes);
+        *self
+            .mods_config
+            .lock()
+            .expect("test configuration mutex is not poisoned") = Some(bytes);
         Ok(())
     }
 
@@ -52,9 +58,7 @@ impl ModSource for MemorySource {
 struct FixedClock;
 
 impl Clock for FixedClock {
-    fn now_rfc3339(&self) -> String {
-        "2026-06-20T00:00:00Z".to_string()
-    }
+    fn now_rfc3339(&self) -> String { "2026-06-20T00:00:00Z".to_string() }
 }
 
 fn source() -> MemorySource {
@@ -67,10 +71,10 @@ fn source() -> MemorySource {
         }],
         about_xmls: HashMap::from([(
             key,
-            br#"<ModMetaData>
+            br"<ModMetaData>
   <packageId>local.mod</packageId>
   <name>Local Mod</name>
-</ModMetaData>"#
+</ModMetaData>"
                 .to_vec(),
         )]),
         mods_config: Mutex::new(Some(

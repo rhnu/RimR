@@ -7,7 +7,6 @@ mod mods_conv;
 pub use backups_conv::*;
 pub use mod_lists_conv::*;
 pub use mods_conv::*;
-
 use rimr_core::{ActiveModList, PackageId};
 
 pub fn packages(ids: &[PackageId]) -> Vec<String> {
@@ -15,6 +14,6 @@ pub fn packages(ids: &[PackageId]) -> Vec<String> {
 }
 
 pub fn active_list_from_strings(ids: Vec<String>) -> ActiveModList {
-    let ids: Vec<PackageId> = ids.iter().map(|id| PackageId::new(id)).collect();
+    let ids: Vec<PackageId> = ids.into_iter().map(|id| PackageId::new(&id)).collect();
     ActiveModList::from_slice(&ids)
 }

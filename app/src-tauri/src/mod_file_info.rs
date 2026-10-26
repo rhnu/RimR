@@ -1,11 +1,17 @@
-use crate::dto::{ModFolderSizeDto, ModPreviewDto};
-use crate::error::{CommandError, CommandErrorCode, CommandResult};
-use crate::fs_utils::resolve_path_case_insensitive;
+use std::{
+    io::Cursor,
+    path::{Path, PathBuf},
+    time::UNIX_EPOCH,
+};
+
 use base64::Engine;
 use image::{DynamicImage, GenericImageView, ImageFormat, imageops::FilterType};
-use std::io::Cursor;
-use std::path::{Path, PathBuf};
-use std::time::UNIX_EPOCH;
+
+use crate::{
+    dto::{ModFolderSizeDto, ModPreviewDto},
+    error::{CommandError, CommandErrorCode, CommandResult},
+    fs_utils::resolve_path_case_insensitive,
+};
 
 #[derive(Debug, Clone)]
 pub struct CachedModPreview {
@@ -46,13 +52,13 @@ struct ModFolderSizeFingerprint {
 
 pub fn load_mod_preview(
     source_key: String,
-    mod_path: PathBuf,
+    mod_path: &Path,
     mod_icon_path: Option<String>,
     cached: Option<CachedModPreview>,
 ) -> CommandResult<LoadedModPreview> {
     tracing::info!(%source_key, ?mod_path, cache_hit = cached.is_some(), "loading mod preview");
-    ensure_readable_path(&mod_path)?;
-    let preview_path = find_preview_path(&mod_path, mod_icon_path.as_deref());
+    ensure_readable_path(mod_path)?;
+    let preview_path = find_preview_path(mod_path, mod_icon_path.as_deref());
     let preview_metadata = preview_path
         .as_ref()
         .and_then(|path| std::fs::metadata(path).ok());
@@ -78,10 +84,10 @@ pub fn load_mod_preview(
         .and_then(|path| preview_data_url(&path).ok())
         .flatten();
     let dto = ModPreviewDto {
-        source_key: source_key.clone(),
+        source_key,
         preview_data_url,
     };
-    tracing::info!(%source_key, has_preview = dto.preview_data_url.is_some(), "mod preview loaded");
+    tracing::info!(source_key = %dto.source_key, has_preview = dto.preview_data_url.is_some(), "mod preview loaded");
     let cache = CachedModPreview {
         fingerprint,
         dto: dto.clone(),
@@ -91,11 +97,11 @@ pub fn load_mod_preview(
 
 pub fn load_mod_folder_size(
     source_key: String,
-    mod_path: PathBuf,
+    mod_path: &Path,
     cached: Option<CachedModFolderSize>,
 ) -> CommandResult<LoadedModFolderSize> {
     tracing::info!(%source_key, ?mod_path, cache_hit = cached.is_some(), "loading mod folder size");
-    let metadata = ensure_readable_path(&mod_path)?;
+    let metadata = ensure_readable_path(mod_path)?;
     let fingerprint = ModFolderSizeFingerprint {
         modified_at_ms: metadata_modified_at_ms(&metadata),
     };
@@ -110,10 +116,10 @@ pub fn load_mod_folder_size(
     }
 
     let dto = ModFolderSizeDto {
-        source_key: source_key.clone(),
-        folder_size_bytes: folder_size_best_effort(&mod_path),
+        source_key,
+        folder_size_bytes: folder_size_best_effort(mod_path),
     };
-    tracing::info!(%source_key, folder_size_bytes = dto.folder_size_bytes, "mod folder size loaded");
+    tracing::info!(source_key = %dto.source_key, folder_size_bytes = dto.folder_size_bytes, "mod folder size loaded");
     let cache = CachedModFolderSize {
         fingerprint,
         dto: dto.clone(),
@@ -134,8 +140,9 @@ fn metadata_modified_at_ms(metadata: &std::fs::Metadata) -> u64 {
         .modified()
         .ok()
         .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
-        .map(|duration| duration.as_millis().min(u128::from(u64::MAX)) as u64)
-        .unwrap_or(0)
+        .map_or(0, |duration| {
+            u64::try_from(duration.as_millis()).unwrap_or(u64::MAX)
+        })
 }
 
 fn folder_size_best_effort(path: &Path) -> u64 {
@@ -246,7 +253,7 @@ fn preview_data_url(path: &Path) -> CommandResult<Option<String>> {
     let (mime, bytes) = match image::load_from_memory_with_format(&bytes, format) {
         Ok(image) if needs_display_resize(&image, MAX_DISPLAY_PREVIEW_EDGE) => (
             "image/png",
-            resized_png_bytes(image, MAX_DISPLAY_PREVIEW_EDGE)?,
+            resized_png_bytes(&image, MAX_DISPLAY_PREVIEW_EDGE)?,
         ),
         Ok(_) => (mime, bytes),
         Err(_) if bytes.len() <= MAX_ORIGINAL_FALLBACK_BYTES => (mime, bytes),
@@ -261,7 +268,7 @@ fn needs_display_resize(image: &DynamicImage, max_edge: u32) -> bool {
     width > max_edge || height > max_edge
 }
 
-fn resized_png_bytes(image: DynamicImage, max_edge: u32) -> CommandResult<Vec<u8>> {
+fn resized_png_bytes(image: &DynamicImage, max_edge: u32) -> CommandResult<Vec<u8>> {
     let resized = image.resize(max_edge, max_edge, FilterType::Triangle);
     let mut bytes = Cursor::new(Vec::new());
     resized

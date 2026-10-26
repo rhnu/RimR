@@ -56,6 +56,8 @@ Requirements:
 
 The application lives in `app/` (frontend and `src-tauri/`); Cargo and pnpm workspaces and shared commands live at the repository root.
 
+Install [Rusteward and the quality tools](docs/quality-gates.md#rusteward) before running `pnpm check`.
+
 Run the development app from the repository root:
 
 ```powershell

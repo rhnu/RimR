@@ -18,7 +18,7 @@ pub enum DiagnosticCode {
     DependencyMissing,
     /// A package id appears in ModsConfig.xml but no installed mod matches it.
     ConfigModMissing,
-    /// A package id is active in a RimR mod list but no installed mod matches it.
+    /// A package id is active in a `RimR` mod list but no installed mod matches it.
     ActiveModMissing,
     /// A hard runtime dependency is installed but not active.
     DependencyInactive,

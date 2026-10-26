@@ -1,23 +1,22 @@
 pub use rimr_bindings::error::*;
-
 use rimr_core::{CoreError, LibraryError, SourceError};
 
 pub fn core_error(error: CoreError) -> CommandError {
     match error {
         CoreError::ModsConfigInvalid(message) => {
             CommandError::new(CommandErrorCode::ModsConfigInvalid, message)
-        }
+        },
         CoreError::SaveGameInvalid(message) => {
             CommandError::new(CommandErrorCode::SaveGameInvalid, message)
-        }
+        },
         CoreError::BackupInvalid(message) => {
             CommandError::new(CommandErrorCode::BackupInvalid, message)
-        }
+        },
         CoreError::Source(source) => source_error(source),
         CoreError::Json(error) => CommandError::new(CommandErrorCode::Json, error.to_string()),
         CoreError::SessionMissing(message) => {
             CommandError::new(CommandErrorCode::StateMissing, message)
-        }
+        },
         CoreError::RimrFile(error) => CommandError::new(CommandErrorCode::Json, error.to_string()),
     }
 }
@@ -35,7 +34,7 @@ pub fn source_error(error: SourceError) -> CommandError {
         },
         SourceError::NotFound(source_key) => CommandError {
             code: CommandErrorCode::PathInvalid,
-            message: format!("source not found: {}", source_key),
+            message: format!("source not found: {source_key}"),
             path: None,
             source_key: Some(source_key.as_str().to_string()),
         },

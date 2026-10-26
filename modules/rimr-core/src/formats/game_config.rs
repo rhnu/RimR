@@ -3,8 +3,9 @@
 mod read;
 mod write;
 
-use crate::domain::PackageId;
 use std::sync::Arc;
+
+use crate::domain::PackageId;
 
 /// The game's `ModsConfig.xml` content.
 ///

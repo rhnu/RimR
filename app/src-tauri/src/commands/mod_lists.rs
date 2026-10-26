@@ -1,13 +1,16 @@
-use crate::dto::{
-    ApplyModListDto, ApplyModListRequest, CreateModListRequest, DeleteModListRequest,
-    ExportLibrarySettingsFileDto, ExportLibrarySettingsFileRequest, ExportModListFileDto,
-    ExportModListFileRequest, ImportLibrarySettingsFileRequest, ImportModListFileRequest,
-    LibraryDto, LibrarySettingsDto, ModListDto, ModListIndexDto, SaveLibrarySettingsRequest,
-    SaveModListRequest, SetCurrentModListRequest,
-};
-use crate::error::CommandResult;
-use crate::state::AppState;
 use tauri::State;
+
+use crate::{
+    dto::{
+        ApplyModListDto, ApplyModListRequest, CreateModListRequest, DeleteModListRequest,
+        ExportLibrarySettingsFileDto, ExportLibrarySettingsFileRequest, ExportModListFileDto,
+        ExportModListFileRequest, ImportLibrarySettingsFileRequest, ImportModListFileRequest,
+        LibraryDto, LibrarySettingsDto, ModListDto, ModListIndexDto, SaveLibrarySettingsRequest,
+        SaveModListRequest, SetCurrentModListRequest,
+    },
+    error::CommandResult,
+    state::AppState,
+};
 
 #[tauri::command]
 pub async fn load_library(state: State<'_, AppState>) -> CommandResult<LibraryDto> {

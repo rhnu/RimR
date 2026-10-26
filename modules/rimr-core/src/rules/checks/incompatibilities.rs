@@ -1,9 +1,12 @@
 //! Incompatible-mods-both-active check.
 
-use crate::diagnostics::{Diagnostic, DiagnosticCode, DiagnosticLocation, Severity};
-use crate::domain::{ActiveModList, ModCatalog, PackageId};
-use crate::rules::graph::LoadOrderGraph;
 use std::collections::HashSet;
+
+use crate::{
+    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticLocation, Severity},
+    domain::{ActiveModList, ModCatalog, PackageId},
+    rules::graph::LoadOrderGraph,
+};
 
 /// Checks for incompatible mods that are both active.
 pub(crate) fn check_incompatibles(
@@ -19,10 +22,7 @@ pub(crate) fn check_incompatibles(
                 let diagnostic = Diagnostic::new(
                     Severity::Error,
                     DiagnosticCode::IncompatibleActive,
-                    format!(
-                        "{} and {} are incompatible but both active",
-                        pkg, incompatible
-                    ),
+                    format!("{pkg} and {incompatible} are incompatible but both active"),
                 )
                 .with_param("packageId", pkg.as_str())
                 .with_param("incompatiblePackageId", incompatible.as_str())

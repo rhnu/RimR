@@ -23,6 +23,11 @@ jobs:
           rust-components: clippy, rustfmt
           cache-shared-key: check
 
+      - name: Install Rusteward
+        uses: rhnu/rusteward@8b38da7050ecd77dec11bd763c913012e5e3bfc1
+        with:
+          ref: 8b38da7050ecd77dec11bd763c913012e5e3bfc1
+
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 

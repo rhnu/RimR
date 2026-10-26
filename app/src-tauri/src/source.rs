@@ -1,9 +1,11 @@
-use crate::fs_utils::resolve_path_case_insensitive;
+use std::path::{Path, PathBuf};
+
 use async_trait::async_trait;
 use rimr_core::{
     ModFeatures, ModSource, ModSourceEntry, ModSourceKey, SourceError, SourceFile, SourceKind,
 };
-use std::path::{Path, PathBuf};
+
+use crate::fs_utils::resolve_path_case_insensitive;
 
 #[derive(Debug, Clone)]
 pub struct SourceRoots {
@@ -19,9 +21,7 @@ pub struct FsModSource {
 }
 
 impl FsModSource {
-    pub fn new(roots: SourceRoots) -> Self {
-        Self { roots }
-    }
+    pub fn new(roots: SourceRoots) -> Self { Self { roots } }
 
     fn mods_config_path(&self) -> PathBuf {
         self.roots.data_dir.join("Config").join("ModsConfig.xml")
@@ -71,14 +71,14 @@ impl ModSource for FsModSource {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 tracing::debug!(path = ?about, "About.xml not found");
                 Ok(None)
-            }
+            },
             Err(e) => {
                 tracing::error!(path = ?about, error = %e, "failed to read About.xml");
                 Err(SourceError::Io {
                     source_key: key.clone(),
                     message: e.to_string(),
                 })
-            }
+            },
         }
     }
 
@@ -94,14 +94,14 @@ impl ModSource for FsModSource {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 tracing::info!(path = ?path, "ModsConfig.xml not found");
                 Ok(None)
-            }
+            },
             Err(e) => {
                 tracing::error!(path = ?path, error = %e, "failed to read ModsConfig.xml");
                 Err(SourceError::Io {
                     source_key: ModSourceKey::new(path.to_string_lossy().into_owned()),
                     message: e.to_string(),
                 })
-            }
+            },
         }
     }
 
@@ -157,9 +157,8 @@ impl ModSource for FsModSource {
 }
 
 async fn assemblies_has_dll(dir: &Path) -> bool {
-    let mut read_dir = match tokio::fs::read_dir(dir).await {
-        Ok(rd) => rd,
-        Err(_) => return false,
+    let Ok(mut read_dir) = tokio::fs::read_dir(dir).await else {
+        return false;
     };
     while let Ok(Some(entry)) = read_dir.next_entry().await {
         if entry
@@ -185,14 +184,14 @@ async fn discover_children(
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             tracing::debug!(root = ?root, "mod source root not found");
             return Ok(());
-        }
+        },
         Err(e) => {
             tracing::error!(root = ?root, error = %e, "failed to read mod source root");
             return Err(SourceError::Io {
                 source_key: ModSourceKey::new(root.to_string_lossy().into_owned()),
                 message: e.to_string(),
             });
-        }
+        },
     };
 
     while let Some(entry) = read_dir.next_entry().await.map_err(|e| SourceError::Io {

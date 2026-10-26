@@ -1,4 +1,5 @@
 use std::env;
+
 use tauri_plugin_log::{Target, TargetKind};
 
 fn env_level(default: log::LevelFilter) -> log::LevelFilter {

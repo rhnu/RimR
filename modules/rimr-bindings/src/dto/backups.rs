@@ -1,7 +1,9 @@
-use super::mod_lists::RimrFileKind;
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+
+use super::mod_lists::RimrFileKind;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]

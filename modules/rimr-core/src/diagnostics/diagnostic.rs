@@ -1,10 +1,12 @@
 //! Diagnostic value and source span types.
 
-use crate::diagnostics::{DiagnosticCode, Severity};
-use crate::domain::PackageId;
-use crate::ports::ModSourceKey;
-use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::{collections::BTreeMap, sync::Arc};
+
+use crate::{
+    diagnostics::{DiagnosticCode, Severity},
+    domain::PackageId,
+    ports::ModSourceKey,
+};
 
 /// Location within a source file for error reporting.
 #[derive(Debug, Clone)]
@@ -42,6 +44,7 @@ impl DiagnosticLocation {
         }
     }
 
+    #[must_use]
     pub fn with_position(
         mut self,
         line: Option<u32>,
@@ -84,21 +87,25 @@ impl Diagnostic {
         }
     }
 
+    #[must_use]
     pub fn with_location(mut self, location: DiagnosticLocation) -> Self {
         self.location = Some(location);
         self
     }
 
+    #[must_use]
     pub fn with_related_locations(mut self, locations: Vec<DiagnosticLocation>) -> Self {
         self.related_locations = locations;
         self
     }
 
+    #[must_use]
     pub fn with_param(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.params.insert(key.into(), value.into());
         self
     }
 
+    #[must_use]
     pub fn with_related_packages(mut self, packages: Vec<PackageId>) -> Self {
         self.related_packages = packages;
         self

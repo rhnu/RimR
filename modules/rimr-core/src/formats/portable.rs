@@ -1,6 +1,6 @@
-//! RimR `.rimr.json` backup/restore.
+//! `RimR` `.rimr.json` backup/restore.
 //!
-//! Backup files carry the active mod list plus RimR extra metadata
+//! Backup files carry the active mod list plus `RimR` extra metadata
 //! (`formatVersion`, `backupAt`, `note`, `gameVersion` snapshot). The
 //! `groups[]`/`tags[]` fields are reserved for future use and parsed
 //! leniently (unknown fields ignored).

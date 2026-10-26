@@ -1,7 +1,8 @@
 //! Hard runtime dependency declared in `modDependencies`.
 
-use crate::domain::PackageId;
 use std::sync::Arc;
+
+use crate::domain::PackageId;
 
 /// A single hard runtime dependency declared in `modDependencies`.
 #[derive(Debug, Clone)]
@@ -27,16 +28,4 @@ impl Dependency {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn from_id_minimal() {
-        let d = Dependency::from_id(PackageId::new("dep.x"));
-        assert_eq!(d.package_id, PackageId::new("dep.x"));
-        assert!(d.display_name.is_none());
-        assert!(d.steam_workshop_url.is_none());
-        assert!(d.download_url.is_none());
-        assert!(d.alternative_package_ids.is_empty());
-    }
-}
+mod tests;

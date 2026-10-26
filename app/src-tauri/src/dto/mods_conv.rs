@@ -1,12 +1,18 @@
-use super::packages;
-use rimr_bindings::dto::*;
+use std::{path::Path, time::UNIX_EPOCH};
+
+use rimr_bindings::dto::{
+    ActiveListLoadDto, CatalogSnapshotDto, DependencyDto, DependencyGraphDto, DiagnosticCodeDto,
+    DiagnosticDto, DiagnosticLocationDto, DuplicatePackageIdDto, EdgeDto, EdgeKindDto,
+    EdgeSourceDto, IncompatibilityDto, ModCatalogDto, ModMetadataDto, ModsConfigDto, RulesDto,
+    SeverityDto, SourceKindDto, ValidateOrderDto, ValidationReportDto,
+};
 use rimr_core::{
     ActiveLoadResult, Dependency, Diagnostic, DiagnosticCode, DuplicatePackageId, EdgeKind,
     EdgeSource, GameConfigLoadResult, LoadOrderGraph, ModCatalog, ModMetadata, ModsConfig, Rules,
     Severity, SourceKind, ValidateOrderResult, ValidationReport,
 };
-use std::path::Path;
-use std::time::UNIX_EPOCH;
+
+use super::packages;
 
 pub fn catalog_snapshot(catalog: &ModCatalog, diagnostics: &[Diagnostic]) -> CatalogSnapshotDto {
     CatalogSnapshotDto {
@@ -56,7 +62,7 @@ pub fn mod_metadata(metadata: &ModMetadata) -> ModMetadataDto {
         authors: metadata
             .authors
             .iter()
-            .map(|author| author.to_string())
+            .map(std::string::ToString::to_string)
             .collect(),
         supported_versions: metadata
             .supported_versions
@@ -83,8 +89,9 @@ fn modified_at_ms(path: &str) -> u64 {
         .modified()
         .ok()
         .and_then(|time| time.duration_since(UNIX_EPOCH).ok())
-        .map(|duration| duration.as_millis().min(u128::from(u64::MAX)) as u64)
-        .unwrap_or(0)
+        .map_or(0, |duration| {
+            u64::try_from(duration.as_millis()).unwrap_or(u64::MAX)
+        })
 }
 
 pub fn active_load(result: &ActiveLoadResult) -> ActiveListLoadDto {

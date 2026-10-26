@@ -1,9 +1,12 @@
 //! Circular dependency detection via DFS three-color marking.
 
-use crate::diagnostics::{Diagnostic, DiagnosticCode, Severity};
-use crate::domain::PackageId;
-use crate::rules::graph::LoadOrderGraph;
 use std::collections::{HashMap, HashSet};
+
+use crate::{
+    diagnostics::{Diagnostic, DiagnosticCode, Severity},
+    domain::PackageId,
+    rules::graph::LoadOrderGraph,
+};
 
 /// Checks for circular dependencies in the active subgraph.
 pub(crate) fn check_cycles(
@@ -16,7 +19,7 @@ pub(crate) fn check_cycles(
         .map(|cycle| {
             let path = cycle
                 .iter()
-                .map(|p| p.to_string())
+                .map(std::string::ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(" -> ");
             let locations = cycle_locations(graph, &cycle);
@@ -58,7 +61,7 @@ fn cycle_locations(
 }
 
 /// Detects cycles in the active subgraph using DFS three-color marking.
-/// Returns a list of cycles, each being a path of PackageIds.
+/// Returns a list of cycles, each being a path of `PackageIds`.
 fn find_cycles(graph: &LoadOrderGraph, active: &HashSet<&PackageId>) -> Vec<Vec<PackageId>> {
     let mut color: HashMap<&PackageId, u8> = HashMap::new();
     let mut cycles: Vec<Vec<PackageId>> = Vec::new();
@@ -116,8 +119,7 @@ fn dedup_cycles(cycles: &mut Vec<Vec<PackageId>>) {
             .iter()
             .enumerate()
             .min_by_key(|(_, p)| *p)
-            .map(|(i, _)| i)
-            .unwrap_or(0);
+            .map_or(0, |(i, _)| i);
         let len = cycle.len();
         let normalized: Vec<PackageId> = (0..len)
             .map(|i| cycle[(min_idx + i) % len].clone())

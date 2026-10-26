@@ -1,7 +1,10 @@
-use crate::dto::{LoadPlayerLogRequest, PlayerLogDto, SteamWorkshopLogDto};
-use crate::error::CommandResult;
-use crate::state::AppState;
 use tauri::State;
+
+use crate::{
+    dto::{LoadPlayerLogRequest, PlayerLogDto, SteamWorkshopLogDto},
+    error::CommandResult,
+    state::AppState,
+};
 
 #[tauri::command]
 pub async fn load_steam_workshop_log(

@@ -1,6 +1,9 @@
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
+
 use serde::Deserialize;
-use std::collections::HashMap;
-use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -41,12 +44,13 @@ struct WorkshopItemDetailsRaw {
     time_touched: Option<String>,
 }
 
-fn parse_u64(s: &Option<String>) -> u64 {
-    s.as_deref()
-        .and_then(|v| v.parse::<u64>().ok())
-        .unwrap_or(0)
-}
+fn parse_u64(s: Option<&str>) -> u64 { s.and_then(|v| v.parse::<u64>().ok()).unwrap_or(0) }
 
+/// Parses the installed and known Workshop items from a Steam ACF document.
+///
+/// # Errors
+///
+/// Returns [`AcfError::Parse`] when the document is not valid ACF/VDF data.
 pub fn parse_appworkshop_acf(content: &str) -> Result<Vec<WorkshopUpdateEntry>, AcfError> {
     let acf: AppWorkshopAcf =
         keyvalues_serde::from_str(content).map_err(|e| AcfError::Parse(e.to_string()))?;
@@ -57,15 +61,11 @@ pub fn parse_appworkshop_acf(content: &str) -> Result<Vec<WorkshopUpdateEntry>, 
         .map(|(pfid, installed)| {
             let details = acf.item_details.get(pfid);
             let time_updated = if installed.time_updated.is_some() {
-                parse_u64(&installed.time_updated)
+                parse_u64(installed.time_updated.as_deref())
             } else {
-                details
-                    .and_then(|d| d.time_updated.clone())
-                    .as_ref()
-                    .map(|s| s.parse::<u64>().unwrap_or(0))
-                    .unwrap_or(0)
+                parse_u64(details.and_then(|d| d.time_updated.as_deref()))
             };
-            let time_touched = details.map(|d| parse_u64(&d.time_touched)).unwrap_or(0);
+            let time_touched = details.map_or(0, |d| parse_u64(d.time_touched.as_deref()));
 
             WorkshopUpdateEntry {
                 published_file_id: pfid.clone(),
@@ -81,8 +81,8 @@ pub fn parse_appworkshop_acf(content: &str) -> Result<Vec<WorkshopUpdateEntry>, 
         if !installed_ids.contains(pfid) {
             entries.push(WorkshopUpdateEntry {
                 published_file_id: pfid.clone(),
-                time_updated: parse_u64(&details.time_updated),
-                time_touched: parse_u64(&details.time_touched),
+                time_updated: parse_u64(details.time_updated.as_deref()),
+                time_touched: parse_u64(details.time_touched.as_deref()),
                 has_manifest: false,
             });
         }
@@ -101,106 +101,4 @@ pub fn appworkshop_acf_path(library_path: &Path) -> PathBuf {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    const SAMPLE_ACF: &str = r#""AppWorkshop"
-{
-    "appid"     "294100"
-    "WorkshopItemsInstalled"
-    {
-        "2009463077"
-        {
-            "timeupdated"   "1700000000"
-            "manifest"      "1234567890123456789"
-        }
-        "837975145"
-        {
-            "timeupdated"   "1699000000"
-        }
-    }
-    "WorkshopItemDetails"
-    {
-        "2009463077"
-        {
-            "timeupdated"   "1700000000"
-            "timetouched"   "1700100000"
-        }
-        "837975145"
-        {
-            "timeupdated"   "1699000000"
-            "timetouched"   "1699100000"
-        }
-        "999999999"
-        {
-            "timeupdated"   "1680000000"
-            "timetouched"   "1680100000"
-        }
-    }
-}"#;
-
-    #[test]
-    fn parses_installed_items_with_timestamps() {
-        let entries = parse_appworkshop_acf(SAMPLE_ACF).expect("parse should succeed");
-        assert_eq!(entries.len(), 3);
-        assert_eq!(entries[0].published_file_id, "2009463077");
-        assert_eq!(entries[0].time_updated, 1700000000);
-        assert_eq!(entries[0].time_touched, 1700100000);
-        assert!(entries[0].has_manifest);
-
-        assert_eq!(entries[1].published_file_id, "837975145");
-        assert_eq!(entries[1].time_updated, 1699000000);
-        assert_eq!(entries[1].time_touched, 1699100000);
-        assert!(!entries[1].has_manifest);
-
-        assert_eq!(entries[2].published_file_id, "999999999");
-        assert_eq!(entries[2].time_updated, 1680000000);
-        assert_eq!(entries[2].time_touched, 1680100000);
-        assert!(!entries[2].has_manifest);
-    }
-
-    #[test]
-    fn handles_empty_acf() {
-        let empty = r#""AppWorkshop"
-{
-    "appid"     "294100"
-}"#;
-        let entries = parse_appworkshop_acf(empty).expect("parse should succeed");
-        assert!(entries.is_empty());
-    }
-
-    #[test]
-    fn computes_acf_path_for_library() {
-        let path = appworkshop_acf_path(Path::new("D:/SteamLibrary"));
-        assert_eq!(
-            path,
-            PathBuf::from("D:/SteamLibrary/steamapps/workshop/appworkshop_294100.acf")
-        );
-    }
-
-    #[test]
-    fn handles_missing_timeupdated() {
-        let acf = r#""AppWorkshop"
-{
-    "WorkshopItemsInstalled"
-    {
-        "123"
-        {
-            "manifest"      "111"
-        }
-    }
-    "WorkshopItemDetails"
-    {
-        "123"
-        {
-            "timetouched"   "999"
-        }
-    }
-}"#;
-        let entries = parse_appworkshop_acf(acf).expect("parse should succeed");
-        assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].time_updated, 0);
-        assert_eq!(entries[0].time_touched, 999);
-        assert!(entries[0].has_manifest);
-    }
-}
+mod tests;

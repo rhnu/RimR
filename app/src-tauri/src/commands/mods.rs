@@ -1,15 +1,18 @@
-use crate::app_config::default_data_dir;
-use crate::dto::CleanModsRequest;
-use crate::dto::{
-    ActiveListLoadDto, CatalogSnapshotDto, ConfiguredDirectoryKind, LoadModFolderSizeRequest,
-    LoadModPreviewRequest, ModCleanupPreviewDto, ModCleanupPreviewRequest, ModCleanupResultDto,
-    ModFolderSizeDto, ModPreviewDto, OpenConfiguredDirectoryRequest, OpenModFolderRequest,
-    OpenSteamWorkshopPageRequest, ValidateActiveOrderRequest, ValidateOrderDto,
-};
-use crate::error::CommandResult;
-use crate::state::AppState;
 use tauri::{Manager, State};
 use tauri_plugin_opener::OpenerExt;
+
+use crate::{
+    app_config::default_data_dir,
+    dto::{
+        ActiveListLoadDto, CatalogSnapshotDto, CleanModsRequest, ConfiguredDirectoryKind,
+        LoadModFolderSizeRequest, LoadModPreviewRequest, ModCleanupPreviewDto,
+        ModCleanupPreviewRequest, ModCleanupResultDto, ModFolderSizeDto, ModPreviewDto,
+        OpenConfiguredDirectoryRequest, OpenModFolderRequest, OpenSteamWorkshopPageRequest,
+        ValidateActiveOrderRequest, ValidateOrderDto,
+    },
+    error::CommandResult,
+    state::AppState,
+};
 
 #[tauri::command]
 pub async fn rebuild_mod_catalog(state: State<'_, AppState>) -> CommandResult<CatalogSnapshotDto> {
@@ -78,6 +81,10 @@ pub async fn load_active_list(state: State<'_, AppState>) -> CommandResult<Activ
 }
 
 #[tauri::command]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri extracts command arguments by value"
+)]
 pub fn validate_active_order(
     state: State<'_, AppState>,
     request: ValidateActiveOrderRequest,
@@ -93,6 +100,10 @@ pub fn validate_active_order(
 }
 
 #[tauri::command]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri extracts command arguments by value"
+)]
 pub fn open_mod_folder(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
@@ -121,6 +132,10 @@ pub fn open_mod_folder(
 }
 
 #[tauri::command]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri extracts command arguments by value"
+)]
 pub fn open_steam_workshop_page(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
@@ -141,9 +156,13 @@ pub fn open_steam_workshop_page(
 }
 
 #[tauri::command]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri extracts command arguments by value"
+)]
 pub fn launch_game(app: tauri::AppHandle) -> CommandResult<()> {
-    tracing::info!(command = "launch_game", "command invoked");
     const STEAM_RUN_URL: &str = "steam://rungameid/294100";
+    tracing::info!(command = "launch_game", "command invoked");
     app.opener()
         .open_url(STEAM_RUN_URL, None::<&str>)
         .map_err(|error| {
@@ -157,6 +176,10 @@ pub fn launch_game(app: tauri::AppHandle) -> CommandResult<()> {
 }
 
 #[tauri::command]
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "Tauri extracts command arguments by value"
+)]
 pub fn open_configured_directory(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
@@ -170,17 +193,16 @@ pub fn open_configured_directory(
 
     let config = state.get_config()?;
     let path = match request.kind {
-        ConfiguredDirectoryKind::GameDir => config.paths.game_dir.clone(),
-        ConfiguredDirectoryKind::GameDataDir => config.paths.game_data_dir.clone(),
-        ConfiguredDirectoryKind::LocalModsDir => config.paths.local_mods_dir.clone(),
-        ConfiguredDirectoryKind::WorkshopModsDir => config.paths.workshop_mods_dir.clone(),
+        ConfiguredDirectoryKind::GameDir => config.paths.game_dir,
+        ConfiguredDirectoryKind::GameDataDir => config.paths.game_data_dir,
+        ConfiguredDirectoryKind::LocalModsDir => config.paths.local_mods_dir,
+        ConfiguredDirectoryKind::WorkshopModsDir => config.paths.workshop_mods_dir,
         ConfiguredDirectoryKind::RimrDataDir => {
-            config.paths.rimr_data_dir.clone().or_else(default_data_dir)
-        }
+            config.paths.rimr_data_dir.or_else(default_data_dir)
+        },
         ConfiguredDirectoryKind::RimrModListsDir => config
             .paths
             .rimr_data_dir
-            .clone()
             .or_else(default_data_dir)
             .map(|path| path.join("mod-lists")),
         ConfiguredDirectoryKind::RimrLogsDir => {
@@ -190,7 +212,7 @@ pub fn open_configured_directory(
                     error.to_string(),
                 )
             })?)
-        }
+        },
     }
     .ok_or_else(|| {
         crate::error::CommandError::new(

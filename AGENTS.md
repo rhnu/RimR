@@ -58,9 +58,10 @@ Run checks scoped to the area you changed while you work:
 - Rust changes:
 
   ```powershell
-  cargo fmt --all -- --check
-  cargo clippy --workspace --all-targets -- -D warnings
-  cargo test --workspace
+  cargo check --workspace --locked
+  cargo dev format --check --diff --locked
+  cargo dev lint --locked
+  cargo test --workspace --locked
   ```
 
 Before finishing a session, also run the full aggregate check as a safety net:
@@ -75,4 +76,4 @@ If a Tauri desktop build is relevant and the host environment supports it, also 
 pnpm tauri build --no-bundle
 ```
 
-Note: `pnpm check` runs `bindings:check` → `fmt:check` → `lint` → `typecheck` → `build` → `test` → `cargo fmt` → `cargo clippy` → `cargo test`. It is broad and slower than scoped checks, so use it to catch cross-layer omissions rather than for every small change.
+Note: `pnpm check` runs `bindings:check` → `fmt:check` → `lint` → `typecheck` → `build` → `test` → `cargo check` → Rusteward format → Rusteward lint (including Clippy) → `cargo test`. It is broad and slower than scoped checks, so use it to catch cross-layer omissions rather than for every small change.

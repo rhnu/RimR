@@ -11,6 +11,10 @@ pub mod player_log;
 pub mod source;
 pub mod state;
 
+/// Starts the desktop application and its configured plugins.
+///
+/// # Panics
+/// Panics if Tauri cannot initialize or run the application event loop.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default();

@@ -110,15 +110,16 @@ pub struct MigrationOutcome {
 
 impl MigrationOutcome {
     /// True if the document was rewritten and should be persisted.
-    pub fn changed(&self) -> bool {
-        self.from_version != self.to_version
-    }
+    pub fn changed(&self) -> bool { self.from_version != self.to_version }
 }
 
 /// Upgrades `value` in place to the current format version for `kind`.
 ///
 /// Documents already at the target version are left untouched. Documents from
 /// a newer build are rejected rather than silently misread.
+/// # Errors
+///
+/// Returns a migration error if the document or version is invalid, no migration path exists, or a migration step fails.
 pub fn migrate_document(
     kind: DocumentKind,
     value: &mut Value,

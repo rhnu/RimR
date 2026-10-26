@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 pub type CommandResult<T> = Result<T, CommandError>;
@@ -45,11 +46,13 @@ impl CommandError {
         }
     }
 
+    #[must_use]
     pub fn with_path(mut self, path: PathBuf) -> Self {
         self.path = Some(path);
         self
     }
 
+    #[must_use]
     pub fn with_source_key(mut self, source_key: impl Into<String>) -> Self {
         self.source_key = Some(source_key.into());
         self

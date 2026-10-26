@@ -1,8 +1,10 @@
 //! Order violation check: loadAfter/loadBefore/forceLoad* constraints.
 
-use crate::diagnostics::{Diagnostic, DiagnosticCode, Severity};
-use crate::domain::ActiveModList;
-use crate::rules::graph::{EdgeKind, LoadOrderGraph};
+use crate::{
+    diagnostics::{Diagnostic, DiagnosticCode, Severity},
+    domain::ActiveModList,
+    rules::graph::{EdgeKind, LoadOrderGraph},
+};
 
 /// Checks load-order constraints against the current positions.
 pub(crate) fn check_order_violations(
@@ -24,10 +26,10 @@ pub(crate) fn check_order_violations(
                 let code = match edge.kind {
                     EdgeKind::LoadAfter | EdgeKind::ForceLoadAfter => {
                         DiagnosticCode::OrderViolationLoadAfter
-                    }
+                    },
                     EdgeKind::LoadBefore | EdgeKind::ForceLoadBefore => {
                         DiagnosticCode::OrderViolationLoadBefore
-                    }
+                    },
                 };
                 let diagnostic = Diagnostic::new(
                     Severity::Warning,

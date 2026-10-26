@@ -1,7 +1,7 @@
-pub use rimr_bindings::app_config::*;
-
-use rimr_core::migrations::{DocumentKind, migrate_document};
 use std::path::{Path, PathBuf};
+
+pub use rimr_bindings::app_config::*;
+use rimr_core::migrations::{DocumentKind, migrate_document};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -31,6 +31,10 @@ pub enum ConfigFileError {
     },
 }
 
+/// Loads and migrates saved configuration, defaulting when the file is absent.
+///
+/// # Errors
+/// Returns an error if the file cannot be read, parsed, or migrated.
 pub fn load_config_from_file(path: &Path) -> Result<AppConfig, ConfigFileError> {
     tracing::debug!(path = ?path, "loading app config");
     if !path.exists() {
@@ -61,6 +65,10 @@ pub fn load_config_from_file(path: &Path) -> Result<AppConfig, ConfigFileError> 
     })
 }
 
+/// Persists configuration as JSON.
+///
+/// # Errors
+/// Returns an error if serialization, directory creation, or writing fails.
 pub fn save_config_to_file(path: &Path, config: &AppConfig) -> Result<(), ConfigFileError> {
     tracing::debug!(path = ?path, "saving app config");
     if let Some(parent) = path.parent() {

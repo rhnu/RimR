@@ -1,6 +1,6 @@
-pub use rimr_bindings::paths::*;
+use std::path::{Path, PathBuf};
 
-use std::path::{Component, Path, PathBuf};
+pub use rimr_bindings::paths::*;
 use thiserror::Error;
 
 pub const RIMWORLD_APP_ID: u32 = 294_100;
@@ -19,6 +19,10 @@ pub enum PathDetectionError {
     HomeUnavailable,
 }
 
+/// Finds game and data paths using the current user and Steam installation.
+///
+/// # Errors
+/// Returns an error when the current user home directory is unavailable.
 pub fn autodetect_paths() -> Result<DetectedPaths, PathDetectionError> {
     tracing::info!("autodetecting RimWorld paths");
     let home_dir = directories::UserDirs::new()
@@ -34,6 +38,10 @@ pub fn autodetect_paths() -> Result<DetectedPaths, PathDetectionError> {
     })
 }
 
+/// Derives game and data paths from supplied platform information.
+///
+/// # Errors
+/// Currently infallible for caller-supplied detection inputs.
 pub fn autodetect_paths_from(
     input: PathDetectionInput,
 ) -> Result<DetectedPaths, PathDetectionError> {
@@ -172,7 +180,7 @@ fn game_data_dir_for(platform: Platform, home: &Path, steam_root: &Path) -> Path
                     .join("Ludeon Studios")
                     .join("RimWorld by Ludeon Studios")
             }
-        }
+        },
     }
 }
 
@@ -202,11 +210,7 @@ fn derive_workshop_dir(game_dir: &Path) -> Option<PathBuf> {
                     .join("294100"),
             );
         }
-        match component {
-            Component::Prefix(prefix) => before_common.push(prefix.as_os_str()),
-            Component::RootDir => before_common.push(component.as_os_str()),
-            _ => before_common.push(component.as_os_str()),
-        }
+        before_common.push(component.as_os_str());
     }
     None
 }

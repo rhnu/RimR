@@ -1,0 +1,13 @@
+version = 1
+
+[lint]
+deny-warnings = true
+all-targets = true
+
+[rules]
+mod-rs = "error"
+inline-tests = "error"
+
+[rules.lines]
+warn = 650
+error = 1200

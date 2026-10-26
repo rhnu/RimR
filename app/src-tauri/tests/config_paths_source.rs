@@ -1,14 +1,18 @@
-use rimr_core::{ModSource, PackageId, SourceKind};
-use rimr_tauri_lib::app_config::{
-    AppConfig, Locale, PathsConfig, Theme, UiConfig, load_config_from_file, save_config_to_file,
-};
-use rimr_tauri_lib::paths::{PathDetectionInput, Platform, autodetect_paths_from};
-use rimr_tauri_lib::source::{FsModSource, SourceRoots};
 use std::path::{Path, PathBuf};
 
+use rimr_core::{ModSource, PackageId, SourceKind};
+use rimr_tauri_lib::{
+    app_config::{
+        AppConfig, Locale, PathsConfig, Theme, UiConfig, load_config_from_file, save_config_to_file,
+    },
+    paths::{PathDetectionInput, Platform, autodetect_paths_from},
+    source::{FsModSource, SourceRoots},
+};
+
 fn write_file(path: &Path, text: &str) {
-    std::fs::create_dir_all(path.parent().expect("file has parent")).unwrap();
-    std::fs::write(path, text).unwrap();
+    std::fs::create_dir_all(path.parent().expect("fixture file has a parent directory"))
+        .expect("fixture directory should be created");
+    std::fs::write(path, text).expect("fixture text file should be written");
 }
 
 fn sample_paths() -> PathsConfig {
@@ -123,8 +127,8 @@ fn linux_autodetect_prefers_proton_config_and_derives_mod_dirs() {
 
     let detected = autodetect_paths_from(PathDetectionInput {
         platform: Platform::Linux,
-        home_dir: home.clone(),
-        steam_roots: vec![steam.clone()],
+        home_dir: home,
+        steam_roots: vec![steam],
         rimworld_app_dir: Some(game.clone()),
     })
     .unwrap();
@@ -133,7 +137,7 @@ fn linux_autodetect_prefers_proton_config_and_derives_mod_dirs() {
     assert_eq!(detected.game_data_dir, proton_config);
     assert_eq!(detected.local_mods_dir, detected.game_dir.join("Mods"));
     assert_eq!(detected.workshop_mods_dir, workshop);
-    assert!(detected.warnings.is_empty());
+    assert_eq!(detected.warnings, []);
 }
 
 #[test]
@@ -233,7 +237,7 @@ async fn fs_mod_source_discovers_reads_and_writes_rimworld_files() {
 
     source
         .write_mods_config(
-            r#"<ModsConfigData><version>1.5</version><activeMods><li>local.mod</li></activeMods><knownExpansions /></ModsConfigData>"#
+            r"<ModsConfigData><version>1.5</version><activeMods><li>local.mod</li></activeMods><knownExpansions /></ModsConfigData>"
                 .as_bytes()
                 .to_vec(),
         )

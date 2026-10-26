@@ -56,6 +56,8 @@ Windows 是主要支持的发行目标。Linux 与 macOS 构建目前为实验�
 
 应用位于 `app/`（前端与 `src-tauri/`）；Cargo、pnpm workspace 和统一命令保留在仓库根目录。
 
+运行 `pnpm check` 前请按[质量检查说明](docs/quality-gates.md#rusteward)安装 Rusteward。
+
 在仓库根目录运行开发版本：
 
 ```powershell

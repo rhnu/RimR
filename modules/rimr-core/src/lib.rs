@@ -1,6 +1,6 @@
-//! Core domain boundary for RimR.
+//! Core domain boundary for `RimR`.
 //!
-//! This crate owns the RimWorld mod list domain logic: About.xml metadata
+//! This crate owns the `RimWorld` mod list domain logic: About.xml metadata
 //! parsing, load-order graph construction, order validation, ModsConfig.xml
 //! read/write, and `.rimr.json` portable export/restore. IO is abstracted
 //! behind the [`ports::ModSource`] async trait; the host (rimr-tauri)

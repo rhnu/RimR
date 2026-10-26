@@ -4,8 +4,9 @@
 //! v3 -> v4: `paths.configDir` (the game's `Config` folder) was replaced by
 //!           `paths.gameDataDir` (its parent).
 
-use super::Step;
 use serde_json::Value;
+
+use super::Step;
 
 /// Format version this build reads and writes.
 pub(super) const TARGET: u32 = 4;
@@ -28,10 +29,16 @@ pub(super) const STEPS: &[Step] = &[
     },
 ];
 
-fn noop(_value: &mut Value) -> Result<(), String> {
-    Ok(())
-}
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "migration steps share a fallible callback signature"
+)]
+fn noop(_value: &mut Value) -> Result<(), String> { Ok(()) }
 
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "migration steps share a fallible callback signature"
+)]
 fn config_dir_to_game_data_dir(value: &mut Value) -> Result<(), String> {
     let Some(paths) = value.get_mut("paths").and_then(Value::as_object_mut) else {
         return Ok(());

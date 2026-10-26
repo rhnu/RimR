@@ -1,5 +1,6 @@
-use super::{DocumentKind, MigrationError, migrate_document};
 use serde_json::json;
+
+use super::{DocumentKind, MigrationError, migrate_document};
 
 #[test]
 fn app_config_v3_gains_game_data_dir() {

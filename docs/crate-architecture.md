@@ -8,6 +8,8 @@ RimR 的架构边界是：
 React UI -> Tauri command facade / RimR app data -> rimr-core
 ```
 
+可复用 Rust 包位于 `modules/`；桌面应用由 `app/src/` 前端与 `app/src-tauri/` Rust 包组成。
+
 `rimr-core` 处理 RimWorld 领域逻辑与 RimR 库（library）/模组列表（mod list）领域逻辑；Tauri 处理桌面 IO、RimR 自有 JSON、命令协议和状态缓存；React UI 处理模组列表编辑体验。
 
 ## Core：RimWorld 领域内核
@@ -36,11 +38,11 @@ Tauri 是应用边界。它同时连接 RimWorld 文件和 RimR 自有配置文�
 - 管理 `AppConfig`：RimWorld 路径、mod source 路径、`rimrDataDir`。
 - 实现 `ModRepository`：发现 Data/local/workshop mods，读取 `About.xml`，读取/写入 `ModsConfig.xml`。
 - 通过 `JsonLibraryStore`（`library_store.rs`）实现 `LibraryStore`，管理 RimR data dir 文件布局（`settings.json`、`mod-lists/index.json`、`mod-lists/<id>.json`）。
-- 管理 session cache：catalog、当前游戏 active list、原始 `ModsConfig` snapshot。
+- 管理 session cache：catalog、当前游戏 active list、原始 `ModsConfig` snapshot。`state.rs` 管理共享状态和配置，`state/mods.rs`、`state/library.rs`、`state/logs.rs` 分别负责模组文件、列表库和日志操作。
 - 暴露 Tauri commands 并返回稳定 DTO。
 - `error.rs` 定义 `CommandError`、`CommandErrorCode`、`CommandResult`，从原 dto 中抽出。
-- DTO 按 domain 拆分到 `dto/` 目录（`mod.rs`、`mods.rs`、`mod_lists.rs`、`backups.rs`）。
-- 命令按 domain 拆分到 `commands/` 目录（`mod.rs`、`config.rs`、`mods.rs`、`mod_lists.rs`、`backups.rs`）。
+- DTO 按 domain 拆分到 `dto/` 目录（`mods.rs`、`mod_lists.rs`、`backups.rs`）。
+- 命令按 domain 拆分到 `commands/` 目录（`config.rs`、`mods.rs`、`mod_lists.rs`、`backups.rs`）。
 
 ### RimR Data Dir
 
@@ -48,7 +50,7 @@ Tauri 是应用边界。它同时连接 RimWorld 文件和 RimR 自有配置文�
 
 ### Command 边界
 
-主要 commands 见 `app/src-tauri/src/commands/mod.rs`，包括：
+主要 commands 见 `app/src-tauri/src/commands.rs`，包括：
 
 - 配置：`get_app_config`、`save_app_config`、`autodetect_paths`、`clear_session_cache`
 - Mod catalog 与元数据：`rebuild_mod_catalog`、`load_mod_preview`、`load_mod_folder_size`

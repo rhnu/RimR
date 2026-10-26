@@ -4,9 +4,10 @@
 //! host. `rimr-core` defines it; `rimr-tauri` implements it with `tokio::fs`.
 //! This keeps the core free of filesystem, path, and permission concerns.
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 
 use crate::error::SourceError;
 
@@ -19,27 +20,21 @@ pub struct ModSourceKey(Arc<str>);
 
 impl ModSourceKey {
     /// Creates a new key from any string-like value.
-    pub fn new(value: impl Into<Arc<str>>) -> Self {
-        Self(value.into())
-    }
+    pub fn new(value: impl Into<Arc<str>>) -> Self { Self(value.into()) }
 
     /// Returns the underlying string.
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
+    pub fn as_str(&self) -> &str { &self.0 }
 }
 
 impl std::fmt::Display for ModSourceKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
-    }
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { f.write_str(&self.0) }
 }
 
 /// Where a mod was discovered.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum SourceKind {
-    /// RimWorld game Data directory (Core + DLCs).
+    /// `RimWorld` game Data directory (Core + DLCs).
     Expansion,
     /// Local mods folder.
     Local,

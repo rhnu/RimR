@@ -1,4 +1,4 @@
-//! Library store port: async IO contract for persisting the RimR library.
+//! Library store port: async IO contract for persisting the `RimR` library.
 //!
 //! [`LibraryStore`] is the async trait between the domain layer and the host.
 //! `rimr-core` defines it; `rimr-tauri` implements it with `tokio::fs`.
@@ -6,10 +6,12 @@
 
 use async_trait::async_trait;
 
-use crate::domain::{LibrarySettings, ModList, ModListIndex};
-use crate::error::LibraryError;
+use crate::{
+    domain::{LibrarySettings, ModList, ModListIndex},
+    error::LibraryError,
+};
 
-/// Async IO contract for loading and saving the RimR library (settings,
+/// Async IO contract for loading and saving the `RimR` library (settings,
 /// mod list index, and individual mod list files).
 #[async_trait]
 pub trait LibraryStore: Sync {

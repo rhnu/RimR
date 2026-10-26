@@ -8,9 +8,7 @@ pub trait Clock: Sync {
 pub struct AppClock;
 
 impl Clock for AppClock {
-    fn now_rfc3339(&self) -> String {
-        current_rfc3339()
-    }
+    fn now_rfc3339(&self) -> String { current_rfc3339() }
 }
 
 fn current_rfc3339() -> String {

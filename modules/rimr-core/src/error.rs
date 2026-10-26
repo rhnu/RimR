@@ -1,7 +1,8 @@
 //! Error types for rimr-core.
 
-use crate::ports::ModSourceKey;
 use thiserror::Error;
+
+use crate::ports::ModSourceKey;
 
 /// Fatal domain error returned by use-case functions.
 ///

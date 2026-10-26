@@ -1,5 +1,7 @@
 //! End-to-end integration tests for rimr-core use cases.
 
+use std::{collections::HashMap, sync::Arc};
+
 use async_trait::async_trait;
 use rimr_core::{
     ActiveModList, BackupMeta, CompileOpts, DiagnosticCode, GameVersion, ModFeatures, ModSource,
@@ -7,8 +9,6 @@ use rimr_core::{
     SourceKind, ValidateOpts, build_mods_config_bytes, export_backup, import_backup,
     load_active_list, parse_mods_config, scan_mod_metadata, validate_order,
 };
-use std::collections::HashMap;
-use std::sync::Arc;
 
 // --- In-memory ModSource for integration tests ---
 
@@ -19,9 +19,7 @@ struct IntegrationModSource {
 }
 
 impl IntegrationModSource {
-    fn builder() -> IntegrationModSourceBuilder {
-        IntegrationModSourceBuilder::default()
-    }
+    fn builder() -> IntegrationModSourceBuilder { IntegrationModSourceBuilder::default() }
 }
 
 #[async_trait]
@@ -29,6 +27,7 @@ impl ModSource for IntegrationModSource {
     async fn discover_mods(&self) -> Result<Vec<ModSourceEntry>, SourceError> {
         Ok(self.entries.clone())
     }
+
     async fn read_about_xml(&self, key: &ModSourceKey) -> Result<Option<SourceFile>, SourceError> {
         Ok(self.about_xmls.get(key).cloned().map(|bytes| {
             SourceFile::new(
@@ -38,15 +37,16 @@ impl ModSource for IntegrationModSource {
             )
         }))
     }
+
     async fn read_mods_config(&self) -> Result<Option<SourceFile>, SourceError> {
         Ok(self
             .mods_config
             .clone()
             .map(|bytes| SourceFile::new(None, "ModsConfig.xml", bytes)))
     }
-    async fn write_mods_config(&self, _bytes: Vec<u8>) -> Result<(), SourceError> {
-        Ok(())
-    }
+
+    async fn write_mods_config(&self, _bytes: Vec<u8>) -> Result<(), SourceError> { Ok(()) }
+
     async fn read_mod_features(&self, _key: &ModSourceKey) -> Result<ModFeatures, SourceError> {
         Ok(ModFeatures::default())
     }
@@ -70,10 +70,12 @@ impl IntegrationModSourceBuilder {
         self.about_xmls.insert(k, about_xml.as_bytes().to_vec());
         self
     }
+
     fn mods_config(mut self, xml: &str) -> Self {
         self.mods_config = Some(xml.as_bytes().to_vec());
         self
     }
+
     fn build(self) -> IntegrationModSource {
         IntegrationModSource {
             entries: self.entries,
@@ -175,7 +177,7 @@ async fn full_workflow_scan_load_validate_save_export_import() {
         .unwrap();
     assert_eq!(load_result.list.len(), 3);
     assert_eq!(load_result.config.version.as_ref(), "1.5.4104 rev435");
-    assert!(load_result.missing.is_empty());
+    assert_eq!(load_result.missing, Vec::<PackageId>::new());
 
     // 3. Validate order (harmony -> fishery -> core is valid)
     let validate_result = validate_order(

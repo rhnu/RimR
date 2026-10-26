@@ -37,7 +37,7 @@ pub struct VersionedString {
 
 /// Intermediate representation of raw About.xml content.
 ///
-/// All ByVersion entries preserve their original `version_key` strings
+/// All `ByVersion` entries preserve their original `version_key` strings
 /// (without `v` prefix). The compile layer prepends `v` when matching.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RawAboutXml {

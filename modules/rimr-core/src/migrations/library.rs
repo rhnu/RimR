@@ -1,4 +1,4 @@
-//! Format history for the RimR library files (`settings.json`,
+//! Format history for the `RimR` library files (`settings.json`,
 //! `mod-lists/index.json`, `mod-lists/<id>.json`).
 //!
 //! These files have only ever been written at format version 2, so the step

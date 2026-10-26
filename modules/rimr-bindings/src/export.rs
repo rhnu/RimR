@@ -1,28 +1,32 @@
-use crate::app_config::{AppConfig, Locale, PathsConfig, Theme, UiConfig};
-use crate::dto::{
-    ActiveListLoadDto, ApplyModListDto, ApplyModListRequest, CatalogSnapshotDto, CleanModsRequest,
-    CommandError, CommandErrorCode, ConfiguredDirectoryKind, CreateModListRequest,
-    DeleteModListRequest, DependencyDto, DependencyGraphDto, DiagnosticCodeDto, DiagnosticDto,
-    DiagnosticLocationDto, DisplayAliasDto, DuplicatePackageIdDto, EdgeDto, EdgeKindDto,
-    EdgeSourceDto, ExportGameConfigBackupDto, ExportGameConfigBackupRequest,
-    ExportLibrarySettingsFileDto, ExportLibrarySettingsFileRequest, ExportModListFileDto,
-    ExportModListFileRequest, GameConfigBackupDto, GameConfigBackupMetaDto,
-    ImportGameConfigBackupDto, ImportGameConfigBackupRequest, ImportLibrarySettingsFileRequest,
-    ImportModListFileRequest, IncompatibilityDto, LibraryDto, LibrarySettingsDto,
-    LibrarySettingsFileDto, LoadModFolderSizeRequest, LoadModPreviewRequest, LoadPlayerLogRequest,
-    LogEntryDto, LogLevelDto, LogSourceDto, ModCatalogDto, ModCleanupCandidateDto,
-    ModCleanupKindDto, ModCleanupPreviewDto, ModCleanupPreviewRequest, ModCleanupReasonDto,
-    ModCleanupResultDto, ModCleanupSkippedDto, ModFolderSizeDto, ModIdentityDto, ModListDto,
-    ModListEntryDto, ModListFileDto, ModListGroupChildDto, ModListIndexDto, ModListSummaryDto,
-    ModMetadataDto, ModPreviewDto, ModTagBindingDto, ModsConfigDto, OpenConfiguredDirectoryRequest,
-    OpenModFolderRequest, OpenSteamWorkshopPageRequest, PlayerLogDto, ReadSaveModIdsDto,
-    ReadSaveModIdsRequest, RimrFileKind, RulesDto, SaveAppConfigRequest,
-    SaveLibrarySettingsRequest, SaveModListRequest, SetCurrentModListRequest, SeverityDto,
-    SourceKindDto, SteamWorkshopLogDto, SteamWorkshopLogEntryDto, SteamWorkshopOpenTarget,
-    TagDefDto, ValidateActiveOrderRequest, ValidateOrderDto, ValidationReportDto,
-};
-use crate::paths::{DetectedPaths, PathDetectionWarning, Platform};
 use ts_rs::{Config, TS};
+
+use crate::{
+    app_config::{AppConfig, Locale, PathsConfig, Theme, UiConfig},
+    dto::{
+        ActiveListLoadDto, ApplyModListDto, ApplyModListRequest, CatalogSnapshotDto,
+        CleanModsRequest, CommandError, CommandErrorCode, ConfiguredDirectoryKind,
+        CreateModListRequest, DeleteModListRequest, DependencyDto, DependencyGraphDto,
+        DiagnosticCodeDto, DiagnosticDto, DiagnosticLocationDto, DisplayAliasDto,
+        DuplicatePackageIdDto, EdgeDto, EdgeKindDto, EdgeSourceDto, ExportGameConfigBackupDto,
+        ExportGameConfigBackupRequest, ExportLibrarySettingsFileDto,
+        ExportLibrarySettingsFileRequest, ExportModListFileDto, ExportModListFileRequest,
+        GameConfigBackupDto, GameConfigBackupMetaDto, ImportGameConfigBackupDto,
+        ImportGameConfigBackupRequest, ImportLibrarySettingsFileRequest, ImportModListFileRequest,
+        IncompatibilityDto, LibraryDto, LibrarySettingsDto, LibrarySettingsFileDto,
+        LoadModFolderSizeRequest, LoadModPreviewRequest, LoadPlayerLogRequest, LogEntryDto,
+        LogLevelDto, LogSourceDto, ModCatalogDto, ModCleanupCandidateDto, ModCleanupKindDto,
+        ModCleanupPreviewDto, ModCleanupPreviewRequest, ModCleanupReasonDto, ModCleanupResultDto,
+        ModCleanupSkippedDto, ModFolderSizeDto, ModIdentityDto, ModListDto, ModListEntryDto,
+        ModListFileDto, ModListGroupChildDto, ModListIndexDto, ModListSummaryDto, ModMetadataDto,
+        ModPreviewDto, ModTagBindingDto, ModsConfigDto, OpenConfiguredDirectoryRequest,
+        OpenModFolderRequest, OpenSteamWorkshopPageRequest, PlayerLogDto, ReadSaveModIdsDto,
+        ReadSaveModIdsRequest, RimrFileKind, RulesDto, SaveAppConfigRequest,
+        SaveLibrarySettingsRequest, SaveModListRequest, SetCurrentModListRequest, SeverityDto,
+        SourceKindDto, SteamWorkshopLogDto, SteamWorkshopLogEntryDto, SteamWorkshopOpenTarget,
+        TagDefDto, ValidateActiveOrderRequest, ValidateOrderDto, ValidationReportDto,
+    },
+    paths::{DetectedPaths, PathDetectionWarning, Platform},
+};
 
 pub fn generate_typescript() -> String {
     let cfg = Config::default();

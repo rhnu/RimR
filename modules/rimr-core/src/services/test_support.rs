@@ -4,11 +4,14 @@
 //! `About.xml` bytes and an optional `ModsConfig.xml` without touching the
 //! filesystem. Only compiled under `#[cfg(test)]`.
 
-use crate::error::SourceError;
-use crate::ports::{ModFeatures, ModSource, ModSourceEntry, ModSourceKey, SourceFile, SourceKind};
+use std::{collections::HashMap, sync::Arc};
+
 use async_trait::async_trait;
-use std::collections::HashMap;
-use std::sync::Arc;
+
+use crate::{
+    error::SourceError,
+    ports::{ModFeatures, ModSource, ModSourceEntry, ModSourceKey, SourceFile, SourceKind},
+};
 
 /// An in-memory `ModSource` backed by `HashMap`s.
 pub(crate) struct MemoryModSource {
@@ -18,9 +21,7 @@ pub(crate) struct MemoryModSource {
 }
 
 impl MemoryModSource {
-    pub(crate) fn builder() -> MemoryModSourceBuilder {
-        MemoryModSourceBuilder::default()
-    }
+    pub(crate) fn builder() -> MemoryModSourceBuilder { MemoryModSourceBuilder::default() }
 }
 
 #[async_trait]
@@ -46,9 +47,7 @@ impl ModSource for MemoryModSource {
             .map(|bytes| SourceFile::new(None, "ModsConfig.xml", bytes)))
     }
 
-    async fn write_mods_config(&self, _bytes: Vec<u8>) -> Result<(), SourceError> {
-        Ok(())
-    }
+    async fn write_mods_config(&self, _bytes: Vec<u8>) -> Result<(), SourceError> { Ok(()) }
 
     async fn read_mod_features(&self, _key: &ModSourceKey) -> Result<ModFeatures, SourceError> {
         Ok(ModFeatures::default())

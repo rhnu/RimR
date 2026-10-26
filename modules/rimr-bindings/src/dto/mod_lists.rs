@@ -1,7 +1,9 @@
-use super::mods::ModsConfigDto;
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+
+use super::mods::ModsConfigDto;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -281,6 +283,4 @@ pub struct ImportLibrarySettingsFileRequest {
     pub json: Option<String>,
 }
 
-fn default_active() -> bool {
-    true
-}
+fn default_active() -> bool { true }

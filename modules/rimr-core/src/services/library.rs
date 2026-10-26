@@ -4,18 +4,23 @@
 //! IO goes through [`crate::ports::LibraryStore`]; domain logic uses the pure
 //! functions from [`crate::domain::library`].
 
-use crate::domain::{
-    ModCatalog, ModList, ModListIndex, ModListSummary, RIMR_FORMAT_VERSION,
-    mod_list_from_active_mods, mod_list_from_official_content, normalize_mod_list,
-    unique_mod_list_id,
+use crate::{
+    domain::{
+        ModCatalog, ModList, ModListIndex, ModListSummary, RIMR_FORMAT_VERSION,
+        mod_list_from_active_mods, mod_list_from_official_content, normalize_mod_list,
+        unique_mod_list_id,
+    },
+    error::LibraryError,
+    ports::LibraryStore,
 };
-use crate::error::LibraryError;
-use crate::ports::LibraryStore;
 
 /// Loads the full library snapshot.
 ///
 /// If the mod list index is empty, creates a default mod list from the
 /// provided `active_mods` (requires `active_mods` to be `Some`).
+/// # Errors
+///
+/// Returns a store error if reading or initialization fails, or `ActiveModsRequired` if an empty library has no initial active list.
 pub async fn load_library(
     store: &dyn LibraryStore,
     active_mods: Option<&[String]>,
@@ -68,6 +73,9 @@ pub async fn load_library(
 /// Otherwise the "New" path produces a minimal official-content list: Core
 /// followed by each installed DLC (see
 /// [`crate::domain::mod_list_from_official_content`]).
+/// # Errors
+///
+/// Returns a store error if loading the index or saving the new list and index fails.
 pub async fn create_mod_list(
     store: &dyn LibraryStore,
     name: String,
@@ -98,6 +106,9 @@ pub async fn create_mod_list(
 }
 
 /// Saves an existing mod list, updating the index if the name changed.
+/// # Errors
+///
+/// Returns a store error if loading the index or saving the list and index fails.
 pub async fn save_mod_list(
     store: &dyn LibraryStore,
     mod_list: ModList,
@@ -108,7 +119,7 @@ pub async fn save_mod_list(
 
     let mut index = store.load_mod_list_index().await?;
     if let Some(summary) = index.mod_lists.iter_mut().find(|s| s.id == mod_list.id) {
-        summary.name = mod_list.name.clone();
+        summary.name.clone_from(&mod_list.name);
     } else {
         index.mod_lists.push(ModListSummary {
             id: mod_list.id.clone(),
@@ -125,6 +136,9 @@ pub async fn save_mod_list(
 }
 
 /// Deletes a mod list and updates the index.
+/// # Errors
+///
+/// Returns a store error if loading the index, deleting the file, or saving the index fails.
 pub async fn delete_mod_list(
     store: &dyn LibraryStore,
     id: &str,
@@ -142,6 +156,9 @@ pub async fn delete_mod_list(
 }
 
 /// Sets the current mod list id and returns the mod list.
+/// # Errors
+///
+/// Returns `NotFound` if the id is absent from the index, or a store error if reading or saving fails.
 pub async fn set_current_mod_list(
     store: &dyn LibraryStore,
     id: &str,
@@ -159,6 +176,9 @@ pub async fn set_current_mod_list(
 }
 
 /// Imports a mod list, assigning a unique id to avoid collisions.
+/// # Errors
+///
+/// Returns a store error if loading the index or saving the imported list and index fails.
 pub async fn import_mod_list(
     store: &dyn LibraryStore,
     mod_list: ModList,
@@ -182,280 +202,4 @@ pub async fn import_mod_list(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::domain::{
-        GroupChild, LibrarySettings, ModList, ModListEntry, ModListIndex, ModListSummary,
-    };
-    use async_trait::async_trait;
-    use std::collections::HashMap;
-    use std::sync::Mutex;
-
-    /// In-memory LibraryStore for testing.
-    struct InMemoryStore {
-        settings: Mutex<LibrarySettings>,
-        index: Mutex<ModListIndex>,
-        mod_lists: Mutex<HashMap<String, ModList>>,
-    }
-
-    impl InMemoryStore {
-        fn new() -> Self {
-            Self {
-                settings: Mutex::new(LibrarySettings {
-                    format_version: RIMR_FORMAT_VERSION,
-                    aliases: vec![],
-                    tag_defs: vec![],
-                    mod_tags: vec![],
-                }),
-                index: Mutex::new(ModListIndex {
-                    format_version: RIMR_FORMAT_VERSION,
-                    current_mod_list_id: None,
-                    mod_lists: vec![],
-                }),
-                mod_lists: Mutex::new(HashMap::new()),
-            }
-        }
-    }
-
-    #[async_trait]
-    impl LibraryStore for InMemoryStore {
-        async fn load_settings(&self) -> Result<LibrarySettings, LibraryError> {
-            Ok(self.settings.lock().unwrap().clone())
-        }
-        async fn save_settings(&self, settings: &LibrarySettings) -> Result<(), LibraryError> {
-            *self.settings.lock().unwrap() = settings.clone();
-            Ok(())
-        }
-        async fn load_mod_list_index(&self) -> Result<ModListIndex, LibraryError> {
-            Ok(self.index.lock().unwrap().clone())
-        }
-        async fn save_mod_list_index(&self, index: &ModListIndex) -> Result<(), LibraryError> {
-            *self.index.lock().unwrap() = index.clone();
-            Ok(())
-        }
-        async fn read_mod_list(&self, id: &str) -> Result<ModList, LibraryError> {
-            self.mod_lists
-                .lock()
-                .unwrap()
-                .get(id)
-                .cloned()
-                .ok_or_else(|| LibraryError::NotFound(id.to_string()))
-        }
-        async fn write_mod_list(&self, mod_list: &ModList) -> Result<(), LibraryError> {
-            self.mod_lists
-                .lock()
-                .unwrap()
-                .insert(mod_list.id.clone(), mod_list.clone());
-            Ok(())
-        }
-        async fn delete_mod_list_file(&self, id: &str) -> Result<(), LibraryError> {
-            self.mod_lists.lock().unwrap().remove(id);
-            Ok(())
-        }
-    }
-
-    fn sample_mod_list(id: &str, name: &str) -> ModList {
-        ModList {
-            format_version: RIMR_FORMAT_VERSION,
-            id: id.to_string(),
-            name: name.to_string(),
-            note: None,
-            entries: vec![ModListEntry::Mod {
-                id: "mod-a".to_string(),
-                active: true,
-                identity: crate::domain::ModIdentity {
-                    package_id: "a".to_string(),
-                    source_kind: None,
-                    source_key: None,
-                    steam_app_id: None,
-                },
-            }],
-            active_mods: vec!["a".to_string()],
-        }
-    }
-
-    fn sample_structured_mod_list(id: &str, name: &str) -> ModList {
-        ModList {
-            format_version: RIMR_FORMAT_VERSION,
-            id: id.to_string(),
-            name: name.to_string(),
-            note: Some("source note".to_string()),
-            entries: vec![
-                ModListEntry::Mod {
-                    id: "mod-a".to_string(),
-                    active: true,
-                    identity: crate::domain::ModIdentity {
-                        package_id: "a".to_string(),
-                        source_kind: None,
-                        source_key: None,
-                        steam_app_id: None,
-                    },
-                },
-                ModListEntry::Group {
-                    id: "group-1".to_string(),
-                    name: "My Group".to_string(),
-                    collapsed: false,
-                    entries: vec![GroupChild {
-                        id: "child-b".to_string(),
-                        active: true,
-                        identity: crate::domain::ModIdentity {
-                            package_id: "b".to_string(),
-                            source_kind: None,
-                            source_key: None,
-                            steam_app_id: None,
-                        },
-                    }],
-                },
-                ModListEntry::Separator {
-                    id: "sep-1".to_string(),
-                    title: "Section".to_string(),
-                    note: None,
-                    color: Some("#ff0000".to_string()),
-                },
-            ],
-            active_mods: vec!["a".to_string(), "b".to_string()],
-        }
-    }
-
-    #[tokio::test]
-    async fn load_library_creates_default_when_empty() {
-        let store = InMemoryStore::new();
-        let library = load_library(&store, Some(&["a".to_string()]), None)
-            .await
-            .unwrap();
-        assert_eq!(library.current_mod_list.id, "default");
-        assert_eq!(library.current_mod_list.name, "Default");
-        assert_eq!(library.mod_lists_index.mod_lists.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn load_library_requires_active_mods_when_empty() {
-        let store = InMemoryStore::new();
-        let result = load_library(&store, None, None).await;
-        assert!(matches!(result, Err(LibraryError::ActiveModsRequired)));
-    }
-
-    #[tokio::test]
-    async fn load_library_loads_existing() {
-        let store = InMemoryStore::new();
-        // Seed with an existing mod list
-        {
-            let mut index = store.index.lock().unwrap();
-            index.mod_lists.push(ModListSummary {
-                id: "existing".to_string(),
-                name: "Existing".to_string(),
-            });
-            index.current_mod_list_id = Some("existing".to_string());
-        }
-        store.mod_lists.lock().unwrap().insert(
-            "existing".to_string(),
-            sample_mod_list("existing", "Existing"),
-        );
-        let library = load_library(&store, None, None).await.unwrap();
-        assert_eq!(library.current_mod_list.id, "existing");
-    }
-
-    #[tokio::test]
-    async fn create_mod_list_assigns_unique_id() {
-        let store = InMemoryStore::new();
-        let ml = create_mod_list(&store, "My List".to_string(), None, None)
-            .await
-            .unwrap();
-        assert_eq!(ml.id, "my-list");
-        let index = store.load_mod_list_index().await.unwrap();
-        assert_eq!(index.mod_lists.len(), 1);
-        assert_eq!(index.current_mod_list_id, Some("my-list".to_string()));
-    }
-
-    #[tokio::test]
-    async fn create_mod_list_with_base_mod_list_copies_entries_and_note() {
-        let store = InMemoryStore::new();
-        let base = sample_structured_mod_list("source", "Source");
-        let ml = create_mod_list(&store, "Copy".to_string(), Some(base.clone()), None)
-            .await
-            .unwrap();
-        assert_eq!(ml.id, "copy");
-        assert_eq!(ml.name, "Copy");
-        assert_eq!(ml.note, base.note);
-        assert_eq!(ml.entries.len(), base.entries.len());
-        assert!(matches!(ml.entries[1], ModListEntry::Group { .. }));
-        assert!(matches!(ml.entries[2], ModListEntry::Separator { .. }));
-        assert_eq!(ml.active_mods, vec!["a".to_string(), "b".to_string()]);
-        let index = store.load_mod_list_index().await.unwrap();
-        assert_eq!(index.current_mod_list_id, Some("copy".to_string()));
-    }
-
-    #[tokio::test]
-    async fn create_mod_list_with_base_mod_list_generates_unique_id() {
-        let store = InMemoryStore::new();
-        create_mod_list(&store, "Base".to_string(), None, None)
-            .await
-            .unwrap();
-        let base = sample_mod_list("base", "Base");
-        let ml = create_mod_list(&store, "Base".to_string(), Some(base), None)
-            .await
-            .unwrap();
-        assert_eq!(ml.id, "base-2");
-        let index = store.load_mod_list_index().await.unwrap();
-        assert_eq!(index.mod_lists.len(), 2);
-    }
-
-    #[tokio::test]
-    async fn save_mod_list_updates_name_in_index() {
-        let store = InMemoryStore::new();
-        let ml = create_mod_list(&store, "Original".to_string(), None, None)
-            .await
-            .unwrap();
-        let updated = ModList {
-            name: "Renamed".to_string(),
-            ..ml
-        };
-        let saved = save_mod_list(&store, updated).await.unwrap();
-        assert_eq!(saved.name, "Renamed");
-        let index = store.load_mod_list_index().await.unwrap();
-        assert_eq!(index.mod_lists[0].name, "Renamed");
-    }
-
-    #[tokio::test]
-    async fn delete_mod_list_removes_from_index_and_store() {
-        let store = InMemoryStore::new();
-        create_mod_list(&store, "To Delete".to_string(), None, None)
-            .await
-            .unwrap();
-        let index = delete_mod_list(&store, "to-delete").await.unwrap();
-        assert!(index.mod_lists.is_empty());
-        assert!(store.mod_lists.lock().unwrap().get("to-delete").is_none());
-    }
-
-    #[tokio::test]
-    async fn set_current_mod_list_changes_current() {
-        let store = InMemoryStore::new();
-        create_mod_list(&store, "First".to_string(), None, None)
-            .await
-            .unwrap();
-        create_mod_list(&store, "Second".to_string(), None, None)
-            .await
-            .unwrap();
-        let ml = set_current_mod_list(&store, "first").await.unwrap();
-        assert_eq!(ml.id, "first");
-        let index = store.load_mod_list_index().await.unwrap();
-        assert_eq!(index.current_mod_list_id, Some("first".to_string()));
-    }
-
-    #[tokio::test]
-    async fn set_current_mod_list_errors_on_missing() {
-        let store = InMemoryStore::new();
-        let result = set_current_mod_list(&store, "nope").await;
-        assert!(matches!(result, Err(LibraryError::NotFound(_))));
-    }
-
-    #[tokio::test]
-    async fn import_mod_list_assigns_unique_id() {
-        let store = InMemoryStore::new();
-        let ml = sample_mod_list("imported", "Imported");
-        let result = import_mod_list(&store, ml).await.unwrap();
-        assert_eq!(result.id, "imported");
-        let index = store.load_mod_list_index().await.unwrap();
-        assert_eq!(index.mod_lists.len(), 1);
-    }
-}
+mod tests;

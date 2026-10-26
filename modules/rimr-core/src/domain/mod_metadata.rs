@@ -1,8 +1,11 @@
 //! Compiled mod metadata ready for dependency graph building.
 
-use crate::domain::{Dependency, GameVersion, PackageId};
-use crate::ports::{ModSourceKey, SourceKind};
 use std::sync::Arc;
+
+use crate::{
+    domain::{Dependency, GameVersion, PackageId},
+    ports::{ModSourceKey, SourceKind},
+};
 
 /// Load-order and dependency rules compiled from `About.xml`.
 ///
@@ -19,9 +22,9 @@ pub struct Rules {
     pub mod_dependencies: Vec<Dependency>,
     /// Mods incompatible with this one.
     pub incompatible_with: Vec<PackageId>,
-    /// Force-load-after; always applied regardless of ByVersion.
+    /// Force-load-after; always applied regardless of `ByVersion`.
     pub force_load_after: Vec<PackageId>,
-    /// Force-load-before; always applied regardless of ByVersion.
+    /// Force-load-before; always applied regardless of `ByVersion`.
     pub force_load_before: Vec<PackageId>,
 }
 
@@ -72,17 +75,4 @@ impl ModMetadata {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::ports::{ModSourceKey, SourceKind};
-
-    #[test]
-    fn invalid_metadata_uses_sentinel() {
-        let m = ModMetadata::invalid(ModSourceKey::new("k"), SourceKind::Local);
-        assert!(!m.valid);
-        assert!(m.package_id.is_sentinel());
-        assert!(m.authors.is_empty());
-        assert!(m.supported_versions.is_empty());
-        assert!(m.rules.mod_dependencies.is_empty());
-    }
-}
+mod tests;

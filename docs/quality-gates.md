@@ -16,9 +16,10 @@ pnpm test
 Rust 改动：
 
 ```powershell
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+pnpm rust:check
+pnpm rust:fmt:check
+pnpm rust:lint
+pnpm rust:test
 ```
 
 ## 兜底检查
@@ -29,7 +30,7 @@ cargo test --workspace
 pnpm check
 ```
 
-`pnpm check` 包含 `bindings:check` → `fmt:check` → `lint` → `typecheck` → `build` → `test` → `cargo fmt` → `cargo clippy` → `cargo test`，耗时较长，不适合每次小改动都运行。
+`pnpm check` 包含 `bindings:check` → `fmt:check` → `lint` → `typecheck` → `build` → `test` → `rust:check` → `rust:fmt:check` → `rust:lint` → `rust:test`，耗时较长，不适合每次小改动都运行。
 
 ## 前端工具链
 
@@ -55,6 +56,18 @@ rumdl 是根开发依赖，`pnpm install` 后本地和 CI 使用锁文件中的�
 
 `pnpm test` 使用 Vitest 跑纯逻辑单测（`profileModel` / `ordering` / `formatError` / `orderDraft` 等），不渲染组件、不依赖 DOM。
 
+## Rusteward
+
+Rust 使用根目录的 `rusteward.toml` 统一格式与源码规则：禁止 `mod.rs` 和内联单测，超过 650 行提示、超过 1200 行报错；所有诊断均使检查失败。测试放在被测模块的 `<module>/tests.rs` 中。`cargo dev lint` 同时执行受管理的 Clippy 配置，不能用普通 Clippy 替代完整规则检查。
+
+首次安装与 CI 相同的工具修订（需要当前 Rust stable、rustfmt 和 Clippy）：
+
+```powershell
+cargo install --git https://github.com/rhnu/rusteward.git --rev 8b38da7050ecd77dec11bd763c913012e5e3bfc1 --locked rusteward
+```
+
+`pnpm rust:fmt` 应用 Rust 格式，`pnpm rust:fmt:check` 只检查；`pnpm rust:check` 负责 Cargo 编译检查。CI 通过 Rusteward 安装 Action 获取相同修订的预编译工具。
+
 ## Tauri 桌面构建验证
 
 涉及桌面构建时运行：
@@ -65,4 +78,4 @@ pnpm tauri build --bundles nsis
 
 ## CI 范围
 
-CI 当前只运行非打包检查：安装依赖、`bindings:check`、前端 lint/typecheck/build/test、Rust fmt/clippy/test。
+CI 当前只运行非打包检查：安装依赖、`bindings:check`、前端 lint/typecheck/build/test、Rust 编译、Rusteward 格式/规则（含 Clippy）与测试。

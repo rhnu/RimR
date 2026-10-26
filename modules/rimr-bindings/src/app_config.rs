@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 pub const CURRENT_CONFIG_FORMAT_VERSION: u32 = 4;
@@ -92,9 +93,7 @@ impl AppConfig {
     /// Returns true if the path-related fields differ between `self` and `other`.
     /// Used to decide whether replacing the config should invalidate session
     /// caches (catalog/active-list) that depend on the configured paths.
-    pub fn paths_changed(&self, other: &AppConfig) -> bool {
-        self.paths != other.paths
-    }
+    pub fn paths_changed(&self, other: &Self) -> bool { self.paths != other.paths }
 }
 
 pub fn default_data_dir() -> Option<PathBuf> {
@@ -103,6 +102,4 @@ pub fn default_data_dir() -> Option<PathBuf> {
         .or_else(|| directories::UserDirs::new().map(|dirs| dirs.home_dir().join("RimR")))
 }
 
-fn default_format_version() -> u32 {
-    CURRENT_CONFIG_FORMAT_VERSION
-}
+fn default_format_version() -> u32 { CURRENT_CONFIG_FORMAT_VERSION }

@@ -1,8 +1,11 @@
 //! Missing and inactive dependency checks.
 
-use crate::diagnostics::{Diagnostic, DiagnosticCode, DiagnosticLocation, Severity};
-use crate::domain::{ActiveModList, ModCatalog, PackageId};
 use std::collections::HashSet;
+
+use crate::{
+    diagnostics::{Diagnostic, DiagnosticCode, DiagnosticLocation, Severity},
+    domain::{ActiveModList, ModCatalog, PackageId},
+};
 
 /// Checks for active mods that are not installed.
 pub(crate) fn check_active_missing(catalog: &ModCatalog, list: &ActiveModList) -> Vec<Diagnostic> {
@@ -13,7 +16,7 @@ pub(crate) fn check_active_missing(catalog: &ModCatalog, list: &ActiveModList) -
                 Diagnostic::new(
                     Severity::Error,
                     DiagnosticCode::ActiveModMissing,
-                    format!("Active mod is not installed: {}", pkg),
+                    format!("Active mod is not installed: {pkg}"),
                 )
                 .with_param("packageId", pkg.as_str())
                 .with_related_packages(vec![pkg.clone()]),
