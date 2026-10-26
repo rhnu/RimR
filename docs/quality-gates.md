@@ -33,9 +33,23 @@ pnpm check
 
 ## 前端工具链
 
-前端使用 Oxc 的 oxlint（lint）与 oxfmt（格式化）替代 eslint + prettier。配置文件为 `app/.oxlintrc.json` 与 `app/.oxfmtrc.json`。`pnpm fmt` 仅格式化 `src` 目录下的前端文件，不触碰其它目录。
+前端使用 Oxc 的 Oxlint 与 Oxfmt。仓库根目录的 `.oxlintrc.json`、`.oxfmtrc.json` 和 `.editorconfig` 统一源码、构建配置与脚本的规则；从根目录或 `app/` 执行命令会使用同一套配置。
 
-`.oxfmtrc.json` 中已将 `app/src/commands/generated` 等自动生成的文件加入忽略列表。
+- `pnpm lint` 检查整个 workspace 的 JavaScript/TypeScript，警告和无效禁用注释会使检查失败。浏览器环境仅用于 `app/src/`，构建配置和 `scripts/` 使用 Node 环境。
+- `pnpm lint:fix` 应用可自动修复的 lint 建议。
+- `pnpm fmt` 格式化代码和配置，再调用 `pnpm docs:fix`；`pnpm fmt:check` 检查同样范围。
+- 根 `.gitignore` 排除依赖、构建产物、缓存与 Tauri schema；Oxc 配置另外排除自动生成的 TypeScript 绑定和 Tauri 生成代码。锁文件由包管理器维护，不交给格式化工具。
+
+Markdown 由 rumdl 单独负责，Oxfmt 跳过 `*.md`，避免两套格式规则相互覆盖。仓库级 `.rumdl.toml` 保留中文自然段换行、对齐表格，并仅允许 README 使用的 `details` / `summary` HTML 标签。
+
+```powershell
+pnpm docs:check
+pnpm docs:fix
+# 局部收尾可以传入具体文件
+pnpm docs:fix README.md docs/quality-gates.md
+```
+
+rumdl 是根开发依赖，`pnpm install` 后本地和 CI 使用锁文件中的相同版本，无需单独安装。
 
 项目未启用 React Compiler，因此关闭其专用诊断（`refs`、`set-state-in-effect`、`preserve-manual-memoization`、`incompatible-library`、`use-memo`）；Hooks 调用顺序、依赖和 JSX 正确性检查继续启用。
 

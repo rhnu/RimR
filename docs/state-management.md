@@ -12,17 +12,17 @@
 
 ## 2. 状态归属表
 
-| 类别 | 归属 | 说明 | 典型例子 |
-|---|---|---|---|
-| 服务器数据 / IPC 结果 | **React Query** | 经 `hooks/commands.ts` 单一入口；mutation 负责 query invalidation；全局 `onError` 走 toast | `catalogSnapshot`、`library`、`playerLog` |
-| 用户偏好（持久化） | **Zustand persist** | 写入 `localStorage`；UI 启动时即可使用 | `theme`、`locale` |
-| 跨页面的当前会话状态 | **Zustand 全局 store**（`app/src/stores/`） | 路由切换后仍需保留；非服务器派生 | `orderDraft`、`orderDialog`、`orderCommand` intent |
-| 单页面内的交互状态 | **Feature Context**（如 `OrderWorkspaceContext`） | 离开该页可丢弃；面板组件自取，避免 prop bundle | `selection`、`filter`、`search`、`drag`、`preview` |
-| 派生数据 / 视图状态 | **`useMemo` + 纯 selector** | 不允许把派生结果再存进 store | 渲染行、diagnostics summary |
-| 纯计算 / 业务规则 | **`features/<x>/model/`** 纯函数 | 不依赖 React、不依赖 Zustand（ESLint 守护） | `modListReducer`、`buildOrderDiff`、`syncModListFromGame` |
-| 跨模块一次性意图 | **Zustand intent slice**（command bus） | 仅用于"请求 → 消费"的一次性命令；禁止存可派生数据 | "导入存档后请同步" |
-| 校验缓存（非服务器派生，跨路由保留） | **Zustand**（明确文档化边界） | 不进 React Query：输入非服务器数据 + 来自 draft 派生 + 不需要重放语义 | `validation` |
-| 单页 draft（路由切换后即丢弃） | **Feature hook + `useState`**（统一 draft 形状） | 命名形如 `useSettingsDraft`；与 `useOrderDraft` 同型签名 | settings paths draft |
+| 类别                                 | 归属                                              | 说明                                                                                       | 典型例子                                                  |
+| ------------------------------------ | ------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| 服务器数据 / IPC 结果                | **React Query**                                   | 经 `hooks/commands.ts` 单一入口；mutation 负责 query invalidation；全局 `onError` 走 toast | `catalogSnapshot`、`library`、`playerLog`                 |
+| 用户偏好（持久化）                   | **Zustand persist**                               | 写入 `localStorage`；UI 启动时即可使用                                                     | `theme`、`locale`                                         |
+| 跨页面的当前会话状态                 | **Zustand 全局 store**（`app/src/stores/`）       | 路由切换后仍需保留；非服务器派生                                                           | `orderDraft`、`orderDialog`、`orderCommand` intent        |
+| 单页面内的交互状态                   | **Feature Context**（如 `OrderWorkspaceContext`） | 离开该页可丢弃；面板组件自取，避免 prop bundle                                             | `selection`、`filter`、`search`、`drag`、`preview`        |
+| 派生数据 / 视图状态                  | **`useMemo` + 纯 selector**                       | 不允许把派生结果再存进 store                                                               | 渲染行、diagnostics summary                               |
+| 纯计算 / 业务规则                    | **`features/<x>/model/`** 纯函数                  | 不依赖 React、不依赖 Zustand（ESLint 守护）                                                | `modListReducer`、`buildOrderDiff`、`syncModListFromGame` |
+| 跨模块一次性意图                     | **Zustand intent slice**（command bus）           | 仅用于"请求 → 消费"的一次性命令；禁止存可派生数据                                          | "导入存档后请同步"                                        |
+| 校验缓存（非服务器派生，跨路由保留） | **Zustand**（明确文档化边界）                     | 不进 React Query：输入非服务器数据 + 来自 draft 派生 + 不需要重放语义                      | `validation`                                              |
+| 单页 draft（路由切换后即丢弃）       | **Feature hook + `useState`**（统一 draft 形状）  | 命名形如 `useSettingsDraft`；与 `useOrderDraft` 同型签名                                   | settings paths draft                                      |
 
 ### 2.1 判定流程
 
@@ -39,7 +39,7 @@
 
 ## 3. 目录约定
 
-```
+```text
 app/src/
 ├── stores/                       # 全局 / 跨页 Zustand store
 │   ├── theme.ts                  # 持久化偏好
@@ -70,7 +70,7 @@ app/src/
 
 ### 4.1 Order draft 修改流
 
-```
+```text
 用户操作（拖拽 / 点击 / 双击 / 上下文菜单）
         │
         ▼
@@ -97,7 +97,7 @@ useValidationStore.setResult(...) → ValidationSummaryBadge 更新
 
 ### 4.2 数据加载流（React Query enabled 依赖链）
 
-```
+```text
 useAppConfig (默认 enabled)
         │ setupComplete = data != null && !needsSetup(data)
         ▼
@@ -118,7 +118,7 @@ draft 就绪 → OrderWorkspaceProvider 渲染面板
 
 ### 4.3 持久化流（save / apply）
 
-```
+```text
 用户点击 Save / Apply
         │
         ▼
@@ -137,7 +137,7 @@ enabled 依赖链中的 query 自动 refetch → derived & validation 重算
 
 ### 4.4 跨模块意图流（command bus）
 
-```
+```text
 AppShell file menu → "Import & Sync from save"
         │
         ▼
@@ -155,7 +155,7 @@ useOrderSync.useSaveSync 订阅 pending → useEffect
 
 ### 4.5 Dialog 单实例流
 
-```
+```text
 任何模块 → useOrderDialogStore.open({ kind, ... })
         │
         ▼
@@ -186,11 +186,11 @@ AppShell 顶层 <OrderDialogView /> 自取 store dialog → 打开
 
 `.oxlintrc.json` 中通过 `no-restricted-imports` 落地：
 
-| 范围 | 禁止 | 用途 |
-|---|---|---|
-| 根（默认）| `zustand` | 防止在 `app/src/stores/` 之外随意 `create` store |
-| `app/src/stores/**` override | `zustand` 解除 | 唯一允许的 store 定义位置 |
-| `app/src/features/*/model/**` override | `react` / `react-dom` / `zustand` / `@tanstack/react-query` | 保证 model 层纯净 |
+| 范围                                   | 禁止                                                        | 用途                                             |
+| -------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------ |
+| 根（默认）                             | `zustand`                                                   | 防止在 `app/src/stores/` 之外随意 `create` store |
+| `app/src/stores/**` override           | `zustand` 解除                                              | 唯一允许的 store 定义位置                        |
+| `app/src/features/*/model/**` override | `react` / `react-dom` / `zustand` / `@tanstack/react-query` | 保证 model 层纯净                                |
 
 新增 feature 时如果有 `<feature>/model/`，自动适用第三条；如需更精细控制，请在 PR 中补 override。
 
@@ -198,15 +198,15 @@ AppShell 顶层 <OrderDialogView /> 自取 store dialog → 打开
 
 本规范是 2026 Q2 状态管理重构的产物。各阶段提交（前 9 条已落地，第 10 条为定稿本身）：
 
-| 阶段 | 主题 | 提交 |
-|---|---|---|
-| 1 | 文档与公约 | `1c96e6a` |
-| 2 | Model 纯化 + ESLint 守护 | `448aa0e` |
-| 3 | Order draft Zustand 单源 | `52285b8` |
-| 4 | OrderWorkspaceContext | `2d4836a` |
-| 5 | OrderDialog 顶层单实例 | `f9bc5ae` |
-| 6 | Order command bus | `5a0b1ae` |
-| 7 | React Query enabled 依赖链 | `f7e4e92` |
-| 8 | Validation 边界文档化 | `27ff4cc` |
-| 9 | Settings draft 对齐 | `c714788` |
-| 10 | 文档定稿 + aggregate 检查 | 本提交 |
+| 阶段 | 主题                       | 提交      |
+| ---- | -------------------------- | --------- |
+| 1    | 文档与公约                 | `1c96e6a` |
+| 2    | Model 纯化 + ESLint 守护   | `448aa0e` |
+| 3    | Order draft Zustand 单源   | `52285b8` |
+| 4    | OrderWorkspaceContext      | `2d4836a` |
+| 5    | OrderDialog 顶层单实例     | `f9bc5ae` |
+| 6    | Order command bus          | `5a0b1ae` |
+| 7    | React Query enabled 依赖链 | `f7e4e92` |
+| 8    | Validation 边界文档化      | `27ff4cc` |
+| 9    | Settings draft 对齐        | `c714788` |
+| 10   | 文档定稿 + aggregate 检查  | 本提交    |

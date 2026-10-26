@@ -10,5 +10,10 @@
   "arrowParens": "always",
   "endOfLine": "lf",
   "sortPackageJson": false,
-  "ignorePatterns": ["src/commands/generated"]
+  "ignorePatterns": [
+    "**/*.md",
+    "pnpm-lock.yaml",
+    "app/src/commands/generated/**",
+    "app/src-tauri/gen/**"
+  ]
 }

@@ -5,10 +5,9 @@
     "correctness": "error"
   },
   "env": {
-    "browser": true,
     "es2020": true
   },
-  "ignorePatterns": ["dist", "dist-ssr", "target", "src-tauri/target", "src/commands/generated"],
+  "ignorePatterns": ["app/src/commands/generated/**", "app/src-tauri/gen/**"],
   "rules": {
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "error",
@@ -26,7 +25,7 @@
         "paths": [
           {
             "name": "zustand",
-            "message": "zustand stores must live in src/stores/. See docs/state-management.md."
+            "message": "zustand stores must live in app/src/stores/. See docs/state-management.md."
           }
         ]
       }
@@ -55,7 +54,13 @@
   },
   "overrides": [
     {
-      "files": ["src/features/*/model/**"],
+      "files": ["app/src/**"],
+      "env": {
+        "browser": true
+      }
+    },
+    {
+      "files": ["app/src/features/*/model/**"],
       "rules": {
         "no-restricted-imports": [
           "error",
@@ -83,7 +88,7 @@
       }
     },
     {
-      "files": ["src/stores/**"],
+      "files": ["app/src/stores/**"],
       "rules": {
         "no-restricted-imports": "off"
       }
@@ -110,7 +115,7 @@
       }
     },
     {
-      "files": ["vite.config.ts", "vitest.config.ts"],
+      "files": ["app/vite.config.ts", "app/vitest.config.ts", "scripts/**/*.ts"],
       "env": {
         "node": true
       }

@@ -1,5 +1,11 @@
 [workspace]
-members = ["modules/rimr-bindings", "modules/rimr-core", "modules/rimr-steam", "app/src-tauri", "xtask"]
+members = [
+  "modules/rimr-bindings",
+  "modules/rimr-core",
+  "modules/rimr-steam",
+  "app/src-tauri",
+  "xtask",
+]
 resolver = "2"
 
 [workspace.package]

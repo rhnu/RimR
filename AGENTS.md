@@ -47,13 +47,16 @@ When adding or refactoring frontend state, follow [`docs/state-management.md`](d
 Run checks scoped to the area you changed while you work:
 
 - Frontend changes:
+
   ```powershell
   pnpm fmt:check
   pnpm lint
   pnpm typecheck
   pnpm test
   ```
+
 - Rust changes:
+
   ```powershell
   cargo fmt --all -- --check
   cargo clippy --workspace --all-targets -- -D warnings

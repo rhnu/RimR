@@ -20,21 +20,18 @@ export default defineConfig({
     host: host || false,
     hmr: host
       ? {
-        protocol: 'ws',
-        host,
-        port: 5174,
-      }
+          protocol: 'ws',
+          host,
+          port: 5174,
+        }
       : undefined,
     watch: {
-      ignored: ['**/src-tauri/**', '**/modules/**'],
+      ignored: ['**/src-tauri/**', '**/modules/**', '**/xtask/**', '**/target/**'],
     },
   },
   envPrefix: ['VITE_', 'TAURI_ENV_*'],
   build: {
-    target:
-      process.env.TAURI_ENV_PLATFORM == 'windows'
-        ? 'chrome105'
-        : 'safari13',
+    target: process.env.TAURI_ENV_PLATFORM == 'windows' ? 'chrome105' : 'safari13',
     minify: !process.env.TAURI_ENV_DEBUG ? 'oxc' : false,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
     chunkSizeWarningLimit: 1000,

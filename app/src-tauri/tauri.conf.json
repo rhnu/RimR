@@ -27,9 +27,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": [
-      "nsis"
-    ],
+    "targets": ["nsis"],
     "category": "Utility",
     "copyright": "Copyright (C) 2026 Rhynia. Licensed under the GNU General Public License v3.",
     "publisher": "Rhynia",

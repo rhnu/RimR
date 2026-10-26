@@ -16,11 +16,15 @@ pnpm-debug.log*
 node_modules/
 dist/
 dist-ssr/
+dist-release/
+coverage/
+.rumdl_cache/
 *.local
 *.tsbuildinfo
 
 # Rust
 target/
+app/src-tauri/gen/schemas/
 
 # Temporary
 /temp

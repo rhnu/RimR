@@ -1,0 +1,13 @@
+[global]
+respect-gitignore = true
+exclude = ["app/src/commands/generated/**", "app/src-tauri/gen/**"]
+# Chinese paragraphs keep natural line breaks; code/config width belongs to Oxfmt.
+disable = ["MD013"]
+extend-enable = ["MD060"]
+
+[MD033]
+allowed-elements = ["details", "summary"]
+
+[MD060]
+style = "aligned"
+max-width = 0
