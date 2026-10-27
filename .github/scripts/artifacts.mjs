@@ -96,7 +96,10 @@ export function withMountedDmg(installer, inspect, ops = { run, mkdtempSync, rmd
   let result;
   const errors = [];
   try {
-    ops.run('hdiutil', ['attach', installer, '-readonly', '-nobrowse', '-mountpoint', mount]);
+    // The DMG includes our GPL license, which hdiutil prompts to accept when mounting.
+    ops.run('hdiutil', ['attach', installer, '-readonly', '-nobrowse', '-mountpoint', mount], {
+      input: 'Y\n',
+    });
     attached = true;
     result = inspect(join(mount, 'RimR.app'));
   } catch (error) {

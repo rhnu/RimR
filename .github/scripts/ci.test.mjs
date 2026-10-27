@@ -110,7 +110,8 @@ test('DMG inspection detaches and cleans up after success or failure', () => {
     const ops = {
       mkdtempSync: () => '/mount',
       rmdirSync: (path) => calls.push(['remove', path]),
-      run: (command, args) => calls.push([command, ...args]),
+      run: (command, args, options) =>
+        calls.push([command, ...args, ...(options ? [options] : [])]),
     };
     const inspect = (app) => {
       assert.match(app, /RimR\.app$/);
@@ -120,7 +121,16 @@ test('DMG inspection detaches and cleans up after success or failure', () => {
     if (failure) assert.throws(() => withMountedDmg('release.dmg', inspect, ops));
     else assert.equal(withMountedDmg('release.dmg', inspect, ops), 'signed');
     assert.deepEqual(calls, [
-      ['hdiutil', 'attach', 'release.dmg', '-readonly', '-nobrowse', '-mountpoint', '/mount'],
+      [
+        'hdiutil',
+        'attach',
+        'release.dmg',
+        '-readonly',
+        '-nobrowse',
+        '-mountpoint',
+        '/mount',
+        { input: 'Y\n' },
+      ],
       ['hdiutil', 'detach', '/mount'],
       ['remove', '/mount'],
     ]);
