@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { releaseInfo } from './common.mjs';
 import { scopes, selectTag } from './plan.mjs';
-import { assetName, sha256, verifyMagic, verifyManifests } from './artifacts.mjs';
+import { assetName, sha256, verifyMagic, verifyManifests, withMountedDmg } from './artifacts.mjs';
 import { requireDraft } from './github.mjs';
 import { releaseNotes } from './publish.mjs';
 
@@ -102,4 +102,38 @@ test('public releases cannot be overwritten and draft retries refresh signing no
   assert.ok(!refreshed.includes('Windows: unsigned'));
   assert.equal(releaseNotes(refreshed, 'Windows: signed'), refreshed);
   assert.throws(() => releaseNotes('<!-- rimr-signing:start -->broken', 'new'));
+});
+
+test('DMG inspection detaches and cleans up after success or failure', () => {
+  for (const failure of [false, true]) {
+    const calls = [];
+    const ops = {
+      mkdtempSync: () => '/mount',
+      rmdirSync: (path) => calls.push(['remove', path]),
+      run: (command, args) => calls.push([command, ...args]),
+    };
+    const inspect = (app) => {
+      assert.match(app, /RimR\.app$/);
+      if (failure) throw new Error('inspection failed');
+      return 'signed';
+    };
+    if (failure) assert.throws(() => withMountedDmg('release.dmg', inspect, ops));
+    else assert.equal(withMountedDmg('release.dmg', inspect, ops), 'signed');
+    assert.deepEqual(calls, [
+      ['hdiutil', 'attach', 'release.dmg', '-readonly', '-nobrowse', '-mountpoint', '/mount'],
+      ['hdiutil', 'detach', '/mount'],
+      ['remove', '/mount'],
+    ]);
+  }
+});
+
+test('DMG cleanup failure fails inspection', () => {
+  const ops = {
+    mkdtempSync: () => '/mount',
+    rmdirSync: () => {},
+    run: (_command, args) => {
+      if (args[0] === 'detach') throw new Error('detach failed');
+    },
+  };
+  assert.throws(() => withMountedDmg('release.dmg', () => 'signed', ops), /detach failed/);
 });

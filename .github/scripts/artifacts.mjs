@@ -1,6 +1,15 @@
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmdirSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { appVersion, git, loadTargets, releaseInfo, reportError, run } from './common.mjs';
@@ -81,7 +90,37 @@ export function verifyManifests(
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-function nativeMetadata(target, directory, version) {
+export function withMountedDmg(installer, inspect, ops = { run, mkdtempSync, rmdirSync }) {
+  const mount = ops.mkdtempSync(join(tmpdir(), 'rimr-dmg-'));
+  let attached = false;
+  let result;
+  const errors = [];
+  try {
+    ops.run('hdiutil', ['attach', installer, '-readonly', '-nobrowse', '-mountpoint', mount]);
+    attached = true;
+    result = inspect(join(mount, 'RimR.app'));
+  } catch (error) {
+    errors.push(error);
+  } finally {
+    if (attached) {
+      try {
+        ops.run('hdiutil', ['detach', mount]);
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    try {
+      ops.rmdirSync(mount);
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) throw new AggregateError(errors, 'DMG inspection or cleanup failed');
+  return result;
+}
+
+function nativeMetadata(target, directory, version, app) {
   if (target.platform === 'windows') {
     const binary = join(directory, 'RimR.exe');
     const bytes = readFileSync(binary);
@@ -106,7 +145,6 @@ function nativeMetadata(target, directory, version) {
     return;
   }
   if (target.platform === 'macos') {
-    const app = join(directory, 'bundle/macos/RimR.app');
     const architectures = run('lipo', ['-archs', join(app, 'Contents/MacOS/RimR')]);
     if (architectures !== 'arm64')
       throw new Error(`Unexpected macOS architectures: ${architectures}`);
@@ -133,7 +171,7 @@ function nativeMetadata(target, directory, version) {
   }
 }
 
-function signature(platform, installer, directory) {
+function signature(platform, installer, app) {
   if (platform === 'windows') {
     return run(
       'pwsh',
@@ -146,11 +184,7 @@ function signature(platform, installer, directory) {
     );
   }
   if (platform === 'macos') {
-    const result = spawnSync(
-      'codesign',
-      ['-d', '--verbose=4', join(directory, 'bundle/macos/RimR.app')],
-      { encoding: 'utf8' },
-    );
+    const result = spawnSync('codesign', ['-d', '--verbose=4', app], { encoding: 'utf8' });
     if (result.error) throw result.error;
     return result.status !== 0
       ? 'unsigned'
@@ -169,7 +203,7 @@ export function collect(platform) {
   if (process.env.RIMR_RELEASE_SHA && sha !== process.env.RIMR_RELEASE_SHA)
     throw new Error('Build commit differs from the release commit');
   const directory = join('target', target.target, 'release');
-  nativeMetadata(target, directory, info.version);
+  if (platform !== 'macos') nativeMetadata(target, directory, info.version);
   mkdirSync('dist-release', { recursive: true });
   const files = bundleKinds(platform).map((kind) => {
     const folder = join(directory, 'bundle', kind);
@@ -199,12 +233,19 @@ export function collect(platform) {
     verifyMagic(bytes, kind);
     const name = assetName(info.version, target, kind);
     copyFileSync(source, join('dist-release', name));
+    const signing =
+      platform === 'macos'
+        ? withMountedDmg(source, (app) => {
+            nativeMetadata(target, directory, info.version, app);
+            return signature(platform, source, app);
+          })
+        : signature(platform, source);
     return {
       name,
       kind,
       size: bytes.length,
       sha256: sha256(bytes),
-      signature: signature(platform, source, directory),
+      signature: signing,
     };
   });
   const manifest = { ...info, sha, ...target, files };
