@@ -28,13 +28,15 @@ Read RimWorld logs with search, severity filters, reference navigation, and live
 
 ## Get started
 
-1. Download the installer for your platform from [Releases](https://github.com/rhnu/rimr/releases): Windows x86_64 `.exe`, Linux x86_64 `.deb` / `.rpm`, or macOS arm64 `.dmg`. Install RimR, then launch it. On macOS, open the disk image and drag RimR into Applications.
+1. Download the installer for your platform from [Releases](https://github.com/rhnu/rimr/releases): Windows x86_64 `.exe`, Linux x86_64 `.AppImage` / `.deb` / `.rpm`, or macOS arm64 `.dmg`. Install RimR, then launch it. On macOS, open the disk image and drag RimR into Applications. On Linux, make the AppImage executable before launching it.
 2. In Setup or Settings, autodetect your RimWorld paths and correct them if needed. The game data directory contains `Config/ModsConfig.xml`; it is separate from the game installation.
 3. Save the paths and scan your installed mods.
 4. Open Order, create or select a mod list, then add and arrange mods. Use **Sync from game order** to start from the game's current order.
 5. Use **Save** to keep the list in RimR. Use **Apply** and review the changes to write the draft order to `ModsConfig.xml`.
 
 Save and Apply are independent: Apply accepts unsaved drafts and does not save them to the RimR library. Diagnostics help you decide what to change; they do not block applying an order. Missing mods are reported and skipped when applying.
+
+Starting with 0.4.0, RimR checks for stable updates at startup. You can also use **Help → Check for updates**. Updates are downloaded and installed only after you choose to proceed, and their signatures are verified before installation. Windows, macOS, and Linux AppImage support installation from the app; deb/rpm installations open the release downloads for manual updating. Save any pending changes before installing. Older versions need a manual installation of 0.4.0 or later first.
 
 ## Learn more
 

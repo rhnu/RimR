@@ -33,6 +33,7 @@
     "rust:test": "cargo test --workspace --locked"
   },
   "devDependencies": {
+    "@kaito-tokyo/minisign-verify": "^0.1.4",
     "oxfmt": "^0.74.0",
     "oxlint": "^1.89.0",
     "rumdl": "^0.3.0"

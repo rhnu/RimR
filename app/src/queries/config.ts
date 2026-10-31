@@ -14,6 +14,7 @@ export function useAppConfig() {
 export function useSaveAppConfig() {
   const client = useQueryClient();
   return useMutation({
+    meta: { blocksUpdate: true },
     scope: { id: 'configuration' },
     mutationFn: (config: AppConfig) => unwrap(rimrClient.saveAppConfig(config)),
     onSuccess: async (config) => {
@@ -28,6 +29,7 @@ export function useSaveAppConfig() {
 export function useAutodetectPaths() {
   const client = useQueryClient();
   return useMutation({
+    meta: { blocksUpdate: true },
     scope: { id: 'configuration' },
     mutationFn: () => unwrap(rimrClient.autodetectPaths()),
     onSuccess: async () => {

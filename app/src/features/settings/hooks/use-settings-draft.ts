@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { AppConfig } from '@/commands';
 import {
   clearPathDraft,
@@ -7,6 +7,7 @@ import {
   type PathFieldKey,
 } from '@/features/settings/path-settings-model';
 import { mergePathDraft } from '../model/path-draft';
+import { registerSettingsDraft } from '../unsaved-settings';
 
 /** Page-local path edits receive saved changes without losing newer input. */
 export function useSettingsDraft(saved: AppConfig | null | undefined) {
@@ -23,6 +24,8 @@ export function useSettingsDraft(saved: AppConfig | null | undefined) {
   const baseline = saved ?? null;
   const isReady = draft != null;
   const isDirty = pathDraftDirty(draft, saved);
+
+  useLayoutEffect(() => registerSettingsDraft(() => pathDraftDirty(draft, saved)), [draft, saved]);
 
   const updatePath = useCallback((field: PathFieldKey, value: string) => {
     setDraft((current) => updatePathDraft(current, field, value));

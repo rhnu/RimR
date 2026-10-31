@@ -14,6 +14,7 @@ export function usePreviewModCleanup() {
 export function useCleanMods() {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { blocksUpdate: true },
     mutationFn: (request: CleanModsRequest) => unwrap(rimrClient.cleanMods(request)),
     onSuccess: () => retireWorkspace(queryClient, { discardDraft: false }),
   });

@@ -15,6 +15,7 @@ import { queryKeys } from './keys';
 export function useExportGameConfigBackup() {
   const epoch = useWorkspaceStore((state) => state.epoch);
   return useMutation({
+    meta: { blocksUpdate: true },
     mutationFn: (request: ExportGameConfigBackupRequest) =>
       inWorkspace(epoch, () => rimrClient.exportGameConfigBackup(request)),
   });
@@ -23,6 +24,7 @@ export function useExportGameConfigBackup() {
 export function useImportGameConfigBackup() {
   const epoch = useWorkspaceStore((state) => state.epoch);
   return useMutation({
+    meta: { blocksUpdate: true },
     mutationFn: (request: ImportGameConfigBackupRequest) =>
       inWorkspace(epoch, () => rimrClient.importGameConfigBackup(request)),
   });
@@ -31,6 +33,7 @@ export function useImportGameConfigBackup() {
 export function useExportModListFile() {
   const epoch = useWorkspaceStore((state) => state.epoch);
   return useMutation({
+    meta: { blocksUpdate: true },
     mutationFn: (request: ExportModListFileRequest) =>
       inWorkspace(epoch, () => rimrClient.exportModListFile(request)),
   });
@@ -40,6 +43,7 @@ export function useImportModListFile() {
   const queryClient = useQueryClient();
   const epoch = useWorkspaceStore((state) => state.epoch);
   return useMutation({
+    meta: { blocksUpdate: true },
     mutationFn: (request: ImportModListFileRequest) =>
       inWorkspace(epoch, () => rimrClient.importModListFile(request)),
     onSuccess: () => {
@@ -51,6 +55,7 @@ export function useImportModListFile() {
 export function useExportLibrarySettingsFile() {
   const epoch = useWorkspaceStore((state) => state.epoch);
   return useMutation({
+    meta: { blocksUpdate: true },
     mutationFn: (request: ExportLibrarySettingsFileRequest) =>
       inWorkspace(epoch, () => rimrClient.exportLibrarySettingsFile(request)),
   });
@@ -60,6 +65,7 @@ export function useImportLibrarySettingsFile() {
   const queryClient = useQueryClient();
   const epoch = useWorkspaceStore((state) => state.epoch);
   return useMutation({
+    meta: { blocksUpdate: true },
     mutationFn: (request: ImportLibrarySettingsFileRequest) =>
       inWorkspace(epoch, () => rimrClient.importLibrarySettingsFile(request)),
     onSuccess: () => {

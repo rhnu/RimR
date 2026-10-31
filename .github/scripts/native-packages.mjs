@@ -1,4 +1,5 @@
-import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, rmdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { appVersion, loadTargets, releaseInfo, run } from './common.mjs';
@@ -71,4 +72,141 @@ export function finalize(platform) {
     throw new Error('Finalized Debian installer has an unexpected version');
   }
   console.log(`Finalized ${installer}: ${native.deb}`);
+}
+
+export function withMountedDmg(installer, inspect, ops = { run, mkdtempSync, rmdirSync }) {
+  const mount = ops.mkdtempSync(join(tmpdir(), 'rimr-dmg-'));
+  let attached = false;
+  let result;
+  const errors = [];
+  try {
+    // The DMG includes our GPL license, which hdiutil prompts to accept when mounting.
+    ops.run('hdiutil', ['attach', installer, '-readonly', '-nobrowse', '-mountpoint', mount], {
+      input: 'Y\n',
+    });
+    attached = true;
+    result = inspect(join(mount, 'RimR.app'));
+  } catch (error) {
+    errors.push(error);
+  } finally {
+    if (attached) {
+      try {
+        ops.run('hdiutil', ['detach', mount]);
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    try {
+      ops.rmdirSync(mount);
+    } catch (error) {
+      errors.push(error);
+    }
+  }
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) throw new AggregateError(errors, 'DMG inspection or cleanup failed');
+  return result;
+}
+
+export function nativeMetadata(target, directory, version, app) {
+  if (target.platform === 'linux') {
+    const bytes = readFileSync(join(directory, 'RimR'));
+    if (
+      bytes.subarray(0, 4).toString('hex') !== '7f454c46' ||
+      bytes[4] !== 2 ||
+      bytes[5] !== 1 ||
+      bytes.readUInt16LE(18) !== 62
+    )
+      throw new Error('The Linux executable is not x86_64');
+    return;
+  }
+  if (target.platform === 'windows') {
+    const binary = join(directory, 'RimR.exe');
+    const bytes = readFileSync(binary);
+    const offset = bytes.readUInt32LE(0x3c);
+    if (
+      bytes.subarray(0, 2).toString() !== 'MZ' ||
+      bytes.subarray(offset, offset + 4).toString('hex') !== '50450000' ||
+      bytes.readUInt16LE(offset + 4) !== 0x8664
+    )
+      throw new Error('The Windows executable is not x86_64');
+    const actual = run(
+      'pwsh',
+      [
+        '-NoProfile',
+        '-Command',
+        '(Get-Item -LiteralPath $env:RIMR_BINARY).VersionInfo.ProductVersion',
+      ],
+      { env: { ...process.env, RIMR_BINARY: binary } },
+    );
+    if (actual !== version)
+      throw new Error(`Windows executable version ${actual} differs from ${version}`);
+    return;
+  }
+  if (target.platform === 'macos') {
+    const architectures = run('lipo', ['-archs', join(app, 'Contents/MacOS/RimR')]);
+    if (architectures !== 'arm64')
+      throw new Error(`Unexpected macOS architectures: ${architectures}`);
+    const actual = run('plutil', [
+      '-extract',
+      'CFBundleShortVersionString',
+      'raw',
+      '-o',
+      '-',
+      join(app, 'Contents/Info.plist'),
+    ]);
+    if (actual !== nativeVersions(version).bundleVersion)
+      throw new Error(`Unexpected macOS version: ${actual}`);
+    const buildVersion = run('plutil', [
+      '-extract',
+      'CFBundleVersion',
+      'raw',
+      '-o',
+      '-',
+      join(app, 'Contents/Info.plist'),
+    ]);
+    if (buildVersion !== nativeVersions(version).bundleVersion)
+      throw new Error(`Unexpected macOS bundle version: ${buildVersion}`);
+  }
+}
+
+export function inspectAppArchive(source, inspect) {
+  const entries = run('tar', ['-tzf', source]).split('\n');
+  if (
+    entries.some(
+      (entry) => !/^\.?\/?RimR\.app(?:\/|$)/.test(entry) || entry.split('/').includes('..'),
+    )
+  )
+    throw new Error('Updater archive must contain only RimR.app');
+  const directory = mkdtempSync(join(tmpdir(), 'rimr-updater-app-'));
+  try {
+    run('tar', ['-xzf', source, '-C', directory]);
+    return inspect(join(directory, 'RimR.app'));
+  } finally {
+    // Only the fresh extraction directory created above is removed.
+    rmSync(directory, { recursive: true });
+  }
+}
+
+export function osSignature(platform, installer, app) {
+  if (platform === 'windows') {
+    return run(
+      'pwsh',
+      [
+        '-NoProfile',
+        '-Command',
+        '(Get-AuthenticodeSignature -LiteralPath $env:RIMR_INSTALLER).Status.ToString()',
+      ],
+      { env: { ...process.env, RIMR_INSTALLER: installer } },
+    );
+  }
+  if (platform === 'macos') {
+    const result = spawnSync('codesign', ['-d', '--verbose=4', app], { encoding: 'utf8' });
+    if (result.error) throw result.error;
+    return result.status !== 0
+      ? 'unsigned'
+      : result.stderr.includes('Signature=adhoc')
+        ? 'ad-hoc'
+        : 'signed';
+  }
+  return 'unsigned';
 }

@@ -28,13 +28,15 @@ Windows 是主要支持平台，Linux 和 macOS 构建仍属实验性支持。�
 
 ## 开始使用
 
-1. 从 [Releases](https://github.com/rhnu/rimr/releases) 下载对应平台的安装包：Windows x86_64 `.exe`、Linux x86_64 `.deb` / `.rpm`，或 macOS arm64 `.dmg`。安装后启动 RimR；macOS 打开磁盘映像后，将 RimR 拖入“应用程序”。
+1. 从 [Releases](https://github.com/rhnu/rimr/releases) 下载对应平台的安装包：Windows x86_64 `.exe`、Linux x86_64 `.AppImage` / `.deb` / `.rpm`，或 macOS arm64 `.dmg`。安装后启动 RimR；macOS 打开磁盘映像后，将 RimR 拖入“应用程序”；Linux 使用 AppImage 时先授予可执行权限。
 2. 在初始设置或设置页面自动检测 RimWorld 路径，并修正未识别的目录。游戏数据目录包含 `Config/ModsConfig.xml`，与游戏安装目录不同。
 3. 保存路径，扫描已安装的模组。
 4. 打开排序页面，新建或选择列表，添加并排列模组。若要从游戏现状开始，使用“从游戏顺序同步”。
 5. 用“保存”将列表保存在 RimR 中；用“应用”预览变化并将草稿顺序写入 `ModsConfig.xml`。
 
 保存与应用彼此独立：可以直接应用未保存的草稿，应用不会顺带保存 RimR 列表。诊断供你判断和调整，不阻止应用；应用时会报告并跳过缺失模组。
+
+从 0.4.0 起，RimR 启动后会检查稳定版更新，也可通过“帮助 → 检查更新”手动检查。只有选择继续后才下载并安装，安装前验证更新签名。Windows、macOS 和 Linux AppImage 支持应用内安装；deb/rpm 打开发行页面供手动更新。安装前请保存未完成的修改；旧版本需要先手动安装 0.4.0 或更新版本。
 
 ## 进一步了解
 

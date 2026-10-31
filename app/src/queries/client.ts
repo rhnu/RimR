@@ -21,7 +21,7 @@ export function reportError(error: unknown): void {
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error, query) => {
-      if (query.getObserversCount() > 0) reportError(error);
+      if (query.getObserversCount() > 0 && !query.meta?.errorHandled) reportError(error);
     },
   }),
   mutationCache: new MutationCache({ onError: reportError }),

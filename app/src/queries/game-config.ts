@@ -20,6 +20,7 @@ export function useApplyModListToGame() {
   const client = useQueryClient();
   const epoch = useWorkspaceStore((state) => state.epoch);
   return useMutation({
+    meta: { blocksUpdate: true },
     scope: { id: 'apply-' + epoch },
     mutationFn: (request: ApplyModListRequest) =>
       inWorkspace(epoch, () => rimrClient.applyModListToGame(request)),

@@ -23,11 +23,14 @@ async function main() {
     throw new Error('GitHub release credentials are required');
   const info = releaseInfo(process.env.RIMR_RELEASE_VERSION, process.env.RIMR_RELEASE_TAG);
   const sha = process.env.RIMR_RELEASE_SHA;
-  const files = verify('dist-release', { ...info, sha });
+  const files = await verify('dist-release', { ...info, sha }, process.env.GITHUB_REPOSITORY);
   await verifyTag(info.tag, sha);
   let release = await api(`releases/tags/${encodeURIComponent(info.tag)}`, 'GET', undefined, true);
   requireDraft(release, info.tag);
-  const notes = `Installer signing status:\n${files.map((file) => `- ${file.name}: ${file.signature}`).join('\n')}\n`;
+  const notes = `All updater signatures have been verified against the application's public key and release version.\n\nOS code-signing status (separate from updater signatures):\n${files
+    .filter((file) => file.osSignature)
+    .map((file) => `- ${file.name}: ${file.osSignature}`)
+    .join('\n')}\n`;
   if (!release) {
     release = await api('releases', 'POST', {
       tag_name: info.tag,

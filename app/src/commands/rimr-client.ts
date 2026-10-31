@@ -67,6 +67,10 @@ type CommandContracts = {
     args: undefined;
     result: void;
   };
+  open_releases_page: {
+    args: undefined;
+    result: void;
+  };
   save_app_config: {
     args: { request: { config: AppConfig } };
     result: AppConfig;
@@ -232,6 +236,7 @@ export const rimrClient = {
   getAppConfig: () => invokeCommand('get_app_config'),
   getGameVersion: () => invokeCommand('get_game_version'),
   openProjectPage: () => invokeCommand('open_project_page'),
+  openReleasesPage: () => invokeCommand('open_releases_page'),
   saveAppConfig: (config: AppConfig) => invokeCommand('save_app_config', { request: { config } }),
   autodetectPaths: () => invokeCommand('autodetect_paths'),
   clearSessionCache: () => invokeCommand('clear_session_cache'),

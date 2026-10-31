@@ -14,7 +14,7 @@ import { ExportSettingsDialog } from '@/features/library/export-settings-dialog'
 import { ModListMenu } from '@/features/library/mod-list-menu';
 import { SUPPORTED_LOCALES_LIST, useLocaleStore, type Locale } from '@/stores/locale';
 import { useThemeStore } from '@/stores/theme';
-import { AboutDialog } from './about-dialog';
+import { HelpMenu } from './help-menu';
 import { TOOL_CLEANUP_ITEMS } from './tools-menu-model';
 import type { useFileMenuActions } from './use-file-menu-actions';
 import type { useToolsMenuActions } from './use-tools-menu-actions';
@@ -205,40 +205,6 @@ function SettingsMenu({ openMenu, setOpenMenu }: AppMenuBarProps) {
         {t('menu.preferences')}
       </MenuItem>
     </DesktopMenu>
-  );
-}
-
-function HelpMenu({ openMenu, setOpenMenu }: AppMenuBarProps) {
-  const { t } = useTranslation();
-  const [aboutOpen, setAboutOpen] = useState(false);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  return (
-    <>
-      <DesktopMenu
-        label={t('menu.help')}
-        id="help"
-        openMenu={openMenu}
-        setOpenMenu={setOpenMenu}
-        triggerRef={triggerRef}
-      >
-        <MenuItem
-          onSelect={() => {
-            setOpenMenu(null);
-            setAboutOpen(true);
-          }}
-        >
-          {t('menu.aboutRimr')}
-        </MenuItem>
-      </DesktopMenu>
-      <AboutDialog
-        open={aboutOpen}
-        onOpenChange={setAboutOpen}
-        onCloseAutoFocus={(event) => {
-          event.preventDefault();
-          triggerRef.current?.focus();
-        }}
-      />
-    </>
   );
 }
 

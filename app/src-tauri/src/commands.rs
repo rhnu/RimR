@@ -20,6 +20,7 @@ pub fn handler() -> impl Fn(tauri::ipc::Invoke<tauri::Wry>) -> bool {
         get_app_config,
         get_game_version,
         open_project_page,
+        open_releases_page,
         save_app_config,
         autodetect_paths,
         clear_session_cache,

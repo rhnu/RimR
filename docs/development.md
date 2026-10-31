@@ -30,11 +30,27 @@ pnpm release patch
 
 自动发布以 main 的 push 为入口：只有该次提交恰好对应一个与 Cargo 版本相同的 `v<semver>` annotated tag，才会在全部检查通过后构建三平台安装包。必须一次原子推送提交和 tag；事后单独补推 tag 不触发发布。重试时在 CI 的手动入口选择 main 并填写已有 tag；该提交必须属于 main 历史，构建与验证始终使用 tag 指向的提交。
 
-Windows x86_64 发布 NSIS 安装程序，Linux x86_64 发布 deb 和 rpm，macOS arm64 发布 DMG。全部产物验证提交、版本、架构、类型和 SHA256 后才公开 Release；失败保留草稿，重试可补齐草稿，已经公开的版本拒绝覆盖。校验文件为 `SHA256SUMS`。
+Windows x86_64 发布 NSIS 安装程序，Linux x86_64 发布 AppImage、deb 和 rpm，macOS arm64 发布 DMG 与应用更新归档。全部产物验证提交、版本、架构、类型、SHA256 及 Tauri 更新签名后才公开 Release；失败保留草稿，重试可补齐草稿，已经公开的版本拒绝覆盖。校验文件为 `SHA256SUMS`，更新清单为 `latest.json`。稳定版更新端点固定为 `https://github.com/rhnu/rimr/releases/latest/download/latest.json`；预发布不替换稳定更新源。
 
 预发布的程序仍保留完整 SemVer，原生安装器元数据从它派生。例如 `0.3.0-rc.1` 的 deb 版本为 `0.3.0~rc.1`，RPM 为版本 `0.3.0`、release `0.rc.1`，使正式版能够正常升级覆盖 rc；macOS 安装包使用数字版本 `0.3.0`。这些值只在打包时生成，不另建版本定义或重编译程序。
 
 当前 Windows 安装包未配置证书签名。macOS 可通过仓库 secrets 配置 `APPLE_CERTIFICATE`、`APPLE_CERTIFICATE_PASSWORD`、`APPLE_SIGNING_IDENTITY`，并使用 `APPLE_ID`、`APPLE_PASSWORD`、`APPLE_TEAM_ID` 公证；未配置时按未签名或临时签名分发，Release 会列出实际签名状态。缺少签名的包可能需要系统额外确认。
+
+### 更新签名
+
+Tauri 更新签名与操作系统证书签名独立。`tauri.conf.json` 内置公钥，启用更新产物和 `requireSignedVersion`；客户端在安装前验证更新包及签名所绑定的版本。Windows 使用 NSIS，macOS 使用 `.app.tar.gz`，Linux 应用内安装使用 AppImage；deb/rpm 在界面中保持手动下载更新。
+
+本机私钥为 `.secrets/rimr-updater.key`，密码为 `.secrets/rimr-updater.password`，公钥副本为 `.secrets/rimr-updater.key.pub`。整个目录被 Git 忽略，私钥与密码应另行安全备份；不要重新生成密钥覆盖已有文件，否则已安装版本无法验证后续更新。本地 `pnpm bundle` 在没有签名环境变量时读取这些文件。
+
+CI 使用仓库 Secrets `TAURI_SIGNING_PRIVATE_KEY` 和 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`，缺少私钥时构建失败。私钥内容与密码不能写入工作流、日志或提交。环境变量可覆盖本机文件，例如：
+
+```powershell
+$env:TAURI_SIGNING_PRIVATE_KEY = (Resolve-Path .secrets/rimr-updater.key).Path
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = Get-Content -Raw .secrets/rimr-updater.password
+pnpm bundle
+```
+
+构建和发布脚本使用官方 Tauri signer 生成签名，并通过 `@kaito-tokyo/minisign-verify` 验证文件签名、可信注释及版本。预发布的原生包元数据调整完成后，按应用完整 SemVer 重新签名，避免签名引用修改前的内容或仅有数字的安装器版本。
 
 CI 按变更范围并行检查，发布提交强制完整检查。main 更新 Cargo 缓存，PR 恢复缓存；发布也在 main 作用域执行，便于后续版本复用缓存。前端资源受 Tauri 平台环境影响，各平台打包时分别构建，不跨平台复用 `dist`。
 

@@ -1,23 +1,29 @@
 import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
-import {
-  copyFileSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  readdirSync,
-  rmdirSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { appVersion, git, loadTargets, releaseInfo, reportError, run } from './common.mjs';
-import { nativeVersions } from './native-packages.mjs';
+import {
+  inspectAppArchive,
+  nativeMetadata,
+  nativeVersions,
+  osSignature,
+  withMountedDmg,
+} from './native-packages.mjs';
+import { updaterManifest, updaterPublicKey, verifyUpdaterSignature } from './updater.mjs';
 
 const targets = loadTargets();
 
-const extensions = { nsis: 'exe', deb: 'deb', rpm: 'rpm', dmg: 'dmg' };
+const extensions = {
+  nsis: 'exe',
+  deb: 'deb',
+  rpm: 'rpm',
+  dmg: 'dmg',
+  appimage: 'AppImage',
+  app: 'app.tar.gz',
+};
+
+export const updaterKinds = { windows: 'nsis', linux: 'appimage', macos: 'app' };
 
 export function bundleKinds(platform) {
   const config = JSON.parse(
@@ -35,6 +41,13 @@ export function assetName(version, target, kind) {
   return `RimR-${version}-${target.platform}-${target.architecture}${kind === 'nsis' ? '-setup' : ''}.${extension}`;
 }
 
+export function bundleSource(directory, kind) {
+  const folder = join(directory, 'bundle', kind === 'app' ? 'macos' : kind);
+  const candidates = readdirSync(folder).filter((name) => name.endsWith(`.${extensions[kind]}`));
+  if (candidates.length !== 1) throw new Error(`Expected one ${kind} artifact in ${folder}`);
+  return join(folder, candidates[0]);
+}
+
 export function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
 }
@@ -47,10 +60,19 @@ export function verifyMagic(bytes, kind) {
         ? bytes.subarray(0, 8).toString() === '!<arch>\n'
         : kind === 'rpm'
           ? bytes.subarray(0, 4).toString('hex') === 'edabeedb'
-          : kind === 'dmg' &&
-            bytes.length >= 512 &&
-            bytes.subarray(-512, -508).toString() === 'koly';
-  if (!valid) throw new Error(`Invalid ${kind} installer signature`);
+          : kind === 'appimage'
+            ? bytes.length >= 20 &&
+              bytes.subarray(0, 4).toString('hex') === '7f454c46' &&
+              bytes[4] === 2 &&
+              bytes[5] === 1 &&
+              bytes.readUInt16LE(18) === 62 &&
+              bytes.subarray(8, 11).toString('hex') === '414902'
+            : kind === 'app'
+              ? bytes.subarray(0, 3).toString('hex') === '1f8b08'
+              : kind === 'dmg' &&
+                bytes.length >= 512 &&
+                bytes.subarray(-512, -508).toString() === 'koly';
+  if (!valid) throw new Error(`Invalid ${kind} artifact format`);
 }
 
 export function verifyManifests(
@@ -71,12 +93,20 @@ export function verifyManifests(
     }
     if (manifest.target !== definition.target || manifest.architecture !== definition.architecture)
       throw new Error('Wrong installer architecture');
-    const expectedKinds = kinds(definition.platform);
-    if (manifest.files.length !== expectedKinds.length)
-      throw new Error('Incorrect installer count');
-    for (const kind of expectedKinds) {
+    const expectedFiles = kinds(definition.platform).flatMap((kind) => {
       const name = assetName(expected.version, definition, kind);
-      const matches = manifest.files.filter((file) => file.name === name && file.kind === kind);
+      return [
+        { name, kind },
+        ...(kind === 'dmg' ? [] : [{ name: `${name}.sig`, kind: 'signature', for: name }]),
+      ];
+    });
+    if (manifest.files.length !== expectedFiles.length)
+      throw new Error('Incorrect installer count');
+    for (const expectedFile of expectedFiles) {
+      const { name, kind } = expectedFile;
+      const matches = manifest.files.filter(
+        (file) => file.name === name && file.kind === kind && file.for === expectedFile.for,
+      );
       if (matches.length !== 1 || names.has(name))
         throw new Error(`Missing or duplicate installer: ${name}`);
       const file = matches[0];
@@ -90,115 +120,7 @@ export function verifyManifests(
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function withMountedDmg(installer, inspect, ops = { run, mkdtempSync, rmdirSync }) {
-  const mount = ops.mkdtempSync(join(tmpdir(), 'rimr-dmg-'));
-  let attached = false;
-  let result;
-  const errors = [];
-  try {
-    // The DMG includes our GPL license, which hdiutil prompts to accept when mounting.
-    ops.run('hdiutil', ['attach', installer, '-readonly', '-nobrowse', '-mountpoint', mount], {
-      input: 'Y\n',
-    });
-    attached = true;
-    result = inspect(join(mount, 'RimR.app'));
-  } catch (error) {
-    errors.push(error);
-  } finally {
-    if (attached) {
-      try {
-        ops.run('hdiutil', ['detach', mount]);
-      } catch (error) {
-        errors.push(error);
-      }
-    }
-    try {
-      ops.rmdirSync(mount);
-    } catch (error) {
-      errors.push(error);
-    }
-  }
-  if (errors.length === 1) throw errors[0];
-  if (errors.length > 1) throw new AggregateError(errors, 'DMG inspection or cleanup failed');
-  return result;
-}
-
-function nativeMetadata(target, directory, version, app) {
-  if (target.platform === 'windows') {
-    const binary = join(directory, 'RimR.exe');
-    const bytes = readFileSync(binary);
-    const offset = bytes.readUInt32LE(0x3c);
-    if (
-      bytes.subarray(0, 2).toString() !== 'MZ' ||
-      bytes.subarray(offset, offset + 4).toString('hex') !== '50450000' ||
-      bytes.readUInt16LE(offset + 4) !== 0x8664
-    )
-      throw new Error('The Windows executable is not x86_64');
-    const actual = run(
-      'pwsh',
-      [
-        '-NoProfile',
-        '-Command',
-        '(Get-Item -LiteralPath $env:RIMR_BINARY).VersionInfo.ProductVersion',
-      ],
-      { env: { ...process.env, RIMR_BINARY: binary } },
-    );
-    if (actual !== version)
-      throw new Error(`Windows executable version ${actual} differs from ${version}`);
-    return;
-  }
-  if (target.platform === 'macos') {
-    const architectures = run('lipo', ['-archs', join(app, 'Contents/MacOS/RimR')]);
-    if (architectures !== 'arm64')
-      throw new Error(`Unexpected macOS architectures: ${architectures}`);
-    const actual = run('plutil', [
-      '-extract',
-      'CFBundleShortVersionString',
-      'raw',
-      '-o',
-      '-',
-      join(app, 'Contents/Info.plist'),
-    ]);
-    if (actual !== nativeVersions(version).bundleVersion)
-      throw new Error(`Unexpected macOS version: ${actual}`);
-    const buildVersion = run('plutil', [
-      '-extract',
-      'CFBundleVersion',
-      'raw',
-      '-o',
-      '-',
-      join(app, 'Contents/Info.plist'),
-    ]);
-    if (buildVersion !== nativeVersions(version).bundleVersion)
-      throw new Error(`Unexpected macOS bundle version: ${buildVersion}`);
-  }
-}
-
-function signature(platform, installer, app) {
-  if (platform === 'windows') {
-    return run(
-      'pwsh',
-      [
-        '-NoProfile',
-        '-Command',
-        '(Get-AuthenticodeSignature -LiteralPath $env:RIMR_INSTALLER).Status.ToString()',
-      ],
-      { env: { ...process.env, RIMR_INSTALLER: installer } },
-    );
-  }
-  if (platform === 'macos') {
-    const result = spawnSync('codesign', ['-d', '--verbose=4', app], { encoding: 'utf8' });
-    if (result.error) throw result.error;
-    return result.status !== 0
-      ? 'unsigned'
-      : result.stderr.includes('Signature=adhoc')
-        ? 'ad-hoc'
-        : 'signed';
-  }
-  return 'unsigned';
-}
-
-export function collect(platform) {
+export async function collect(platform) {
   const target = targets.include.find((item) => item.platform === platform);
   if (!target) throw new Error(`Unknown platform: ${platform}`);
   const info = releaseInfo(appVersion(), process.env.RIMR_RELEASE_TAG);
@@ -208,11 +130,10 @@ export function collect(platform) {
   const directory = join('target', target.target, 'release');
   if (platform !== 'macos') nativeMetadata(target, directory, info.version);
   mkdirSync('dist-release', { recursive: true });
-  const files = bundleKinds(platform).map((kind) => {
-    const folder = join(directory, 'bundle', kind);
-    const candidates = readdirSync(folder).filter((name) => name.endsWith(`.${extensions[kind]}`));
-    if (candidates.length !== 1) throw new Error(`Expected one ${kind} installer in ${folder}`);
-    const source = join(folder, candidates[0]);
+  const files = [];
+  const publicKey = updaterPublicKey();
+  for (const kind of bundleKinds(platform)) {
+    const source = bundleSource(directory, kind);
     if (kind === 'deb') {
       if (
         run('dpkg-deb', ['--field', source, 'Architecture']) !== 'amd64' ||
@@ -238,25 +159,38 @@ export function collect(platform) {
     copyFileSync(source, join('dist-release', name));
     const signing =
       platform === 'macos'
-        ? withMountedDmg(source, (app) => {
+        ? (kind === 'dmg' ? withMountedDmg : inspectAppArchive)(source, (app) => {
             nativeMetadata(target, directory, info.version, app);
-            return signature(platform, source, app);
+            return osSignature(platform, source, app);
           })
-        : signature(platform, source);
-    return {
+        : osSignature(platform, source);
+    files.push({
       name,
       kind,
       size: bytes.length,
       sha256: sha256(bytes),
-      signature: signing,
-    };
-  });
+      osSignature: signing,
+    });
+    if (kind !== 'dmg') {
+      const signatureBytes = readFileSync(`${source}.sig`);
+      await verifyUpdaterSignature(bytes, signatureBytes.toString('utf8'), publicKey, info.version);
+      const signatureName = `${name}.sig`;
+      copyFileSync(`${source}.sig`, join('dist-release', signatureName));
+      files.push({
+        name: signatureName,
+        kind: 'signature',
+        for: name,
+        size: signatureBytes.length,
+        sha256: sha256(signatureBytes),
+      });
+    }
+  }
   const manifest = { ...info, sha, ...target, files };
   writeFileSync(`dist-release/manifest-${platform}.json`, `${JSON.stringify(manifest, null, 2)}\n`);
   return manifest;
 }
 
-export function verify(directory, expected) {
+export async function verify(directory, expected, repository) {
   const entries = readdirSync(directory);
   const manifests = entries
     .filter((name) => /^manifest-.*\.json$/.test(name))
@@ -266,22 +200,57 @@ export function verify(directory, expected) {
     throw new Error('Unexpected files in release artifacts');
   for (const file of files) {
     const bytes = readFileSync(join(directory, file.name));
-    verifyMagic(bytes, file.kind);
+    if (file.kind !== 'signature') verifyMagic(bytes, file.kind);
     if (bytes.length !== file.size || sha256(bytes) !== file.sha256)
       throw new Error(`Installer checksum mismatch: ${file.name}`);
   }
+  const publicKey = updaterPublicKey();
+  for (const file of files.filter((file) => file.kind === 'signature')) {
+    await verifyUpdaterSignature(
+      readFileSync(join(directory, file.for)),
+      readFileSync(join(directory, file.name), 'utf8'),
+      publicKey,
+      expected.version,
+    );
+  }
+  const updates = manifests.map((manifest) => {
+    const kind = updaterKinds[manifest.platform];
+    const file = manifest.files.find((file) => file.kind === kind);
+    return {
+      ...manifest,
+      name: file.name,
+      signature: readFileSync(join(directory, `${file.name}.sig`), 'utf8').trim(),
+    };
+  });
+  const latest = `${JSON.stringify(updaterManifest(expected.version, expected.tag, repository, updates), null, 2)}\n`;
+  writeFileSync(join(directory, 'latest.json'), latest);
+  const allFiles = [
+    ...files,
+    ...entries
+      .filter((name) => /^manifest-.*\.json$/.test(name))
+      .map((name) => {
+        const bytes = readFileSync(join(directory, name));
+        return { name, kind: 'manifest', size: bytes.length, sha256: sha256(bytes) };
+      }),
+    {
+      name: 'latest.json',
+      kind: 'manifest',
+      size: Buffer.byteLength(latest),
+      sha256: sha256(latest),
+    },
+  ].sort((a, b) => a.name.localeCompare(b.name));
   writeFileSync(
     join(directory, 'SHA256SUMS'),
-    files.map((file) => `${file.sha256}  ${file.name}\n`).join(''),
+    allFiles.map((file) => `${file.sha256}  ${file.name}\n`).join(''),
   );
-  return files;
+  return allFiles;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     if (process.argv[2] !== 'collect')
       throw new Error('Usage: node artifacts.mjs collect <platform>');
-    console.log(JSON.stringify(collect(process.argv[3]), null, 2));
+    console.log(JSON.stringify(await collect(process.argv[3]), null, 2));
   } catch (error) {
     reportError(error);
   }

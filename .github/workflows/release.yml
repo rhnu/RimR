@@ -43,6 +43,18 @@ jobs:
         with:
           ref: ${{ inputs.sha }}
           persist-credentials: false
+      - name: Require updater signing secrets
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          for variable in TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD; do
+            if [[ -z "${!variable}" ]]; then
+              echo "::error::$variable is required for signed updater artifacts"
+              exit 1
+            fi
+          done
       - uses: ./.github/actions/setup-linux
         if: runner.os == 'Linux'
       - uses: ./.github/actions/setup-node
@@ -53,6 +65,8 @@ jobs:
       - name: Build native installers
         shell: bash
         env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -91,6 +105,7 @@ jobs:
           pattern: installers-*
           path: dist-release
           merge-multiple: true
+      - uses: ./.github/actions/setup-node
       - name: Verify assets and publish through a draft
         env:
           GH_TOKEN: ${{ github.token }}

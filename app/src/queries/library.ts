@@ -30,6 +30,7 @@ export function useUpdateLibrarySettings() {
   const client = useQueryClient();
   const epoch = useWorkspaceStore((state) => state.epoch);
   return useMutation({
+    meta: { blocksUpdate: true },
     scope: { id: 'library-settings-' + epoch },
     mutationFn: (update: (current: LibrarySettingsDto) => LibrarySettingsDto) => {
       assertWorkspace(epoch);
@@ -54,6 +55,7 @@ function useModListMutation<Request>(
   const client = useQueryClient();
   const epoch = useWorkspaceStore((state) => state.epoch);
   return useMutation({
+    meta: { blocksUpdate: true },
     scope: { id: 'library-lists-' + epoch },
     mutationFn: (request: Request) => inWorkspace(epoch, () => operation(request)),
     onSuccess: async (modList: ModListDto) => {
@@ -101,6 +103,7 @@ export function useDeleteModList() {
   const client = useQueryClient();
   const epoch = useWorkspaceStore((state) => state.epoch);
   return useMutation({
+    meta: { blocksUpdate: true },
     scope: { id: 'library-lists-' + epoch },
     mutationFn: (request: DeleteModListRequest) =>
       inWorkspace(epoch, () => rimrClient.deleteModList(request)),
