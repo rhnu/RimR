@@ -123,7 +123,7 @@ function DiagnosticMenuGroup({
       <ContextMenuSubTrigger disabled={disabled}>
         {label} ({items.length})
       </ContextMenuSubTrigger>
-      <ContextMenuSubContent className="max-h-96 max-w-[min(30rem,90vw)] overflow-y-auto">
+      <ContextMenuSubContent className="max-w-[min(30rem,90vw)]">
         <ContextMenuLabel>{t('suppression.sharedScope')}</ContextMenuLabel>
         {codes.map((code) => {
           const group = items.filter((item) => item.code === code);
@@ -132,7 +132,7 @@ function DiagnosticMenuGroup({
               <ContextMenuSubTrigger>
                 {t(`suppression.types.${code}`)} ({group.length})
               </ContextMenuSubTrigger>
-              <ContextMenuSubContent className="max-h-96 max-w-[min(30rem,90vw)] overflow-y-auto">
+              <ContextMenuSubContent className="max-w-[min(30rem,90vw)]">
                 {group.map((item) => (
                   <ContextMenuItem key={item.key} onSelect={() => action([item])}>
                     <span className="min-w-0 whitespace-normal break-words">

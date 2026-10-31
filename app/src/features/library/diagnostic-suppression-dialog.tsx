@@ -54,7 +54,7 @@ function SuppressionManager() {
   const view = useSuppressionManagerState();
   const { commands, visible, selectedRules, setSelected } = view;
   return (
-    <div className="flex min-h-0 flex-col gap-2">
+    <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
       <SuppressionFilters view={view} />
       <div className="max-h-[50vh] min-h-20 overflow-auto border border-border">
         {!commands.ready ? (
