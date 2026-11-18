@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { FilterInput } from '@/components/ui/filter-input';
 import { collectDiagnostics, filterSuppressions } from '@/domain/diagnostics/suppression';
 import { formatDiagnosticMessage, formatPackageLabel } from '@/domain/diagnostics/messages';
 import { primaryModsByPackageId } from '@/domain/mods/catalog';
@@ -145,18 +145,13 @@ function SuppressionFilters({ view }: { view: ManagerView }) {
   const { query, setQuery, code, setCode, version, setVersion, codes, versions, visible } = view;
   return (
     <>
-      <Input
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        placeholder={t('suppression.search')}
-        aria-label={t('suppression.search')}
-      />
+      <FilterInput value={query} onValueChange={setQuery} label={t('suppression.search')} />
       <div className="flex flex-wrap items-center gap-2">
         <select
           value={code}
           onChange={(event) => setCode(event.target.value)}
           aria-label={t('suppression.typeFilter')}
-          className="h-8 max-w-full border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="h-8 max-w-full border border-input-border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <option value="">{t('suppression.allTypes')}</option>
           {codes.map((value) => (
@@ -169,7 +164,7 @@ function SuppressionFilters({ view }: { view: ManagerView }) {
           value={version}
           onChange={(event) => setVersion(event.target.value)}
           aria-label={t('suppression.versionFilter')}
-          className="h-8 border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="h-8 border border-input-border bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <option value="">{t('suppression.allVersions')}</option>
           <option value="independent">{t('suppression.anyVersion')}</option>

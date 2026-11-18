@@ -11,7 +11,6 @@ import { AppBootstrap } from '@/app/app-bootstrap';
 import { queryClient } from '@/queries/client';
 import { disableDefaultContextMenu } from '@/app/native-context-menu';
 import '@/i18n';
-import './styles.css';
 
 disableDefaultContextMenu();
 

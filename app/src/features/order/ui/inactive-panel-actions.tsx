@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { ButtonGroup } from '@/components/ui/button-group';
-import { Input } from '@/components/ui/input';
+import { FilterInput } from '@/components/ui/filter-input';
 import { Row } from '@/components/ui/layout';
 import type { AvailableModSortKey, SortDirection } from '@/domain/mods/available-mods';
 import { SortDirectionButton } from '@/features/order/ui/order-toolbar';
@@ -31,18 +31,17 @@ export function InactivePanelActions({
   const { t } = useTranslation();
   return (
     <Row gap={1}>
-      <Input
+      <FilterInput
         value={search}
-        onChange={(event) => onSearchChange(event.target.value)}
-        placeholder={t('order.searchInactive')}
-        aria-label={t('order.searchInactive')}
+        onValueChange={onSearchChange}
+        label={t('order.searchInactive')}
         className="h-7 flex-1 px-2 text-xs shadow-none"
       />
       <ButtonGroup>
         <select
           value={sortKey}
           onChange={(event) => onSortKeyChange(event.target.value as AvailableModSortKey)}
-          className="h-7 border border-input bg-background px-1.5 text-xs"
+          className="h-7 border border-input-border bg-background px-1.5 text-xs"
           aria-label={t('order.aria.sortAvailable')}
         >
           {availableSortKeys.map((key) => (

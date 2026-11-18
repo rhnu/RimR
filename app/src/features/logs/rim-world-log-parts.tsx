@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
+import { FilterInput } from '@/components/ui/filter-input';
 import { Row } from '@/components/ui/layout';
 import { levelTextClass, type LevelFilter } from './rim-world-log-model';
 
@@ -74,11 +74,10 @@ export function RimWorldLogToolbar({
   return (
     <Row wrap>
       <LevelFilterMenu levelFilter={levelFilter} onLevelFilterChange={onLevelFilterChange} />
-      <Input
+      <FilterInput
         value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
-        placeholder={t('logs.rimworld.searchPlaceholder')}
-        aria-label={t('logs.rimworld.searchPlaceholder')}
+        onValueChange={onSearchChange}
+        label={t('logs.rimworld.searchPlaceholder')}
         className="h-8 w-32 max-w-xs flex-1 text-xs"
       />
       <ButtonGroup>
@@ -135,10 +134,7 @@ export function RimWorldLogStats({ data }: { data: PlayerLogDto }) {
         </Badge>
       ) : null}
       {data.warningCount > 0 ? (
-        <Badge
-          variant="outline"
-          className="border-yellow-500/30 bg-yellow-500/15 text-yellow-700 dark:text-yellow-400"
-        >
+        <Badge variant="warning">
           {t('logs.rimworld.stats.warnings', { count: data.warningCount })}
         </Badge>
       ) : null}

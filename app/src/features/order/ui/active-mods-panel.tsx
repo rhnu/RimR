@@ -12,7 +12,7 @@ import type {
   SteamWorkshopOpenTarget,
   TagDefDto,
 } from '@/commands';
-import { Input } from '@/components/ui/input';
+import { FilterInput } from '@/components/ui/filter-input';
 import { DroppablePanel } from '@/features/order/ui/panels';
 import { ActiveEntryRow } from './rows/active-entry-row';
 import { GroupChildRow } from './rows/group-child-row';
@@ -126,11 +126,10 @@ export function ActiveModsPanel() {
       title={t('order.activeModListTitle')}
       count={flattenModListEntries(draft.entries).length}
       actions={
-        <Input
+        <FilterInput
           value={filters.activeSearch}
-          onChange={(event) => filters.setActiveSearch(event.target.value)}
-          placeholder={t('order.searchActive')}
-          aria-label={t('order.searchActive')}
+          onValueChange={filters.setActiveSearch}
+          label={t('order.searchActive')}
           className="h-7 px-2 text-xs shadow-none"
         />
       }

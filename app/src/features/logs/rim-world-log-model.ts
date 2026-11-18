@@ -25,7 +25,7 @@ export function levelTextClass(level: LogLevelDto): string {
     case 'error':
       return 'text-destructive/80';
     case 'warning':
-      return 'text-yellow-600 dark:text-yellow-400';
+      return 'text-warning';
     case 'info':
       return 'text-foreground/80';
   }

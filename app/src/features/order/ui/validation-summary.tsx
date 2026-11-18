@@ -52,7 +52,7 @@ function ReadyValidationSummary({ summary, diagnostics, modByPackageId }: Valida
   if (summary.isClean && summary.suppressed === 0 && !open) {
     return (
       <Badge variant="outline">
-        <CheckCircle2 className="size-3 text-emerald-700 dark:text-emerald-400" />
+        <CheckCircle2 className="size-3 text-success" />
         {t('order.validation.clean')}
       </Badge>
     );

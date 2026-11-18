@@ -242,17 +242,9 @@ export function ModDetailsSheet({ mod, open, onOpenChange }: ModDetailsSheetProp
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="secondary">{t(`modDetails.source.${mod.sourceKind}`)}</Badge>
                 {mod.valid && !mod.dataMalformed ? (
-                  <Badge
-                    variant="outline"
-                    className="border-green-500/30 text-green-700 dark:text-green-400"
-                  >
-                    {t('modDetails.badges.valid')}
-                  </Badge>
+                  <Badge variant="success">{t('modDetails.badges.valid')}</Badge>
                 ) : (
-                  <Badge
-                    variant="outline"
-                    className="border-yellow-500/30 text-yellow-700 dark:text-yellow-400"
-                  >
+                  <Badge variant="warning" className="bg-transparent">
                     {t('modDetails.badges.issues')}
                   </Badge>
                 )}

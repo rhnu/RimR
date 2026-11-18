@@ -174,7 +174,7 @@ function UnifiedDiffRowView({
     case 'added':
       return (
         <div
-          className="border-b border-border bg-green-600/10 px-2 py-0.5 leading-5 text-green-700 last:border-b-0 dark:text-green-400"
+          className="border-b border-border bg-success-background px-2 py-0.5 leading-5 text-success last:border-b-0"
           title={title}
         >
           <span className="inline-block w-4 select-none">+</span>
@@ -196,7 +196,7 @@ function UnifiedDiffRowView({
     case 'moved':
       return (
         <div
-          className="border-b border-border bg-amber-600/10 px-2 py-0.5 leading-5 text-amber-600 last:border-b-0 dark:text-amber-400"
+          className="border-b border-border bg-warning-background px-2 py-0.5 leading-5 text-warning last:border-b-0"
           title={
             title ??
             t('order.diff.movedInline', {

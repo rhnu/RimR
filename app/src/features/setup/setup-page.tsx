@@ -174,9 +174,9 @@ function ScanSummary({ report }: { report: CatalogSnapshotDto }) {
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
       <Badge variant="secondary">{report.catalog.mods.length}</Badge>
-      {duplicates > 0 ? <WarningBadge>{duplicates}</WarningBadge> : null}
+      {duplicates > 0 ? <Badge variant="warning">{duplicates}</Badge> : null}
       {errors > 0 ? <Badge variant="destructive">{errors}</Badge> : null}
-      {warnings > 0 ? <WarningBadge>{warnings}</WarningBadge> : null}
+      {warnings > 0 ? <Badge variant="warning">{warnings}</Badge> : null}
       {infos > 0 ? <Badge variant="secondary">{infos}</Badge> : null}
       {report.diagnostics.length === 0 ? <span>{t('setup.noDiagnostics')}</span> : null}
     </div>
@@ -191,12 +191,11 @@ function DiagnosticRow({
   modByPackageId: Map<string, ModMetadataDto>;
 }) {
   const { t } = useTranslation();
-  const { variant, className } = severityStyle(diagnostic.severity);
   const location = formatDiagnosticLocation(diagnostic);
   return (
     <div className="flex flex-col gap-1 border border-border px-3 py-2">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={variant} className={className}>
+        <Badge variant={diagnosticBadgeVariants[diagnostic.severity]}>
           {t(`severity.${diagnostic.severity}`)}
         </Badge>
         <span className="font-mono text-xs text-muted-foreground">{diagnostic.code}</span>
@@ -216,30 +215,8 @@ function DiagnosticRow({
   );
 }
 
-function WarningBadge({ children }: { children: number }) {
-  return (
-    <Badge
-      variant="outline"
-      className="border-yellow-500/30 bg-yellow-500/15 text-yellow-700 dark:text-yellow-400"
-    >
-      {children}
-    </Badge>
-  );
-}
-
-function severityStyle(severity: SeverityDto): {
-  variant: 'destructive' | 'outline' | 'secondary';
-  className?: string;
-} {
-  switch (severity) {
-    case 'error':
-      return { variant: 'destructive' };
-    case 'warning':
-      return {
-        variant: 'outline',
-        className: 'border-yellow-500/30 bg-yellow-500/15 text-yellow-700 dark:text-yellow-400',
-      };
-    case 'info':
-      return { variant: 'secondary' };
-  }
-}
+const diagnosticBadgeVariants = {
+  error: 'destructive',
+  warning: 'warning',
+  info: 'secondary',
+} as const satisfies Record<SeverityDto, string>;

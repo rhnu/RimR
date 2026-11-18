@@ -99,7 +99,7 @@ function LaunchGameButton() {
   return (
     <Button
       variant="default"
-      className="gap-1.5 bg-green-600 px-4 text-white hover:bg-green-700"
+      className="gap-1.5 bg-launch px-4 text-launch-foreground hover:bg-launch-hover"
       title={t('order.launchGame')}
       disabled={launch.isPending}
       onClick={() => launch.mutate()}

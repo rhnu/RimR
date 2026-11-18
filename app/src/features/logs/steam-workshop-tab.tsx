@@ -5,7 +5,7 @@ import { Loader2, RefreshCw } from 'lucide-react';
 import type { SteamWorkshopLogDto, SteamWorkshopLogEntryDto } from '@/commands';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { FilterInput } from '@/components/ui/filter-input';
 import { Col, Row } from '@/components/ui/layout';
 import { useSteamWorkshopLog } from '@/queries/logs';
 
@@ -77,11 +77,10 @@ function SteamWorkshopToolbar({
   const { t } = useTranslation();
   return (
     <Row wrap>
-      <Input
+      <FilterInput
         value={search}
-        onChange={(e) => onSearchChange(e.target.value)}
-        placeholder={t('logs.steam.searchPlaceholder')}
-        aria-label={t('logs.steam.searchPlaceholder')}
+        onValueChange={onSearchChange}
+        label={t('logs.steam.searchPlaceholder')}
         className="mr-auto h-8 w-32 max-w-xs flex-1 text-xs"
       />
       {hasData ? (

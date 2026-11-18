@@ -1,15 +1,14 @@
 import { useModCatalog } from '../context/mod-catalog-context';
 import { useTranslation } from 'react-i18next';
 import type { ModMetadataDto } from '@/commands';
-import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { DialogForm } from '@/components/ui/dialog-form';
 import { Input } from '@/components/ui/input';
 import { OrderDiffBody } from '@/features/order/ui/order-diff-view';
 import type { OrderDiff } from '@/domain/mod-list/types';
@@ -35,12 +34,13 @@ export function OrderDialogView({ onSubmit }: { onSubmit: (value: string) => voi
             <DialogDescription>{t(model.descriptionKey)}</DialogDescription>
           </DialogHeader>
         ) : null}
-        <form
-          className="flex min-h-0 flex-1 flex-col gap-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            onSubmit(dialog && dialogHasValue(dialog) ? dialog.value : '');
-          }}
+        <DialogForm
+          className="flex-1"
+          onCancel={close}
+          onSubmit={() => onSubmit(dialog && dialogHasValue(dialog) ? dialog.value : '')}
+          submitLabel={t(model?.submitLabelKey ?? 'common.save')}
+          submitVariant={model?.submitVariant}
+          submitDisabled={model?.submitDisabled}
         >
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
             {dialog && dialogHasValue(dialog) ? (
@@ -48,19 +48,7 @@ export function OrderDialogView({ onSubmit }: { onSubmit: (value: string) => voi
             ) : null}
             {model ? <DialogBodyView body={model.body} modByPackageId={modByPackageId} /> : null}
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => close()}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              type="submit"
-              variant={model?.submitVariant ?? 'default'}
-              disabled={model?.submitDisabled ?? false}
-            >
-              {model ? t(model.submitLabelKey) : t('common.save')}
-            </Button>
-          </DialogFooter>
-        </form>
+        </DialogForm>
       </DialogContent>
     </Dialog>
   );
