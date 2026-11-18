@@ -131,7 +131,7 @@ export function ActiveModsPanel() {
           onChange={(event) => filters.setActiveSearch(event.target.value)}
           placeholder={t('order.searchActive')}
           aria-label={t('order.searchActive')}
-          className="h-7 w-40 px-2 text-xs shadow-none"
+          className="h-7 px-2 text-xs shadow-none"
         />
       }
     >

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { RefreshCw } from 'lucide-react';
 import type { LogEntryDto, LogSourceDto } from '@/commands';
 import { Button } from '@/components/ui/button';
+import { Col } from '@/components/ui/layout';
 import { usePlayerLog } from '@/queries/logs';
 import { filterEntries, type LevelFilter } from './rim-world-log-model';
 import { LogRow, RimWorldLogStats, RimWorldLogToolbar } from './rim-world-log-parts';
@@ -63,7 +64,7 @@ export function RimWorldLogTab() {
   const onRefresh = () => void refetch();
 
   return (
-    <div className="space-y-2">
+    <Col>
       <RimWorldLogToolbar
         source={source}
         onSourceChange={setSource}
@@ -88,7 +89,7 @@ export function RimWorldLogTab() {
         onRefresh={onRefresh}
         onRefClick={refJump}
       />
-    </div>
+    </Col>
   );
 }
 
@@ -125,13 +126,13 @@ function RimWorldLogBody({
 
   if (!hasData && !isFetching) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-slight border border-border p-8">
+      <Col className="items-center rounded-slight border border-border p-8">
         <p className="text-sm text-muted-foreground">{t('logs.rimworld.notLoaded')}</p>
         <Button size="sm" onClick={onRefresh}>
           <RefreshCw className="size-4" />
           {t('logs.rimworld.refresh')}
         </Button>
-      </div>
+      </Col>
     );
   }
 

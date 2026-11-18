@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Input } from '@/components/ui/input';
+import { Row } from '@/components/ui/layout';
 import type { AvailableModSortKey, SortDirection } from '@/domain/mods/available-mods';
 import { SortDirectionButton } from '@/features/order/ui/order-toolbar';
 
@@ -29,13 +30,13 @@ export function InactivePanelActions({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="flex items-center gap-1">
+    <Row gap={1}>
       <Input
         value={search}
         onChange={(event) => onSearchChange(event.target.value)}
         placeholder={t('order.searchInactive')}
         aria-label={t('order.searchInactive')}
-        className="h-7 w-36 px-2 text-xs shadow-none"
+        className="h-7 flex-1 px-2 text-xs shadow-none"
       />
       <ButtonGroup>
         <select
@@ -52,6 +53,6 @@ export function InactivePanelActions({
         </select>
         <SortDirectionButton direction={sortDirection} onToggle={onToggleSortDirection} />
       </ButtonGroup>
-    </div>
+    </Row>
   );
 }

@@ -6,6 +6,7 @@ import { ButtonGroup } from '@/components/ui/button-group';
 import { CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Col, Grid, Row } from '@/components/ui/layout';
 import { pathFieldKeys, type PathFieldKey } from './path-settings-model';
 
 export function PathSettingsForm({
@@ -38,27 +39,29 @@ export function PathSettingsForm({
   const { t } = useTranslation();
   return (
     <>
-      <CardContent className="space-y-2">
-        {loading ? (
-          <p className="text-sm text-muted-foreground">{t('settings.loadingConfig')}</p>
-        ) : (
-          pathFieldKeys.map((field) => {
-            const label = t(`settings.paths.${field}`);
-            return (
-              <PathRow
-                key={field}
-                field={field}
-                label={label}
-                value={draft?.paths[field] ?? ''}
-                allowClear={allowClear}
-                onBrowse={() => onBrowse(field, label)}
-                onClear={() => onClear?.(field)}
-              />
-            );
-          })
-        )}
-      </CardContent>
-      <CardFooter className="gap-2">
+      <Col asChild>
+        <CardContent>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">{t('settings.loadingConfig')}</p>
+          ) : (
+            pathFieldKeys.map((field) => {
+              const label = t(`settings.paths.${field}`);
+              return (
+                <PathRow
+                  key={field}
+                  field={field}
+                  label={label}
+                  value={draft?.paths[field] ?? ''}
+                  allowClear={allowClear}
+                  onBrowse={() => onBrowse(field, label)}
+                  onClear={() => onClear?.(field)}
+                />
+              );
+            })
+          )}
+        </CardContent>
+      </Col>
+      <CardFooter className="flex-wrap gap-2">
         <Button variant="outline" size="sm" onClick={onAutodetect} disabled={autodetectPending}>
           {autodetectPending ? (
             <Loader2 className="size-4 animate-spin" />
@@ -67,8 +70,7 @@ export function PathSettingsForm({
           )}
           {t('settings.autodetect')}
         </Button>
-        <div className="flex-1" />
-        <ButtonGroup>
+        <ButtonGroup className="ml-auto">
           <Button variant="ghost" size="sm" onClick={onReset} disabled={!dirty}>
             <RotateCcw className="size-4" />
             {t('common.reset')}
@@ -106,7 +108,7 @@ function PathRow({
   const inputId = `path-${field}`;
   const clearLabel = t('common.clear', { label });
   return (
-    <div className="grid grid-cols-[112px_1fr_auto_auto] items-center gap-2">
+    <Grid className="grid-cols-[7rem_minmax(0,1fr)_auto] items-center">
       <Label htmlFor={inputId} className="text-xs">
         {label}
       </Label>
@@ -117,30 +119,30 @@ function PathRow({
         placeholder={t('common.notSet')}
         className="h-8 bg-muted/40 px-2 font-mono text-xs"
       />
-      <Button
-        variant="outline"
-        size="icon"
-        className="size-8"
-        onClick={onBrowse}
-        aria-label={t('common.browse')}
-        title={t('common.browse')}
-      >
-        <FolderOpen className="size-4" />
-      </Button>
-      {allowClear && value !== '' ? (
+      <Row className="w-18">
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
           className="size-8"
-          aria-label={clearLabel}
-          title={clearLabel}
-          onClick={onClear}
+          onClick={onBrowse}
+          aria-label={t('common.browse')}
+          title={t('common.browse')}
         >
-          <X className="size-4" />
+          <FolderOpen className="size-4" />
         </Button>
-      ) : (
-        <span className="inline-block w-8" />
-      )}
-    </div>
+        {allowClear && value !== '' ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            aria-label={clearLabel}
+            title={clearLabel}
+            onClick={onClear}
+          >
+            <X className="size-4" />
+          </Button>
+        ) : null}
+      </Row>
+    </Grid>
   );
 }

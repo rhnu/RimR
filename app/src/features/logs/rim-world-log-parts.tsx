@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { Row } from '@/components/ui/layout';
 import { levelTextClass, type LevelFilter } from './rim-world-log-model';
 
 const LEVEL_FILTERS: ReadonlyArray<LevelFilter> = ['all', 'exception', 'error', 'warning', 'info'];
@@ -71,13 +72,14 @@ export function RimWorldLogToolbar({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="flex items-center gap-2">
+    <Row wrap>
       <LevelFilterMenu levelFilter={levelFilter} onLevelFilterChange={onLevelFilterChange} />
       <Input
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
         placeholder={t('logs.rimworld.searchPlaceholder')}
-        className="h-8 max-w-xs text-xs"
+        aria-label={t('logs.rimworld.searchPlaceholder')}
+        className="h-8 w-32 max-w-xs flex-1 text-xs"
       />
       <ButtonGroup>
         <Button
@@ -97,27 +99,28 @@ export function RimWorldLogToolbar({
           {t('logs.rimworld.playerPrevLog')}
         </Button>
       </ButtonGroup>
-      <div className="flex-1" />
-      <Button variant={live ? 'default' : 'outline'} size="sm" onClick={onToggleLive}>
-        {live ? <Pause className="size-4" /> : <Play className="size-4" />}
-        {t('logs.rimworld.live')}
-      </Button>
-      <Button variant="outline" size="sm" onClick={onRefresh} disabled={isFetching}>
-        {isFetching ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <RefreshCw className="size-4" />
-        )}
-        {t('logs.rimworld.refresh')}
-      </Button>
-    </div>
+      <Row className="ml-auto">
+        <Button variant={live ? 'default' : 'outline'} size="sm" onClick={onToggleLive}>
+          {live ? <Pause className="size-4" /> : <Play className="size-4" />}
+          {t('logs.rimworld.live')}
+        </Button>
+        <Button variant="outline" size="sm" onClick={onRefresh} disabled={isFetching}>
+          {isFetching ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <RefreshCw className="size-4" />
+          )}
+          {t('logs.rimworld.refresh')}
+        </Button>
+      </Row>
+    </Row>
   );
 }
 
 export function RimWorldLogStats({ data }: { data: PlayerLogDto }) {
   const { t } = useTranslation();
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+    <Row wrap className="text-xs text-muted-foreground">
       <Badge variant="secondary">
         {t('logs.rimworld.stats.total', { count: data.totalLines })}
       </Badge>
@@ -139,8 +142,10 @@ export function RimWorldLogStats({ data }: { data: PlayerLogDto }) {
           {t('logs.rimworld.stats.warnings', { count: data.warningCount })}
         </Badge>
       ) : null}
-      <span className="font-mono text-xs text-muted-foreground/60">{data.filePath}</span>
-    </div>
+      <span className="font-mono text-xs wrap-anywhere text-muted-foreground/60">
+        {data.filePath}
+      </span>
+    </Row>
   );
 }
 
@@ -155,8 +160,8 @@ export function LogRow({
   const levelClass = levelTextClass(entry.level);
   const indent = entry.isStackTrace ? 'pl-6' : '';
   return (
-    <div
-      className={`flex items-start gap-2 border-b border-border/50 px-2 py-0.5 font-mono text-xs ${indent} ${levelClass}`}
+    <Row
+      className={`items-start border-b border-border/50 px-2 py-0.5 font-mono text-xs ${indent} ${levelClass}`}
     >
       <span className="w-12 shrink-0 text-muted-foreground/50">{entry.lineNumber}</span>
       <span className="flex-1 min-w-0 whitespace-pre-wrap break-words">{entry.text}</span>
@@ -173,6 +178,6 @@ export function LogRow({
       {entry.duplicateRef ? (
         <span className="shrink-0 text-muted-foreground/40">[dup →{entry.duplicateRef}]</span>
       ) : null}
-    </div>
+    </Row>
   );
 }

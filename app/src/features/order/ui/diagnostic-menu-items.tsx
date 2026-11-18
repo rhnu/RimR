@@ -8,7 +8,6 @@ import type {
 import { formatDiagnosticMessage } from '@/domain/diagnostics/messages';
 import {
   ContextMenuItem,
-  ContextMenuLabel,
   ContextMenuSeparator,
   ContextMenuSub,
   ContextMenuSubContent,
@@ -124,7 +123,6 @@ function DiagnosticMenuGroup({
         {label} ({items.length})
       </ContextMenuSubTrigger>
       <ContextMenuSubContent className="max-w-[min(30rem,90vw)]">
-        <ContextMenuLabel>{t('suppression.sharedScope')}</ContextMenuLabel>
         {codes.map((code) => {
           const group = items.filter((item) => item.code === code);
           return (

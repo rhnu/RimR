@@ -23,8 +23,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Row } from '@/components/ui/layout';
 import { ModListSwitcher } from '@/features/library/mod-list-switcher';
-import { ValidationSummaryBadge } from '@/features/order/ui/panels';
+import { ValidationSummaryBadge } from '@/features/order/ui/validation-summary';
 import {
   useOrderWorkspaceCommands,
   useOrderWorkspaceData,
@@ -48,46 +49,47 @@ export function OrderToolbar() {
   const { setDialog } = useOrderWorkspaceDialog();
   if (!library.data || !draft) return null;
   return (
-    <header className="flex flex-wrap items-center gap-2 border-b border-border pb-1">
-      <ModListSwitcher
-        modLists={library.data.modListsIndex.modLists}
-        current={draft}
-        onChange={commands.handleSetCurrentModList}
-      />
-      <div className="flex-1" />
-      <div className="flex flex-wrap items-center gap-2">
-        <ToolbarBadges
-          dirty={modListDirty}
-          differsFromGame={derived.differsFromGame}
-          summary={derived.validationSummary}
-          phase={validation.phase}
-          diagnostics={derived.allDiagnostics}
-          modByPackageId={derived.modByPackageId}
+    <Row asChild wrap className="border-b border-border pb-1">
+      <header>
+        <ModListSwitcher
+          modLists={library.data.modListsIndex.modLists}
+          current={draft}
+          onChange={commands.handleSetCurrentModList}
         />
-        <ToolbarActions
-          savePending={commands.savePending}
-          saveDisabled={hasConflict}
-          applyPending={commands.applyPending}
-          differsFromGame={derived.differsFromGame}
-          modListDirty={modListDirty}
-          onSave={commands.handleSaveModList}
-          onApply={commands.handleApplyWithDiff}
-          onDiscardDraft={() => setDialog({ kind: 'discardDraft' })}
-        />
-        {hasConflict ? (
-          <Badge variant="destructive" title={t('order.conflict')}>
-            {t('order.conflictLabel')}
-          </Badge>
-        ) : null}
-        <RefreshMenu
-          activeListFetching={activeList.isFetching}
-          catalogFetching={scan.isFetching}
-          onSyncFromGame={sync.handleSyncFromGame}
-          onRebuildCatalog={sync.handleRebuildCatalog}
-        />
-        <LaunchGameButton />
-      </div>
-    </header>
+        <Row wrap className="ml-auto min-w-0">
+          <ToolbarBadges
+            dirty={modListDirty}
+            differsFromGame={derived.differsFromGame}
+            summary={derived.validationSummary}
+            phase={validation.phase}
+            diagnostics={derived.allDiagnostics}
+            modByPackageId={derived.modByPackageId}
+          />
+          <ToolbarActions
+            savePending={commands.savePending}
+            saveDisabled={hasConflict}
+            applyPending={commands.applyPending}
+            differsFromGame={derived.differsFromGame}
+            modListDirty={modListDirty}
+            onSave={commands.handleSaveModList}
+            onApply={commands.handleApplyWithDiff}
+            onDiscardDraft={() => setDialog({ kind: 'discardDraft' })}
+          />
+          {hasConflict ? (
+            <Badge variant="destructive" title={t('order.conflict')}>
+              {t('order.conflictLabel')}
+            </Badge>
+          ) : null}
+          <RefreshMenu
+            activeListFetching={activeList.isFetching}
+            catalogFetching={scan.isFetching}
+            onSyncFromGame={sync.handleSyncFromGame}
+            onRebuildCatalog={sync.handleRebuildCatalog}
+          />
+          <LaunchGameButton />
+        </Row>
+      </header>
+    </Row>
   );
 }
 

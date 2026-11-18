@@ -3,6 +3,7 @@ import type { DiagnosticDto, ModIdentityDto, ModMetadataDto, TagDefDto } from '@
 import { Collapsible } from '@/components/ui/collapsible';
 import { SteamBbcode } from '@/components/ui/steam-bbcode';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Col } from '@/components/ui/layout';
 import { formatFileSize } from '@/features/order/model';
 import { DiagnosticReport } from '@/features/order/ui/diagnostic-report';
 import { Meta } from '@/features/order/ui/meta-row';
@@ -11,7 +12,7 @@ import { TagsMeta } from '@/features/order/ui/tags-meta';
 export function EmptyMetadata() {
   const { t } = useTranslation();
   return (
-    <div className="flex flex-1 items-center justify-center text-xs text-muted-foreground">
+    <div className="flex h-full items-center justify-center p-2 text-xs text-muted-foreground">
       {t('order.metadata.empty')}
     </div>
   );
@@ -38,12 +39,13 @@ export function SelectedModMetadata({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="space-y-3">
-      <PreviewImage loading={previewLoading} dataUrl={previewDataUrl} />
-      <ModIdentityMeta identity={identity} mod={mod} />
-      <TagsMeta label={t('order.context.tags')} tags={tags} />
-      {mod?.description ? <SteamBbcode>{mod.description}</SteamBbcode> : null}
-      <Collapsible title={t('modDetails.sections.fileInfo')} defaultOpen={false}>
+    <Col gap={0} className="divide-y">
+      <Col gap={1.5} className="p-2">
+        <PreviewImage loading={previewLoading} dataUrl={previewDataUrl} />
+        <ModIdentityMeta identity={identity} mod={mod} />
+        {tags.length > 0 && <TagsMeta label={t('order.context.tags')} tags={tags} />}
+      </Col>
+      <Collapsible title={t('modDetails.sections.fileInfo')}>
         <Meta label={t('order.metadata.folderSize')} value={formatFileSize(folderSizeBytes)} />
         <Meta label={t('order.metadata.modifiedAt')} value={formatTimestamp(mod?.modifiedAtMs)} />
         <Meta label={t('order.inspector.sourceKey')} value={identity.sourceKey ?? '-'} mono />
@@ -52,7 +54,12 @@ export function SelectedModMetadata({
       {diagnostics.length > 0 ? (
         <DiagnosticList diagnostics={diagnostics} modByPackageId={modByPackageId} />
       ) : null}
-    </div>
+      {mod?.description && (
+        <Collapsible title={t('modDetails.sections.description')}>
+          <SteamBbcode>{mod.description}</SteamBbcode>
+        </Collapsible>
+      )}
+    </Col>
   );
 }
 
@@ -72,7 +79,7 @@ function ModIdentityMeta({
 }) {
   const { t } = useTranslation();
   return (
-    <section className="space-y-2">
+    <section className="space-y-1">
       <Meta label={t('order.inspector.packageId')} value={identity.packageId} mono />
       <Meta label={t('modDetails.sections.authors')} value={mod?.authors.join(', ') || '-'} />
       <Meta label={t('modDetails.fields.modVersion')} value={mod?.modVersion ?? '-'} />
@@ -88,7 +95,7 @@ function ModIdentityMeta({
 function RulesMetadata({ mod }: { mod: ModMetadataDto }) {
   const { t } = useTranslation();
   return (
-    <Collapsible title={t('modDetails.sections.rules')} defaultOpen={false}>
+    <Collapsible title={t('modDetails.sections.rules')}>
       <RuleMeta label={t('modDetails.rules.loadAfter')} values={mod.rules.loadAfter} />
       <RuleMeta label={t('modDetails.rules.loadBefore')} values={mod.rules.loadBefore} />
       <RuleMeta label={t('modDetails.rules.forceLoadAfter')} values={mod.rules.forceLoadAfter} />
@@ -116,26 +123,28 @@ export function SelectedGroupMetadata({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="space-y-3">
-      <Meta label={t('order.inspector.groupEntries')} value={String(entryCount)} />
+    <Col gap={0} className="divide-y">
+      <div className="p-2">
+        <Meta label={t('order.inspector.groupEntries')} value={String(entryCount)} />
+      </div>
       {diagnostics.length > 0 ? (
         <DiagnosticList diagnostics={diagnostics} modByPackageId={modByPackageId} />
       ) : null}
-    </div>
+    </Col>
   );
 }
 
 export function SelectedSeparatorMetadata({ id, note }: { id: string; note: string | null }) {
   const { t } = useTranslation();
   return (
-    <div className="space-y-2">
+    <Col gap={1} className="p-2">
       <Meta label={t('order.inspector.separatorId')} value={id} mono />
       {note ? <Meta label={t('order.inspector.note')} value={note} /> : null}
-    </div>
+    </Col>
   );
 }
 
-export function DiagnosticList({
+function DiagnosticList({
   diagnostics,
   modByPackageId,
 }: {
@@ -144,12 +153,9 @@ export function DiagnosticList({
 }) {
   const { t } = useTranslation();
   return (
-    <section className="space-y-2">
-      <h3 className="text-xs font-semibold text-muted-foreground">
-        {t('order.metadata.diagnostics')}
-      </h3>
+    <Collapsible title={t('order.metadata.diagnostics')} defaultOpen contentClassName="p-0">
       <DiagnosticReport diagnostics={diagnostics} modByPackageId={modByPackageId} />
-    </section>
+    </Collapsible>
   );
 }
 

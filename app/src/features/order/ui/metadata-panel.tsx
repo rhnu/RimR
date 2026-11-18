@@ -15,6 +15,7 @@ import { diagnosticsForTargets, entryDiagnosticTargets } from '@/domain/diagnost
 import { identityForMod } from '@/domain/mods/identity';
 import type { Selection } from '@/features/order/types';
 import { resolveModTags } from '@/features/order/ui/tags-meta';
+import { WorkspacePanel } from '@/features/order/ui/panels';
 import { deriveSelection } from '@/features/order/model/metadata-selection';
 import {
   EmptyMetadata,
@@ -66,26 +67,22 @@ export function MetadataPanel() {
     t('order.inspector.title'),
   );
   return (
-    <aside className="flex min-h-0 flex-col rounded-slight border border-border bg-background">
-      <div className="flex h-9 select-none items-center border-b border-border px-2">
-        <h2 className="truncate text-sm font-semibold">{title}</h2>
-      </div>
-      <div className="min-h-0 flex-1 overflow-auto p-2 scrollbar-hidden">
-        <MetadataBody
-          selection={selection}
-          selectedModIdentity={view.selectedModIdentity}
-          selectedMod={view.selectedMod}
-          selectedEntry={view.selectedEntry}
-          previewLoading={previewLoading}
-          previewDataUrl={selectedPreview?.previewDataUrl ?? undefined}
-          folderSizeBytes={selectedFolderSize?.folderSizeBytes}
-          diagnostics={diagnostics}
-          modByPackageId={modByPackageId}
-          tagDefs={library.data?.settings.tagDefs ?? []}
-          modTags={library.data?.settings.modTags ?? []}
-        />
-      </div>
-    </aside>
+    <WorkspacePanel as="aside" title={title}>
+      <MetadataBody
+        key={sourceKey ?? view.selectedModIdentity?.packageId ?? view.selectedEntry?.id}
+        selection={selection}
+        selectedModIdentity={view.selectedModIdentity}
+        selectedMod={view.selectedMod}
+        selectedEntry={view.selectedEntry}
+        previewLoading={previewLoading}
+        previewDataUrl={selectedPreview?.previewDataUrl ?? undefined}
+        folderSizeBytes={selectedFolderSize?.folderSizeBytes}
+        diagnostics={diagnostics}
+        modByPackageId={modByPackageId}
+        tagDefs={library.data?.settings.tagDefs ?? []}
+        modTags={library.data?.settings.modTags ?? []}
+      />
+    </WorkspacePanel>
   );
 }
 

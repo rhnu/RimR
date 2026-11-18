@@ -6,6 +6,7 @@ import type { SteamWorkshopLogDto, SteamWorkshopLogEntryDto } from '@/commands';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Col, Row } from '@/components/ui/layout';
 import { useSteamWorkshopLog } from '@/queries/logs';
 
 export function SteamWorkshopTab() {
@@ -31,7 +32,7 @@ export function SteamWorkshopTab() {
   const onRefresh = () => void refetch();
 
   return (
-    <div className="space-y-2">
+    <Col>
       <SteamWorkshopToolbar
         search={search}
         onSearchChange={setSearch}
@@ -52,7 +53,7 @@ export function SteamWorkshopTab() {
         virtualizer={virtualizer}
         onRefresh={onRefresh}
       />
-    </div>
+    </Col>
   );
 }
 
@@ -75,14 +76,14 @@ function SteamWorkshopToolbar({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="flex items-center gap-2">
+    <Row wrap>
       <Input
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
         placeholder={t('logs.steam.searchPlaceholder')}
-        className="h-8 max-w-xs text-xs"
+        aria-label={t('logs.steam.searchPlaceholder')}
+        className="mr-auto h-8 w-32 max-w-xs flex-1 text-xs"
       />
-      <div className="flex-1" />
       {hasData ? (
         <Badge variant="secondary">
           {filteredCount}/{totalCount}
@@ -96,7 +97,7 @@ function SteamWorkshopToolbar({
         )}
         {t('logs.steam.refresh')}
       </Button>
-    </div>
+    </Row>
   );
 }
 
@@ -133,13 +134,13 @@ function SteamWorkshopBody({
 
   if (!hasData && !isFetching) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-slight border border-border p-8">
+      <Col className="items-center rounded-slight border border-border p-8">
         <p className="text-sm text-muted-foreground">{t('logs.steam.notLoaded')}</p>
         <Button size="sm" onClick={onRefresh}>
           <RefreshCw className="size-4" />
           {t('logs.steam.refresh')}
         </Button>
-      </div>
+      </Col>
     );
   }
 
@@ -147,7 +148,7 @@ function SteamWorkshopBody({
     return (
       <div className="rounded-slight border border-border p-3">
         <p className="text-sm text-muted-foreground">{t('logs.steam.notFound')}</p>
-        <p className="mt-1 font-mono text-xs text-muted-foreground">{data.acfPath}</p>
+        <p className="mt-1 font-mono text-xs wrap-anywhere text-muted-foreground">{data.acfPath}</p>
       </div>
     );
   }
@@ -175,13 +176,16 @@ function SteamWorkshopList({
   const { t } = useTranslation();
   return (
     <div className="rounded-slight border border-border">
-      <div className="flex items-center gap-3 border-b border-border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground">
+      <Row
+        gap={3}
+        className="border-b border-border bg-muted/40 px-3 py-1 text-xs font-medium text-muted-foreground"
+      >
         <span className="flex-1">{t('logs.steam.columnMod')}</span>
         <span className="w-48">{t('logs.steam.columnPackageId')}</span>
         <span className="w-36">{t('logs.steam.columnFileId')}</span>
         <span className="w-36">{t('logs.steam.columnUpdated')}</span>
         <span className="w-36">{t('logs.steam.columnTouched')}</span>
-      </div>
+      </Row>
       <div ref={parentRef} className="h-[calc(100vh-250px)] overflow-auto">
         <div style={{ height: virtualizer.getTotalSize(), position: 'relative', width: '100%' }}>
           {virtualizer.getVirtualItems().map((virtualItem) => (
@@ -212,7 +216,7 @@ function SteamWorkshopRow({
 }) {
   const { t } = useTranslation();
   return (
-    <div style={style} className="flex items-center gap-3 border-b border-border px-3 text-sm">
+    <Row gap={3} style={style} className="border-b border-border px-3 text-sm">
       <span className="flex-1 truncate">{entry.modName ?? t('logs.steam.unknownMod')}</span>
       <span className="w-48 truncate font-mono text-xs text-muted-foreground">
         {entry.packageId ?? '—'}
@@ -224,7 +228,7 @@ function SteamWorkshopRow({
       <span className="w-36 text-xs text-muted-foreground">
         {formatTimestamp(entry.timeTouchedMs)}
       </span>
-    </div>
+    </Row>
   );
 }
 

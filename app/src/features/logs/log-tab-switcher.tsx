@@ -13,7 +13,7 @@ export function LogTabSwitcher({
 }) {
   const { t } = useTranslation();
   return (
-    <ButtonGroup>
+    <ButtonGroup className="self-start">
       <Button
         variant={tab === 'steam' ? 'default' : 'outline'}
         size="sm"
