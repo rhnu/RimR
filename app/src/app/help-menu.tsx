@@ -3,18 +3,19 @@ import { useTranslation } from 'react-i18next';
 import { MenuItem, MenuSeparator } from '@/components/ui/menu';
 import { AboutDialog } from './about-dialog';
 import { UpdateDialog } from './update-dialog';
-import { useAppUpdater } from './use-app-updater';
+import type { AppUpdater } from './use-app-updater';
 import { DesktopMenu, type MenuId } from './desktop-menu';
 
 type HelpMenuProps = {
   openMenu: MenuId | null;
   setOpenMenu: (menu: MenuId | null) => void;
+  updater: AppUpdater;
 };
-export function HelpMenu({ openMenu, setOpenMenu }: HelpMenuProps) {
+
+export function HelpMenu({ openMenu, setOpenMenu, updater }: HelpMenuProps) {
   const { t } = useTranslation();
   const [aboutOpen, setAboutOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const updater = useAppUpdater();
   return (
     <>
       <DesktopMenu
@@ -25,10 +26,10 @@ export function HelpMenu({ openMenu, setOpenMenu }: HelpMenuProps) {
         triggerRef={triggerRef}
       >
         <MenuItem
-          disabled={updater.busy}
+          disabled={updater.state.busy}
           onSelect={() => {
             setOpenMenu(null);
-            void updater.check();
+            updater.check();
           }}
         >
           {t('updates.check')}

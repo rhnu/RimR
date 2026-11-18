@@ -3,11 +3,14 @@ import type { LibraryDialog } from '@/features/library/types';
 import type { OrderDialog } from '@/features/order/types';
 import type { ModListDto } from '@/commands';
 import { useOrderDraftStore } from './order-draft-store';
+import { useWorkspaceStore } from './workspace-store';
 
 type AppDialog = LibraryDialog | OrderDialog | null;
+export type OrderDialogSession = { workspaceEpoch: number; draft: ModListDto | null };
+
 type OrderDialogState = {
   dialog: AppDialog;
-  draftAtOpen: ModListDto | null;
+  sessionAtOpen: OrderDialogSession | null;
   open: (dialog: Exclude<AppDialog, null>) => void;
   close: () => void;
   updateValue: (value: string) => void;
@@ -16,9 +19,16 @@ type OrderDialogState = {
 /** Shared dialog data; each feature renders and submits its own variants. */
 export const useOrderDialogStore = create<OrderDialogState>((set) => ({
   dialog: null,
-  draftAtOpen: null,
-  open: (dialog) => set({ dialog, draftAtOpen: useOrderDraftStore.getState().draft }),
-  close: () => set({ dialog: null, draftAtOpen: null }),
+  sessionAtOpen: null,
+  open: (dialog) =>
+    set({
+      dialog,
+      sessionAtOpen: {
+        workspaceEpoch: useWorkspaceStore.getState().epoch,
+        draft: useOrderDraftStore.getState().draft,
+      },
+    }),
+  close: () => set({ dialog: null, sessionAtOpen: null }),
   updateValue: (value) =>
     set((state) => {
       const { dialog } = state;

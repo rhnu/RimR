@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { rimrClient } from '@/commands';
 import type { CleanModsRequest, ModCleanupPreviewRequest } from '@/commands';
-import { retireWorkspace } from './workspace';
+import { invalidateWorkspace } from './workspace';
 import { unwrap } from './client';
 
 export function usePreviewModCleanup() {
@@ -16,6 +16,6 @@ export function useCleanMods() {
   return useMutation({
     meta: { blocksUpdate: true },
     mutationFn: (request: CleanModsRequest) => unwrap(rimrClient.cleanMods(request)),
-    onSuccess: () => retireWorkspace(queryClient, { discardDraft: false }),
+    onSuccess: () => invalidateWorkspace(queryClient),
   });
 }

@@ -129,6 +129,7 @@
     "gameOrderAlreadySynced": "已与游戏排序一致",
     "saveOrderAlreadySynced": "存档排序与当前草稿一致",
     "saveOrderEmpty": "存档中未找到模组",
+    "saveSyncTargetChanged": "工作区或当前列表已变更，请重新从存档导入排序。",
     "catalogRescanned": "目录已重建",
     "inactiveMissingModsRemoved": "已从草稿的未启用区域移除 {{count}} 个缺失 Mod",
     "activeMissingModsRemoved": "已从草稿的已启用区域移除 {{count}} 个缺失 Mod",
@@ -359,7 +360,7 @@
     },
     "conflict": "此列表在编辑期间发生了变更。你的编辑已保留；请重置为已保存版本后继续编辑。",
     "conflictLabel": "保存版本已变更",
-    "previewExpired": "预览打开后列表已发生变更，请重新打开预览后继续。"
+    "previewExpired": "列表、工作区或模组目录正在变更或已变更，请重新打开预览后继续。"
   },
   "catalog": {
     "title": "目录",

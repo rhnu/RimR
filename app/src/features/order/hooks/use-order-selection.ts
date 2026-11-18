@@ -1,4 +1,4 @@
-import type { OrderSelection } from '../context/workspace-types';
+import type { OrderSelection } from '../workspace/workspace-types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ModMetadataDto } from '@/commands';
 import type { Selection } from '@/features/order/types';

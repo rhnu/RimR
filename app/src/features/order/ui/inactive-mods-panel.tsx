@@ -1,5 +1,4 @@
-import type { OrderFilters, OrderDerived, OrderSelection } from '../context/workspace-types';
-import { useMemo, type MouseEvent } from 'react';
+import type { ComponentProps, MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
   DisplayAliasDto,
@@ -15,35 +14,24 @@ import { DroppablePanel } from '@/features/order/ui/panels';
 import { InactiveModRow } from './rows/inactive-mod-row';
 import { InactivePanelActions } from '@/features/order/ui/inactive-panel-actions';
 import { InactiveChildRow, InactiveEntryRow } from '@/features/order/ui/inactive-structured-rows';
-import {
-  canCreateInactiveGroup,
-  selectedActiveModIdentities,
-  selectedInactiveModIdentities,
-  tagTargetsForEntry,
-  tagTargetsForIdentity,
-} from '@/features/order/model';
+import { tagTargetsForEntry, tagTargetsForIdentity } from '@/features/order/model';
 import { catalogItemKey, isPackageAddressableMod } from '@/domain/mods/catalog';
 import type { InactiveRenderRow } from '@/features/order/model';
 import { displayName, identityForMod } from '@/domain/mods/identity';
 import type { Selection } from '@/features/order/types';
-import { INACTIVE_DROP_ID } from '@/features/order/workspace-constants';
-import {
-  useOrderWorkspaceData,
-  useOrderWorkspaceDerived,
-  useOrderWorkspaceEditActions,
-  useOrderWorkspaceFilters,
-  useOrderWorkspaceOpenHandlers,
-  useOrderWorkspacePreview,
-  useOrderWorkspaceSelection,
-  useOrderWorkspaceTagCommands,
-} from '@/features/order/context/hooks';
+import { INACTIVE_DROP_ID } from '@/features/order/dnd-ids';
+import type { DiagnosticItem } from '@/domain/diagnostics/suppression';
+import type { OrderDiagnosticTarget } from '../model/diagnostic-targets';
+import type { RowDiagnosticMenus } from './diagnostic-menu-items';
 
 type RowProps = {
   aliases: DisplayAliasDto[];
   tagDefs: TagDefDto[];
   modTags: ModTagBindingDto[];
   selectedCatalogKeys: Set<string>;
-  selectedPackageAddressableKeys: Set<string>;
+  canCreateGroup: boolean;
+  diagnosticsForTarget: (target: OrderDiagnosticTarget) => DiagnosticItem[];
+  diagnosticMenus: RowDiagnosticMenus;
   modByPackageId: Map<string, ModMetadataDto>;
   onSelect: (mod: ModMetadataDto, event: MouseEvent<HTMLButtonElement>) => void;
   onSelectEntry: (
@@ -73,69 +61,24 @@ type RowProps = {
   onWarmFileInfo: (sourceKey: string | null | undefined, immediate?: boolean) => void;
 };
 
-export function InactiveModsPanel() {
+export type InactiveModsPanelProps = RowProps & {
+  rows: InactiveRenderRow[];
+  selectedInactiveTagIdentities: ModIdentityDto[];
+  selectedActiveTagIdentities: ModIdentityDto[];
+  filters: ComponentProps<typeof InactivePanelActions>;
+};
+
+export function InactiveModsPanel({ rows, filters, ...rowProps }: InactiveModsPanelProps) {
   const { t } = useTranslation();
-  const { library } = useOrderWorkspaceData();
-  const filters = useOrderWorkspaceFilters();
-  const selection = useOrderWorkspaceSelection();
-  const derived = useOrderWorkspaceDerived();
-  const editActions = useOrderWorkspaceEditActions();
-  const preview = useOrderWorkspacePreview();
-  const open = useOrderWorkspaceOpenHandlers();
-  const tagCommands = useOrderWorkspaceTagCommands();
-  const aliases = library.data?.settings.aliases ?? [];
-  const tagDefs = library.data?.settings.tagDefs ?? [];
-  const modTags = library.data?.settings.modTags ?? [];
-  const tagTargets = useInactiveTagTargets(derived, selection);
-  const selectedPackageAddressableKeys = useSelectedPackageAddressableKeys(
-    derived,
-    selection.selectedInactiveCatalogKeys,
-  );
-  const rowProps: RowProps = {
-    aliases,
-    tagDefs,
-    modTags,
-    selectedCatalogKeys: selection.selectedInactiveCatalogKeys,
-    selectedPackageAddressableKeys,
-    modByPackageId: derived.modByPackageId,
-    onSelect: selection.selectInactiveMod,
-    onSelectEntry: selection.selectActiveEntry,
-    onSelectChild: selection.selectGroupChild,
-    onContextOpen: selection.ensureInactiveSelected,
-    onContextOpenEntry: selection.ensureActiveSelected,
-    onAdd: editActions.addInactiveMod,
-    onActivateEntry: editActions.activateInactiveEntry,
-    onActivateChild: editActions.activateInactiveChild,
-    onDoubleClick: editActions.addInactiveMod,
-    onRenameGroup: editActions.renameActiveGroup,
-    onCreateGroup: editActions.createInactiveGroupDialog,
-    onEditAlias: editActions.editInactiveAlias,
-    onEditActiveAlias: editActions.editActiveAlias,
-    onOpenModFolder: open.handleOpenModFolder,
-    onOpenSteamWorkshopPage: open.handleOpenSteamWorkshopPage,
-    onToggleModTag: tagCommands.handleToggleModTags,
-    onCreateTag: tagCommands.handleCreateTag,
-    onRenameTag: tagCommands.handleRenameTag,
-    onSetTagColor: tagCommands.handleSetTagColor,
-    onDeleteTag: tagCommands.handleDeleteTag,
-    onReorderModTags: tagCommands.handleReorderModTags,
-    onWarmFileInfo: preview.warmModPreview,
-  };
   return (
     <DroppablePanel
       id={INACTIVE_DROP_ID}
       title={t('order.unintroducedTitle')}
-      count={derived.inactiveRows.length}
-      actions={<InactivePanelToolbar filters={filters} />}
+      count={rows.length}
+      actions={<InactivePanelActions {...filters} />}
     >
-      {derived.inactiveRows.map((row) => (
-        <InactivePanelRow
-          key={row.id}
-          row={row}
-          selectedInactiveTagIdentities={tagTargets.inactive}
-          selectedActiveTagIdentities={tagTargets.active}
-          {...rowProps}
-        />
+      {rows.map((row) => (
+        <InactivePanelRow key={row.id} row={row} {...rowProps} />
       ))}
     </DroppablePanel>
   );
@@ -146,19 +89,6 @@ type InactivePanelRowProps = RowProps & {
   selectedInactiveTagIdentities: ModIdentityDto[];
   selectedActiveTagIdentities: ModIdentityDto[];
 };
-
-function InactivePanelToolbar({ filters }: { filters: OrderFilters }) {
-  return (
-    <InactivePanelActions
-      search={filters.inactiveSearch}
-      sortKey={filters.availableSortKey}
-      sortDirection={filters.availableSortDirection}
-      onSearchChange={filters.setInactiveSearch}
-      onSortKeyChange={filters.setAvailableSortKey}
-      onToggleSortDirection={filters.toggleAvailableSortDirection}
-    />
-  );
-}
 
 function InactivePanelRow(props: InactivePanelRowProps) {
   const { row } = props;
@@ -181,6 +111,8 @@ function CatalogInactivePanelRow({
   const canAdd = isPackageAddressableMod(row.mod);
   return (
     <InactiveModRow
+      diagnostics={props.diagnosticsForTarget({ kind: 'catalog', mod: row.mod })}
+      diagnosticMenus={props.diagnosticMenus}
       mod={row.mod}
       label={displayName(row.mod, props.aliases)}
       tagDefs={props.tagDefs}
@@ -188,7 +120,7 @@ function CatalogInactivePanelRow({
       tagTargetIdentities={tagTargetsForIdentity(identity, selectedInactiveTagIdentities)}
       selected={props.selectedCatalogKeys.has(itemKey)}
       canAdd={canAdd}
-      canCreateGroup={canCreateInactiveGroup(props.selectedPackageAddressableKeys)}
+      canCreateGroup={props.canCreateGroup}
       onWarmFileInfo={props.onWarmFileInfo}
       onSelect={props.onSelect}
       onContextOpen={props.onContextOpen}
@@ -216,6 +148,7 @@ function StructuredInactiveEntryPanelRow({
   return (
     <InactiveEntryRow
       row={row}
+      diagnosticMenus={props.diagnosticMenus}
       aliases={props.aliases}
       tagDefs={props.tagDefs}
       modTags={props.modTags}
@@ -247,6 +180,7 @@ function StructuredInactiveChildPanelRow({
   return (
     <InactiveChildRow
       row={row}
+      diagnosticMenus={props.diagnosticMenus}
       aliases={props.aliases}
       tagDefs={props.tagDefs}
       modTags={props.modTags}
@@ -265,41 +199,5 @@ function StructuredInactiveChildPanelRow({
       onDeleteTag={props.onDeleteTag}
       onReorderModTags={props.onReorderModTags}
     />
-  );
-}
-
-function useInactiveTagTargets(
-  derived: OrderDerived,
-  selection: OrderSelection,
-): { inactive: ModIdentityDto[]; active: ModIdentityDto[] } {
-  const inactive = useMemo(
-    () =>
-      selectedInactiveModIdentities(
-        derived.sortedInactiveMods,
-        selection.selectedInactiveCatalogKeys,
-      ),
-    [derived.sortedInactiveMods, selection.selectedInactiveCatalogKeys],
-  );
-  const active = useMemo(
-    () => selectedActiveModIdentities(derived.activeRows, selection.selectedEntryIds),
-    [derived.activeRows, selection.selectedEntryIds],
-  );
-  return { inactive, active };
-}
-
-function useSelectedPackageAddressableKeys(
-  derived: OrderDerived,
-  selectedCatalogKeys: Set<string>,
-): Set<string> {
-  return useMemo(
-    () =>
-      new Set(
-        derived.sortedInactiveMods
-          .filter(
-            (mod) => selectedCatalogKeys.has(catalogItemKey(mod)) && isPackageAddressableMod(mod),
-          )
-          .map(catalogItemKey),
-      ),
-    [derived.sortedInactiveMods, selectedCatalogKeys],
   );
 }

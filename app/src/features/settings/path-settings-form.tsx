@@ -1,69 +1,53 @@
 import { useTranslation } from 'react-i18next';
 import { FolderOpen, Loader2, RotateCcw, Save, Wand2, X } from 'lucide-react';
-import type { AppConfig } from '@/commands';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Col, Grid, Row } from '@/components/ui/layout';
-import { pathFieldKeys, type PathFieldKey } from './path-settings-model';
+import { pathFieldKeys, type PathFieldKey } from '@/domain/workspace/path-settings';
+import { usePathSettings } from './path-settings-provider';
 
 export function PathSettingsForm({
-  draft,
-  loading,
-  dirty,
   allowClear,
   saveLabel,
-  savePending,
-  autodetectPending,
-  onBrowse,
-  onClear,
-  onReset,
-  onSave,
-  onAutodetect,
+  onSaved,
 }: {
-  draft: AppConfig | null;
-  loading?: boolean;
-  dirty: boolean;
   allowClear: boolean;
   saveLabel: string;
-  savePending: boolean;
-  autodetectPending: boolean;
-  onBrowse: (field: PathFieldKey, label: string) => void;
-  onClear?: (field: PathFieldKey) => void;
-  onReset: () => void;
-  onSave: () => void;
-  onAutodetect: () => void;
+  onSaved?: () => void;
 }) {
   const { t } = useTranslation();
+  const settings = usePathSettings();
   return (
     <>
       <Col asChild>
         <CardContent>
-          {loading ? (
-            <p className="text-sm text-muted-foreground">{t('settings.loadingConfig')}</p>
-          ) : (
-            pathFieldKeys.map((field) => {
-              const label = t(`settings.paths.${field}`);
-              return (
-                <PathRow
-                  key={field}
-                  field={field}
-                  label={label}
-                  value={draft?.paths[field] ?? ''}
-                  allowClear={allowClear}
-                  onBrowse={() => onBrowse(field, label)}
-                  onClear={() => onClear?.(field)}
-                />
-              );
-            })
-          )}
+          {pathFieldKeys.map((field) => {
+            const label = t(`settings.paths.${field}`);
+            return (
+              <PathRow
+                key={field}
+                field={field}
+                label={label}
+                value={settings.paths?.[field] ?? ''}
+                allowClear={allowClear}
+                onBrowse={() => void settings.browse(field, label)}
+                onClear={() => settings.clear(field)}
+              />
+            );
+          })}
         </CardContent>
       </Col>
       <CardFooter className="flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={onAutodetect} disabled={autodetectPending}>
-          {autodetectPending ? (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={settings.autodetect}
+          disabled={settings.pending != null}
+        >
+          {settings.pending === 'autodetect' ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
             <Wand2 className="size-4" />
@@ -71,12 +55,15 @@ export function PathSettingsForm({
           {t('settings.autodetect')}
         </Button>
         <ButtonGroup className="ml-auto">
-          <Button variant="ghost" size="sm" onClick={onReset} disabled={!dirty}>
+          <Button variant="ghost" size="sm" onClick={settings.reset} disabled={!settings.dirty}>
             <RotateCcw className="size-4" />
             {t('common.reset')}
           </Button>
-          <Button onClick={onSave} disabled={!dirty || draft == null || savePending}>
-            {savePending ? (
+          <Button
+            onClick={() => settings.save(onSaved)}
+            disabled={!settings.dirty || settings.pending != null}
+          >
+            {settings.pending === 'save' ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
               <Save className="size-4" />

@@ -1,4 +1,4 @@
-import type { OrderDraftState } from '../context/workspace-types';
+import type { OrderDraftState } from '../workspace/workspace-types';
 import { useCallback, useEffect, useMemo } from 'react';
 import type { ModListDto } from '@/commands';
 import { useOrderDraftStore } from '@/stores/order-draft-store';

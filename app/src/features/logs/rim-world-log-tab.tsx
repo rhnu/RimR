@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useCallback, useMemo, useRef, useState, type RefObject } from 'react';
 import { useVirtualizer, type Virtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
 import { RefreshCw } from 'lucide-react';
@@ -21,23 +21,11 @@ function buildRefIndexMap(entries: LogEntryDto[]): Map<string, number> {
 
 export function RimWorldLogTab() {
   const [source, setSource] = useState<LogSourceDto>('playerLog');
-  const { data, isFetching, isError, refetch } = usePlayerLog(source);
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
   const [search, setSearch] = useState('');
   const [live, setLive] = useState(false);
+  const { data, isFetching, isError, refetch } = usePlayerLog(source, live);
   const parentRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!live) return;
-    const interval = setInterval(() => {
-      void refetch();
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [live, refetch]);
-
-  useEffect(() => {
-    void refetch();
-  }, [source, refetch]);
 
   const entries = useMemo(() => data?.entries ?? [], [data]);
   const filtered = useMemo(

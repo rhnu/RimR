@@ -34,7 +34,13 @@ export type OrderDialog =
       result: GameSyncResult;
       diff: OrderDiff;
     }
-  | { kind: 'diffConfirm'; action: 'apply'; modList: ModListDto; diff: OrderDiff }
+  | {
+      kind: 'diffConfirm';
+      action: 'apply';
+      modList: ModListDto;
+      catalogRevision: number;
+      diff: OrderDiff;
+    }
   | { kind: 'discardDraft' }
   | null;
 

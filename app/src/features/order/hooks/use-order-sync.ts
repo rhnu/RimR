@@ -1,16 +1,18 @@
 import { useOrderDraftStore } from '@/stores/order-draft-store';
 import { useWorkspaceStore } from '@/stores/workspace-store';
-import type { OrderSync } from '../context/workspace-types';
+import type { OrderSync } from '../workspace/workspace-types';
 import { flattenModListEntries, activeModsKey } from '@/domain/mod-list/normalize';
 import { toast } from 'sonner';
 import { useCallback, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { ModListDto, ModMetadataDto, CatalogSnapshotDto } from '@/commands';
 import { classifyMissingEntries, removeMissingEntries } from '@/domain/mod-list/missing-entries';
 import { syncModListFromGame } from '@/domain/mod-list/sync-from-game';
 import { type GameSyncResult, type ModListAction } from '@/domain/mod-list/types';
 import type { OrderDialog } from '@/features/order/types';
-import { useOrderCommandStore } from '@/stores/order-command-store';
+import { matchesOrderCommandTarget, useOrderCommandStore } from '@/stores/order-command-store';
+import { readCurrentLibrary } from '@/queries/library';
 
 export function useOrderSync({
   draft,
@@ -163,8 +165,8 @@ function useSaveSync({
   setDialog: (dialog: OrderDialog) => void;
 }) {
   const { t } = useTranslation();
+  const client = useQueryClient();
   const pending = useOrderCommandStore((state) => state.pending);
-  const clearPending = useOrderCommandStore((state) => state.clear);
 
   const applySaveSync = useCallback(
     (result: GameSyncResult): void => {
@@ -176,15 +178,19 @@ function useSaveSync({
   );
 
   useEffect(() => {
-    if (!pending || pending.kind !== 'syncFromSave') return;
-    if (!draft) {
-      clearPending();
+    if (!pending || !draft || useOrderDraftStore.getState().draft !== draft) return;
+    if (!useOrderCommandStore.getState().consume(pending)) return;
+    const { epoch, library } = readCurrentLibrary(client);
+    if (
+      !matchesOrderCommandTarget(pending.target, epoch, library?.currentModList.id) ||
+      draft.id !== pending.target.modListId
+    ) {
+      toast.info(t('toast.saveSyncTargetChanged'));
       return;
     }
     const sync = syncModListFromGame(draft, pending.modIds, mods);
     if (activeModsEqual(sync.modList, draft)) {
       toast.info(t('toast.saveOrderAlreadySynced'));
-      clearPending();
       return;
     }
     confirmOrApplySync(
@@ -194,8 +200,7 @@ function useSaveSync({
       requiresConfirmation(sync, modListDirty),
       'syncFromSave',
     );
-    clearPending();
-  }, [pending, draft, mods, modListDirty, setDialog, t, clearPending, applySaveSync]);
+  }, [pending, draft, mods, modListDirty, setDialog, t, applySaveSync, client]);
 
   return { applySaveSync };
 }

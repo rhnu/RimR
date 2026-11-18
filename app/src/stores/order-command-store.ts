@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 
-export type OrderCommand = { kind: 'syncFromSave'; modIds: string[] };
+export type OrderCommandTarget = { workspaceEpoch: number; modListId: string };
+export type OrderCommand = { kind: 'syncFromSave'; target: OrderCommandTarget; modIds: string[] };
 type OrderCommandState = {
   pending: OrderCommand | null;
   request: (command: OrderCommand) => void;
-  consume: () => OrderCommand | null;
+  consume: (command: OrderCommand) => boolean;
   clear: () => void;
 };
 
@@ -12,10 +13,18 @@ type OrderCommandState = {
 export const useOrderCommandStore = create<OrderCommandState>((set, get) => ({
   pending: null,
   request: (command) => set({ pending: command }),
-  consume: () => {
-    const pending = get().pending;
+  consume: (command) => {
+    if (get().pending !== command) return false;
     set({ pending: null });
-    return pending;
+    return true;
   },
   clear: () => set({ pending: null }),
 }));
+
+export function matchesOrderCommandTarget(
+  target: OrderCommandTarget,
+  workspaceEpoch: number,
+  modListId: string | undefined,
+): boolean {
+  return target.workspaceEpoch === workspaceEpoch && target.modListId === modListId;
+}

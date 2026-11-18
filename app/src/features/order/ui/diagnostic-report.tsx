@@ -4,36 +4,42 @@ import { useTranslation } from 'react-i18next';
 import type { DiagnosticDto, DiagnosticSuppressionDto, ModMetadataDto } from '@/commands';
 import { Button } from '@/components/ui/button';
 import { Col, Grid, Row } from '@/components/ui/layout';
-import { isSuppressed, uniqueDiagnostics } from '@/domain/diagnostics/suppression';
+import type { DiagnosticItem } from '@/domain/diagnostics/suppression';
 import {
   formatDiagnosticLocation,
   formatDiagnosticMessage,
   formatPackageLabel,
 } from '@/domain/diagnostics/messages';
 import { normalizePackageId } from '@/domain/mods/identity';
-import { useDiagnosticSuppression } from '@/features/library/hooks/use-diagnostic-suppression';
 import { SeverityIcon } from './severity-icon';
 
 const severities = ['error', 'warning', 'info'] as const;
+
+export type DiagnosticActions = {
+  pending: boolean;
+  ready: boolean;
+  suppress: (items: DiagnosticSuppressionDto[]) => void;
+  restore: (items: DiagnosticSuppressionDto[]) => void;
+};
 
 /** Shows the same diagnostic groups and suppression actions in either report view. */
 export function DiagnosticReport({
   diagnostics,
   modByPackageId,
+  commands,
   showClean = false,
 }: {
-  diagnostics: DiagnosticDto[];
+  diagnostics: DiagnosticItem[];
   modByPackageId: Map<string, ModMetadataDto>;
+  commands: DiagnosticActions;
   showClean?: boolean;
 }) {
   const { t } = useTranslation();
-  const commands = useDiagnosticSuppression();
   const { reportRef, rememberAction } = useDiagnosticActionFocus(commands.pending);
   const active: DiagnosticDto[] = [];
   const ignored: DiagnosticDto[] = [];
-  for (const diagnostic of uniqueDiagnostics(diagnostics)) {
-    (isSuppressed(diagnostic, commands.rules) ? ignored : active).push(diagnostic);
-  }
+  for (const { diagnostic, ignored: isIgnored } of diagnostics)
+    (isIgnored ? ignored : active).push(diagnostic);
 
   function renderGroups(items: DiagnosticDto[], suppressed: boolean) {
     return severities.map((severity) => {

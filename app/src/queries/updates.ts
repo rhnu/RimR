@@ -1,4 +1,4 @@
-import { CancelledError, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CancelledError, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import type { Update } from '@tauri-apps/plugin-updater';
 import { logUpdate, updaterClient, updateErrorMessage } from '@/commands/updater-client';
 import { queryKeys } from './keys';
@@ -8,13 +8,20 @@ export type UpdateCheck = {
   bundleType: string;
 };
 
-export async function releaseUpdate(result: UpdateCheck | undefined): Promise<void> {
+async function releaseUpdate(result: UpdateCheck | undefined): Promise<void> {
   if (!result?.update) return;
   try {
     await result.update.close();
   } catch (error) {
     logUpdate(`Could not release update resource: ${updateErrorMessage(error)}`, true);
   }
+}
+
+/** Release the cached handle and cancel an outstanding check when the app unmounts. */
+export function disposeUpdateCheck(client: QueryClient): void {
+  const result = client.getQueryData<UpdateCheck>(queryKeys.update);
+  client.removeQueries({ queryKey: queryKeys.update, exact: true });
+  void releaseUpdate(result);
 }
 
 /** The query owns the plugin resource; the update controller owns only operation state. */

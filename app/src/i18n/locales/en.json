@@ -129,6 +129,7 @@
     "gameOrderAlreadySynced": "Already matches game order",
     "saveOrderAlreadySynced": "Save order matches current draft",
     "saveOrderEmpty": "No mods found in save file",
+    "saveSyncTargetChanged": "The workspace or current list changed. Import the save again.",
     "catalogRescanned": "Catalog rebuilt",
     "inactiveMissingModsRemoved": "Removed {{count}} missing inactive mod(s) from the draft",
     "activeMissingModsRemoved": "Removed {{count}} missing active mod(s) from the draft",
@@ -362,7 +363,7 @@
     },
     "conflict": "This list changed after editing began. Your edits are preserved; reset to the saved version before editing again.",
     "conflictLabel": "Saved version changed",
-    "previewExpired": "The list changed after this preview opened. Open the preview again to continue."
+    "previewExpired": "The list, workspace or mod catalog has changed. Open the preview again to continue."
   },
   "catalog": {
     "title": "Catalog",

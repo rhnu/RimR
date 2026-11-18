@@ -1,9 +1,11 @@
 import { useTranslation } from 'react-i18next';
 import type { DiagnosticDto } from '@/commands';
+import type { DiagnosticItem } from '@/domain/diagnostics/suppression';
 import { formatDiagnosticMessage } from '@/domain/diagnostics/messages';
 import { SeverityIcon } from '../severity-icon';
 
-export function DiagnosticIcon({ diagnostics }: { diagnostics: DiagnosticDto[] }) {
+export function DiagnosticIcon({ items }: { items: DiagnosticItem[] }) {
+  const diagnostics = items.flatMap((item) => (item.ignored ? [] : [item.diagnostic]));
   const { t } = useTranslation();
   if (diagnostics.length === 0) {
     return null;

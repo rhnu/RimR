@@ -1,8 +1,6 @@
-import { flattenModListEntries } from '@/domain/mod-list/normalize';
-import { useMemo, type MouseEvent } from 'react';
+import type { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type {
-  DiagnosticDto,
   DisplayAliasDto,
   ModIdentityDto,
   ModListEntryDto,
@@ -18,33 +16,25 @@ import { ActiveEntryRow } from './rows/active-entry-row';
 import { GroupChildRow } from './rows/group-child-row';
 import type { Selection } from '@/features/order/types';
 import type { ActiveRenderRow } from '@/features/order/model';
-import {
-  canCreateActiveGroup,
-  selectedActiveModIdentities,
-  tagTargetsForEntry,
-} from '@/features/order/model';
+import type { DiagnosticItem } from '@/domain/diagnostics/suppression';
+import type { OrderDiagnosticTarget } from '../model/diagnostic-targets';
+import type { RowDiagnosticMenus } from './diagnostic-menu-items';
+import { tagTargetsForEntry } from '@/features/order/model';
 import type { DropIndicatorStore } from '@/features/order/hooks/drop-indicator-store';
-import { ACTIVE_DROP_ID } from '@/features/order/workspace-constants';
-import {
-  useOrderWorkspaceData,
-  useOrderWorkspaceDerived,
-  useOrderWorkspaceDraftState,
-  useOrderWorkspaceDrag,
-  useOrderWorkspaceEditActions,
-  useOrderWorkspaceFilters,
-  useOrderWorkspaceOpenHandlers,
-  useOrderWorkspacePreview,
-  useOrderWorkspaceSelection,
-  useOrderWorkspaceTagCommands,
-} from '@/features/order/context/hooks';
-
-type ActiveRowsProps = {
+import { ACTIVE_DROP_ID } from '@/features/order/dnd-ids';
+export type ActiveModsPanelProps = {
+  count: number;
+  search: string;
+  onSearchChange: (value: string) => void;
+  selectedTagIdentities: ModIdentityDto[];
+  canCreateGroup: boolean;
   rows: ActiveRenderRow[];
   aliases: DisplayAliasDto[];
   tagDefs: TagDefDto[];
   modTags: ModTagBindingDto[];
   selectedEntryIds: Set<string>;
-  diagnosticsByPackage: Map<string, DiagnosticDto[]>;
+  diagnosticsForTarget: (target: OrderDiagnosticTarget) => DiagnosticItem[];
+  diagnosticMenus: RowDiagnosticMenus;
   modByPackageId: Map<string, ModMetadataDto>;
   dropIndicatorStore: DropIndicatorStore;
   onWarmFileInfo: (sourceKey: string | null | undefined, immediate?: boolean) => void;
@@ -75,91 +65,44 @@ type ActiveRowsProps = {
   onReorderModTags: (identity: ModIdentityDto, tagIds: string[]) => void;
 };
 
-export function ActiveModsPanel() {
+export function ActiveModsPanel(props: ActiveModsPanelProps) {
   const { t } = useTranslation();
-  const { library } = useOrderWorkspaceData();
-  const { draft } = useOrderWorkspaceDraftState();
-  const filters = useOrderWorkspaceFilters();
-  const derived = useOrderWorkspaceDerived();
-  const selection = useOrderWorkspaceSelection();
-  const drag = useOrderWorkspaceDrag();
-  const editActions = useOrderWorkspaceEditActions();
-  const preview = useOrderWorkspacePreview();
-  const open = useOrderWorkspaceOpenHandlers();
-  const tagCommands = useOrderWorkspaceTagCommands();
-  if (!draft) return null;
-  const rowsProps: ActiveRowsProps = {
-    rows: derived.activeRows,
-    aliases: library.data?.settings.aliases ?? [],
-    tagDefs: library.data?.settings.tagDefs ?? [],
-    modTags: library.data?.settings.modTags ?? [],
-    selectedEntryIds: selection.selectedEntryIds,
-    diagnosticsByPackage: derived.diagnosticsMap,
-    modByPackageId: derived.modByPackageId,
-    dropIndicatorStore: drag.dropIndicatorStore,
-    onWarmFileInfo: preview.warmModPreview,
-    onSelectEntry: selection.selectActiveEntry,
-    onContextOpen: selection.ensureActiveSelected,
-    onRemove: editActions.removeActiveEntry,
-    onDoubleClickEntry: editActions.handleActiveDoubleClick,
-    onUngroup: editActions.ungroupActiveEntry,
-    onCreateGroup: editActions.createActiveGroupDialog,
-    onEditAlias: editActions.editActiveAlias,
-    onAddSeparator: editActions.addSeparatorAbove,
-    onRenameGroup: editActions.renameActiveGroup,
-    onRenameSeparator: editActions.renameActiveSeparator,
-    onSelectChild: selection.selectGroupChild,
-    onDoubleClickChild: editActions.removeGroupChild,
-    onRemoveChild: editActions.removeGroupChild,
-    onOpenModFolder: open.handleOpenModFolder,
-    onOpenSteamWorkshopPage: open.handleOpenSteamWorkshopPage,
-    onToggleModTag: tagCommands.handleToggleModTags,
-    onCreateTag: tagCommands.handleCreateTag,
-    onRenameTag: tagCommands.handleRenameTag,
-    onSetTagColor: tagCommands.handleSetTagColor,
-    onDeleteTag: tagCommands.handleDeleteTag,
-    onReorderModTags: tagCommands.handleReorderModTags,
-  };
   return (
     <DroppablePanel
       id={ACTIVE_DROP_ID}
       title={t('order.activeModListTitle')}
-      count={flattenModListEntries(draft.entries).length}
+      count={props.count}
       actions={
         <FilterInput
-          value={filters.activeSearch}
-          onValueChange={filters.setActiveSearch}
+          value={props.search}
+          onValueChange={props.onSearchChange}
           label={t('order.searchActive')}
           className="h-7 px-2 text-xs shadow-none"
         />
       }
     >
-      <ActiveRows {...rowsProps} />
+      <ActiveRows {...props} />
     </DroppablePanel>
   );
 }
 
-function ActiveRows(props: ActiveRowsProps) {
-  const selectedTagIdentities = useMemo(
-    () => selectedActiveModIdentities(props.rows, props.selectedEntryIds),
-    [props.rows, props.selectedEntryIds],
-  );
+function ActiveRows(props: ActiveModsPanelProps) {
   return (
     <>
-      {props.rows.map((row, index) =>
+      {props.rows.map((row) =>
         row.kind === 'entry' ? (
           <ActiveEntryRow
             key={row.id}
             entry={row.entry}
-            index={index}
             aliases={props.aliases}
             tagDefs={props.tagDefs}
             modTags={props.modTags}
-            tagTargetIdentities={tagTargetsForEntry(row.entry, selectedTagIdentities)}
+            tagTargetIdentities={tagTargetsForEntry(row.entry, props.selectedTagIdentities)}
             modByPackageId={props.modByPackageId}
-            diagnosticsByPackage={props.diagnosticsByPackage}
+            diagnostics={props.diagnosticsForTarget({ kind: 'entry', entry: row.entry })}
+            diagnosticMenus={props.diagnosticMenus}
             selected={row.entry.kind === 'mod' && props.selectedEntryIds.has(row.entry.id)}
-            canCreateGroup={canCreateActiveGroup(props.selectedEntryIds)}
+            canCreateGroup={props.canCreateGroup}
             dropIndicatorStore={props.dropIndicatorStore}
             onWarmFileInfo={props.onWarmFileInfo}
             onSelect={props.onSelectEntry}
@@ -190,7 +133,8 @@ function ActiveRows(props: ActiveRowsProps) {
             tagDefs={props.tagDefs}
             modTags={props.modTags}
             modByPackageId={props.modByPackageId}
-            diagnostics={props.diagnosticsByPackage.get(row.child.identity.packageId) ?? []}
+            diagnostics={props.diagnosticsForTarget({ kind: 'mod', identity: row.child.identity })}
+            diagnosticMenus={props.diagnosticMenus}
             dropIndicatorStore={props.dropIndicatorStore}
             onWarmFileInfo={props.onWarmFileInfo}
             onSelect={props.onSelectChild}

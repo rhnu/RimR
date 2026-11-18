@@ -2,14 +2,12 @@ import { useEffect, useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Loader2, ScanLine } from 'lucide-react';
-import { pickDirectory } from '@/commands';
 import type { DiagnosticDto, CatalogSnapshotDto, ModMetadataDto, SeverityDto } from '@/commands';
 import { Splash } from '@/components/splash';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useAppConfig, useAutodetectPaths, useSaveAppConfig } from '@/queries/config';
 import { useCatalogSnapshot } from '@/queries/catalog';
 import {
   formatDiagnosticLocation,
@@ -17,39 +15,21 @@ import {
   formatPackageLabel,
 } from '@/domain/diagnostics/messages';
 import { needsSetup } from '@/domain/workspace/config';
+import { canScanConfig } from '@/domain/workspace/path-settings';
 import { PathSettingsForm } from '@/features/settings/path-settings-form';
-import { useSettingsDraft } from '@/features/settings/hooks/use-settings-draft';
-import { canScanConfig, type PathFieldKey } from '@/features/settings/path-settings-model';
-import { reportError } from '@/queries/client';
+import { usePathSettings } from '@/features/settings/path-settings-provider';
 
 export function SetupPage() {
   const { t } = useTranslation();
-  const configQuery = useAppConfig();
-  const save = useSaveAppConfig();
-  const autodetect = useAutodetectPaths();
+  const { config: configQuery } = usePathSettings();
   const scan = useCatalogSnapshot();
   const navigate = useNavigate();
-  const settings = useSettingsDraft(configQuery.data);
 
   useEffect(() => {
     if (configQuery.data && !needsSetup(configQuery.data)) {
       void navigate({ to: '/settings', replace: true });
     }
   }, [configQuery.data, navigate]);
-
-  async function choosePath(field: PathFieldKey, label: string): Promise<void> {
-    const picked = await pickDirectory({
-      title: t('dialog.selectField', { label }),
-      defaultPath: settings.draft?.paths[field] ?? undefined,
-    }).match(
-      (path) => path,
-      (error) => {
-        reportError(error);
-        return null;
-      },
-    );
-    if (picked !== null) settings.updatePath(field, picked);
-  }
 
   if (configQuery.isLoading) {
     return <Splash message={t('setup.loadingConfig')} />;
@@ -61,24 +41,7 @@ export function SetupPage() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">{t('setup.pathsTitle')}</CardTitle>
         </CardHeader>
-        <PathSettingsForm
-          draft={settings.draft}
-          dirty={settings.isDirty}
-          allowClear={false}
-          saveLabel={t('setup.saveConfig')}
-          savePending={save.isPending}
-          autodetectPending={autodetect.isPending}
-          onBrowse={(field, label) => void choosePath(field, label)}
-          onReset={settings.reset}
-          onSave={() => {
-            if (!settings.draft) return;
-            const submitted = settings.draft;
-            save.mutate(submitted, {
-              onSuccess: (saved) => settings.acceptSaved(submitted, saved),
-            });
-          }}
-          onAutodetect={() => autodetect.mutate()}
-        />
+        <PathSettingsForm allowClear={false} saveLabel={t('setup.saveConfig')} />
       </Card>
 
       <SetupScanCard

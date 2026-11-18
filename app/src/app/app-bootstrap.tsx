@@ -1,11 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { rimrClient, windowClient, type UiConfig } from '@/commands';
+import { windowClient, type UiConfig } from '@/commands';
 import { Button } from '@/components/ui/button';
 import { Splash } from '@/components/splash';
 import { formatRimrError } from '@/commands/errors';
-import { readQuery } from '@/queries/client';
+import { useBootstrapStatus } from '@/queries/app';
 import { queryKeys } from '@/queries/keys';
 import { useLocaleStore } from '@/stores/locale';
 import { useThemeStore } from '@/stores/theme';
@@ -14,11 +14,7 @@ export function AppBootstrap({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const client = useQueryClient();
   const [prepared, setPrepared] = useState(false);
-  const bootstrap = useQuery({
-    queryKey: queryKeys.bootstrap,
-    queryFn: ({ signal }) => readQuery(rimrClient.getBootstrapStatus(), signal),
-    staleTime: Infinity,
-  });
+  const bootstrap = useBootstrapStatus();
   useEffect(() => {
     if (bootstrap.data?.status !== 'ready') return;
     adoptImportedPreferences(bootstrap.data.importedPreferences);

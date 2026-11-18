@@ -1,5 +1,6 @@
-import type { OrderEditActions } from '../context/workspace-types';
+import type { OrderEditActions } from '../workspace/workspace-types';
 import { useCallback, useRef } from 'react';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type {
   DisplayAliasDto,
@@ -18,8 +19,10 @@ import { type GameSyncResult, type ModListAction } from '@/domain/mod-list/types
 import { useCreateGroupFromInactive } from '@/features/order/hooks/use-create-group-from-inactive';
 import { entryIndex } from '@/features/order/dnd-ids';
 import { isOrderDialog, type OrderDialog } from '@/features/order/types';
-import { useOrderDialogStore } from '@/stores/order-dialog-store';
+import { useOrderDialogStore, type OrderDialogSession } from '@/stores/order-dialog-store';
 import { useOrderDraftStore } from '@/stores/order-draft-store';
+import { queryKeys } from '@/queries/keys';
+import { readCurrentLibrary } from '@/queries/library';
 import { toast } from 'sonner';
 import type { MutableRefObject } from 'react';
 
@@ -59,6 +62,7 @@ export function useOrderEditActions({
   onDiscardDraft,
 }: UseOrderEditActionsParams): OrderEditActions {
   const { t } = useTranslation();
+  const client = useQueryClient();
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const handleCreateGroupFromInactive = useCreateGroupFromInactive({
@@ -78,12 +82,9 @@ export function useOrderEditActions({
   });
 
   function handleDialogSubmit(value: string): void {
-    const { dialog, draftAtOpen } = useOrderDialogStore.getState();
+    const { dialog, sessionAtOpen } = useOrderDialogStore.getState();
     if (!isOrderDialog(dialog)) return;
-    if (
-      (dialog.kind === 'diffConfirm' || dialog.kind === 'activeMissingMods') &&
-      draftAtOpen !== useOrderDraftStore.getState().draft
-    ) {
+    if (!isPreviewCurrent(client, dialog, sessionAtOpen)) {
       setDialog(null);
       toast.info(t('order.previewExpired'));
       return;
@@ -119,6 +120,25 @@ export function useOrderEditActions({
     handleDialogSubmit,
     ...openActions,
   };
+}
+
+function isPreviewCurrent(
+  client: QueryClient,
+  dialog: NonNullable<OrderDialog>,
+  sessionAtOpen: OrderDialogSession | null,
+): boolean {
+  if (dialog.kind !== 'diffConfirm' && dialog.kind !== 'activeMissingMods') return true;
+  const { epoch, library } = readCurrentLibrary(client);
+  const currentDraft = useOrderDraftStore.getState().draft;
+  if (
+    sessionAtOpen?.workspaceEpoch !== epoch ||
+    sessionAtOpen.draft !== currentDraft ||
+    currentDraft?.id !== library?.currentModList.id
+  )
+    return false;
+  if (dialog.kind !== 'diffConfirm' || dialog.action !== 'apply') return true;
+  const catalog = client.getQueryState(queryKeys.catalogSnapshot(epoch));
+  return catalog?.fetchStatus === 'idle' && catalog.dataUpdatedAt === dialog.catalogRevision;
 }
 
 function useDialogOpenActions({

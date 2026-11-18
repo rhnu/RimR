@@ -76,21 +76,26 @@ package ID 用于逻辑模组与共享别名、标签；source 用于具体安�
 
 ## 前端状态归属
 
-保持现有 React、TypeScript、TanStack Query／Router、Zustand、Tailwind、Radix 与 dnd-kit 技术栈。职责分为 `app`、`commands`、`queries`、`domain`、`stores`、`features` 和 `components`，不以目录迁移为理由改变产品交互。
+前端使用 React、TypeScript、TanStack Query／Router、Zustand、Tailwind、Radix 与 dnd-kit。`app` 组装启动、路由与全局操作。`commands` 封装 IPC 和桌面插件。`queries` 持有服务数据，并负责请求、缓存和失效。`features` 组织具体用例，把视图所需的数据和动作传给布局与展示组件。`components` 提供共享组件及其自身的交互。
 
-| 数据                                   | 唯一归属                                   |
-| -------------------------------------- | ------------------------------------------ |
-| IPC 返回的配置、库、扫描结果等服务数据 | Query；`commands` 只负责类型明确的调用边界 |
-| 主题与语言                             | `stores` 中的 Zustand persist store        |
-| 跨页草稿、对话框和跨模块操作意图       | `stores` 中的会话 store                    |
-| 页面内选择、筛选、拖放等交互           | 对应 feature 的局部 provider               |
-| 纯业务规则、转换和选择器               | `domain`；不得导入 React、Zustand 或 Query |
+| 数据                           | 唯一归属                            |
+| ------------------------------ | ----------------------------------- |
+| 配置、库、扫描结果和日志       | Query                               |
+| 主题与语言                     | `stores` 中的 Zustand persist store |
+| 跨页排序草稿、对话框和操作意图 | `stores` 中的会话 store             |
+| 设置路径草稿                   | 初始设置和设置共用的路径编辑会话    |
+| 选择、筛选和拖放反馈           | 排序工作区内的交互状态              |
+| 纯业务规则、转换和选择器       | `domain` 或对应功能的纯逻辑 `model` |
 
 前端源文件统一使用 kebab-case，例如 `order-page.tsx`、`use-order-data.ts` 和 `order-draft-store.ts`。组件符号保持 PascalCase，函数与变量保持 camelCase；文件名不沿用组件符号的大小写。
 
 草稿是独立的编辑会话，保留基线 revision；它不是将 Query 数据持续镜像一遍。不要用 effect 在 `useState`、store 与 Query 间相互同步。主题和语言不保留后端常驻双向镜像。
 
 用有区分标记的类型表达加载、成功、失败和编辑状态，避免多个布尔值组成不可能状态。请求结果绑定对应 revision 或 generation；列表切换、重扫或新的保存发生后，旧响应不能覆盖当前草稿、目录或验证结果。缓存失效应与真正受影响的数据一致。
+
+缓存刷新推进工作区代际，保留当前排序草稿。路径配置实际变化时，结束旧的排序编辑会话。跨页的存档导入必须核对发起时的工作区代际和列表 ID。见[工作区失效处理](../app/src/queries/workspace.ts)和[跨页排序意图](../app/src/stores/order-command-store.ts)。
+
+排序页面负责读取数据和初始化草稿，工作区连接编辑、诊断、选择与拖放，视图按面板消费所需状态。见[排序入口](../app/src/features/order/order-page.tsx)和[排序工作区](../app/src/features/order/workspace/order-workspace.tsx)。路径编辑会话仅记录改过的字段，自动检测和保存共享写入状态。见[路径编辑](../app/src/features/settings/path-settings-provider.tsx)和[配置查询](../app/src/queries/config.ts)。
 
 ## 跨层行为保证
 

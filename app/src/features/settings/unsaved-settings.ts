@@ -1,4 +1,4 @@
-// Registered readers retain page-local draft ownership, including the initial setup page.
+// The route-scoped editing session supplies the live draft to the updater.
 const readers = new Set<() => boolean>();
 
 export function registerSettingsDraft(reader: () => boolean): () => void {

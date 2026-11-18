@@ -1,8 +1,27 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useMutationState,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { rimrClient, type AppConfig } from '@/commands';
+import { mergePathEdits, pathsChanged, type PathDraft } from '@/domain/workspace/path-settings';
 import { readQuery, unwrap } from './client';
 import { queryKeys } from './keys';
-import { retireWorkspace } from './workspace';
+import { invalidateWorkspace, retireWorkspace } from './workspace';
+
+export type ConfigOperation =
+  | { type: 'save'; draft: PathDraft }
+  | { type: 'autodetect' }
+  | { type: 'clearCache' };
+
+const configOperationKey = ['configOperation'] as const;
+
+type ConfigOperationCallbacks = {
+  onSuccess?: (saved: AppConfig | undefined) => void;
+  onError?: () => void;
+};
 
 export function useAppConfig() {
   return useQuery({
@@ -11,38 +30,70 @@ export function useAppConfig() {
   });
 }
 
-export function useSaveAppConfig() {
-  const client = useQueryClient();
-  return useMutation({
-    meta: { blocksUpdate: true },
-    scope: { id: 'configuration' },
-    mutationFn: (config: AppConfig) => unwrap(rimrClient.saveAppConfig(config)),
-    onSuccess: async (config) => {
-      const previous = client.getQueryData<AppConfig>(queryKeys.appConfig);
-      if (JSON.stringify(previous?.paths) !== JSON.stringify(config.paths))
-        await retireWorkspace(client);
-      client.setQueryData(queryKeys.appConfig, config);
-    },
-  });
+export function isPathWritePending(client: QueryClient): boolean {
+  return (
+    client.isMutating({
+      mutationKey: configOperationKey,
+      predicate: (mutation) => (mutation.state.variables as ConfigOperation).type !== 'clearCache',
+    }) > 0
+  );
 }
 
-export function useAutodetectPaths() {
+export function useConfigOperation() {
   const client = useQueryClient();
-  return useMutation({
-    meta: { blocksUpdate: true },
-    scope: { id: 'configuration' },
-    mutationFn: () => unwrap(rimrClient.autodetectPaths()),
-    onSuccess: async () => {
-      await retireWorkspace(client);
-      await client.invalidateQueries({ queryKey: queryKeys.appConfig });
-    },
+  const pending = useMutationState({
+    filters: { mutationKey: configOperationKey, status: 'pending' },
+    select: (mutation) => (mutation.state.variables as ConfigOperation).type,
   });
+  const { mutate } = useMutation({
+    mutationKey: configOperationKey,
+    meta: { blocksUpdate: true },
+    mutationFn: (operation: ConfigOperation) => runConfigOperation(client, operation),
+  });
+  return {
+    pending: pending.length > 0 ? pending[0] : null,
+    run: (operation: ConfigOperation, callbacks?: ConfigOperationCallbacks) => {
+      if (client.isMutating({ mutationKey: configOperationKey })) return;
+      mutate(operation, callbacks);
+    },
+  };
 }
 
-export function useClearSessionCache() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: () => unwrap(rimrClient.clearSessionCache()),
-    onSuccess: () => retireWorkspace(client),
-  });
+async function runConfigOperation(
+  client: QueryClient,
+  operation: ConfigOperation,
+): Promise<AppConfig | undefined> {
+  if (operation.type === 'clearCache') {
+    await unwrap(rimrClient.clearSessionCache());
+    await invalidateWorkspace(client);
+    return;
+  }
+
+  const previous = await unwrap(rimrClient.getAppConfig());
+  let saved: AppConfig;
+  if (operation.type === 'save') {
+    saved = await unwrap(
+      rimrClient.saveAppConfig({
+        ...previous,
+        paths: mergePathEdits(previous.paths, operation.draft),
+      }),
+    );
+  } else {
+    // Auto-detection saves these paths and returns their persisted values.
+    const { gameDir, gameDataDir, localModsDir, workshopModsDir } = await unwrap(
+      rimrClient.autodetectPaths(),
+    );
+    saved = {
+      ...previous,
+      paths: { ...previous.paths, gameDir, gameDataDir, localModsDir, workshopModsDir },
+    };
+  }
+
+  await client.cancelQueries({ queryKey: queryKeys.appConfig, exact: true });
+  const retirement = pathsChanged(previous.paths, saved.paths)
+    ? retireWorkspace(client)
+    : undefined;
+  client.setQueryData(queryKeys.appConfig, saved);
+  await retirement;
+  return saved;
 }

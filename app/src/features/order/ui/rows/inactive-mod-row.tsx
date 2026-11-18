@@ -1,5 +1,6 @@
-import { DiagnosticMenuItems } from '../diagnostic-menu-items';
-import { ModDiagnosticIcon } from '../mod-diagnostic-icon';
+import { DiagnosticMenuItems, type RowDiagnosticMenus } from '../diagnostic-menu-items';
+import { DiagnosticIcon } from './diagnostic-icon';
+import type { DiagnosticItem } from '@/domain/diagnostics/suppression';
 import { memo, type MouseEvent } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
@@ -28,6 +29,8 @@ import { identityForMod } from '@/domain/mods/identity';
 import type { WarmFileInfo } from '@/features/order/ui/rows/row-types';
 
 type InactiveModRowProps = {
+  diagnostics: DiagnosticItem[];
+  diagnosticMenus: RowDiagnosticMenus;
   mod: ModMetadataDto;
   label: string;
   tagDefs: TagDefDto[];
@@ -55,6 +58,8 @@ type InactiveModRowProps = {
 
 export const InactiveModRow = memo(function InactiveModRow({
   mod,
+  diagnostics,
+  diagnosticMenus,
   label,
   tagDefs,
   modTags,
@@ -103,10 +108,11 @@ export const InactiveModRow = memo(function InactiveModRow({
           >
             {label}
           </button>
-          <ModDiagnosticIcon identity={identityForMod(mod)} />
+          <DiagnosticIcon items={diagnostics} />
         </div>
       </ContextMenuTrigger>
       <InactiveModContextMenu
+        diagnosticMenus={diagnosticMenus}
         mod={mod}
         tagDefs={tagDefs}
         modTags={modTags}
@@ -130,6 +136,7 @@ export const InactiveModRow = memo(function InactiveModRow({
 });
 
 function InactiveModContextMenu({
+  diagnosticMenus,
   mod,
   tagDefs,
   modTags,
@@ -150,6 +157,7 @@ function InactiveModContextMenu({
 }: Pick<
   InactiveModRowProps,
   | 'mod'
+  | 'diagnosticMenus'
   | 'tagDefs'
   | 'modTags'
   | 'tagTargetIdentities'
@@ -172,7 +180,7 @@ function InactiveModContextMenu({
   const targetIdentities = tagTargetIdentities.length > 0 ? tagTargetIdentities : [identity];
   return (
     <ContextMenuContent>
-      <DiagnosticMenuItems identity={identity} catalog />
+      <DiagnosticMenuItems target={{ kind: 'catalog', mod }} menus={diagnosticMenus} />
       <ContextMenuItem disabled={!canAdd} onSelect={() => onAdd(mod)}>
         <Plus className="size-4" />
         {t('order.context.addToActive')}

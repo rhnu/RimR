@@ -1,4 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  CancelledError,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { rimrClient } from '@/commands';
 import type {
   CreateModListRequest,
@@ -14,6 +20,18 @@ import { assertWorkspace, inWorkspace, readQuery } from './client';
 import type { QueryEnableOptions } from './catalog';
 import { queryKeys } from './keys';
 
+type CurrentModListConstraint = { expectedCurrentModListId?: string };
+
+function assertCurrentModList(
+  client: QueryClient,
+  epoch: number,
+  expectedCurrentModListId: string | undefined,
+): void {
+  if (expectedCurrentModListId === undefined) return;
+  const library = client.getQueryData<LibraryDto>(queryKeys.library(epoch));
+  if (library?.currentModList.id !== expectedCurrentModListId) throw new CancelledError();
+}
+
 export function useLibrary(options?: QueryEnableOptions) {
   const epoch = useWorkspaceStore((state) => state.epoch);
   return useQuery({
@@ -23,6 +41,12 @@ export function useLibrary(options?: QueryEnableOptions) {
     staleTime: Infinity,
     gcTime: Infinity,
   });
+}
+
+/** Read the cached library alongside the workspace identity it belongs to. */
+export function readCurrentLibrary(client: QueryClient) {
+  const epoch = useWorkspaceStore.getState().epoch;
+  return { epoch, library: client.getQueryData<LibraryDto>(queryKeys.library(epoch)) };
 }
 
 /** Evaluate updates only after preceding edits have published their new revision. */
@@ -57,7 +81,12 @@ function useModListMutation<Request>(
   return useMutation({
     meta: { blocksUpdate: true },
     scope: { id: 'library-lists-' + epoch },
-    mutationFn: (request: Request) => inWorkspace(epoch, () => operation(request)),
+    mutationFn: (request: Request & CurrentModListConstraint) =>
+      inWorkspace(epoch, () => {
+        // A preceding selection can change the current list while this mutation is queued.
+        assertCurrentModList(client, epoch, request.expectedCurrentModListId);
+        return operation(request);
+      }),
     onSuccess: async (modList: ModListDto) => {
       client.setQueryData<LibraryDto>(queryKeys.library(epoch), (current) => {
         if (!current) return current;
@@ -80,21 +109,21 @@ function useModListMutation<Request>(
 
 export function useCreateModList() {
   return useModListMutation<CreateModListRequest>(
-    (request) => rimrClient.createModList(request),
+    ({ name, baseModList }) => rimrClient.createModList({ name, baseModList }),
     true,
   );
 }
 
 export function useSaveModList() {
   return useModListMutation<SaveModListRequest>(
-    (request) => rimrClient.saveModList(request),
+    ({ modList }) => rimrClient.saveModList({ modList }),
     false,
   );
 }
 
 export function useSetCurrentModList() {
   return useModListMutation<SetCurrentModListRequest>(
-    (request) => rimrClient.setCurrentModList(request),
+    ({ modListId }) => rimrClient.setCurrentModList({ modListId }),
     true,
   );
 }
@@ -105,8 +134,14 @@ export function useDeleteModList() {
   return useMutation({
     meta: { blocksUpdate: true },
     scope: { id: 'library-lists-' + epoch },
-    mutationFn: (request: DeleteModListRequest) =>
-      inWorkspace(epoch, () => rimrClient.deleteModList(request)),
+    mutationFn: ({
+      modListId,
+      expectedCurrentModListId,
+    }: DeleteModListRequest & CurrentModListConstraint) =>
+      inWorkspace(epoch, () => {
+        assertCurrentModList(client, epoch, expectedCurrentModListId);
+        return rimrClient.deleteModList({ modListId });
+      }),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.library(epoch) }),
   });
 }

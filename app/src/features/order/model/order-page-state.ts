@@ -30,7 +30,8 @@ export function selectOrderPageState({
   if (isInitialLoading(scan)) return 'catalogLoading';
   if (!scan.hasData) return 'noCatalog';
   if (isInitialLoading(library)) return 'modListLoading';
-  if (library.isError || !library.hasData || !hasDraft) return 'modListLoadError';
+  if (library.isError || !library.hasData) return 'modListLoadError';
+  if (!hasDraft) return 'modListLoading';
   return 'workspace';
 }
 

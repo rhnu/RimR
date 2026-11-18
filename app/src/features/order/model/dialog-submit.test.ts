@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ModIdentityDto } from '@/commands';
+import { baseModList } from '@/domain/mod-list/test-fixtures';
 import { submitOrderDialog, type DialogSubmitActions } from './dialog-submit';
 
 const identity: ModIdentityDto = {
@@ -22,6 +23,26 @@ function actions(): DialogSubmitActions {
     createInactiveGroup: vi.fn<DialogSubmitActions['createInactiveGroup']>(),
   };
 }
+
+it('applies the draft shown in the preview without editing or saving the list', () => {
+  const draft = baseModList();
+  const submitActions = actions();
+
+  submitOrderDialog(
+    {
+      kind: 'diffConfirm',
+      action: 'apply',
+      modList: draft,
+      catalogRevision: 2,
+      diff: { before: [], after: [], items: [] },
+    },
+    '',
+    submitActions,
+  );
+
+  expect(submitActions.onApplyToGame).toHaveBeenCalledExactlyOnceWith(draft);
+  expect(submitActions.applyDraft).not.toHaveBeenCalled();
+});
 
 describe('submitOrderDialog alias editing', () => {
   it('removes an existing alias when the submitted value is empty', () => {

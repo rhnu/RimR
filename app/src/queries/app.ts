@@ -4,6 +4,15 @@ import { useWorkspaceStore } from '@/stores/workspace-store';
 import { readQuery, unwrap } from './client';
 import { queryKeys } from './keys';
 
+export function useBootstrapStatus() {
+  return useQuery({
+    queryKey: queryKeys.bootstrap,
+    queryFn: ({ signal }) => readQuery(rimrClient.getBootstrapStatus(), signal),
+    staleTime: Infinity,
+    meta: { errorHandled: true },
+  });
+}
+
 export function useAppVersion() {
   return useQuery({
     queryKey: queryKeys.appVersion,
@@ -26,4 +35,8 @@ export function useGameVersion(enabled: boolean) {
 
 export function useOpenProjectPage() {
   return useMutation({ mutationFn: () => unwrap(rimrClient.openProjectPage()) });
+}
+
+export function useOpenReleasesPage() {
+  return useMutation({ mutationFn: () => unwrap(rimrClient.openReleasesPage()) });
 }

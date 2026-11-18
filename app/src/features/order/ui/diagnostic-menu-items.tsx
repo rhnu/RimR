@@ -1,10 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type {
-  DiagnosticSuppressionDto,
-  ModIdentityDto,
-  ModListEntryDto,
-  ModMetadataDto,
-} from '@/commands';
+import type { DiagnosticSuppressionDto, ModMetadataDto } from '@/commands';
 import { formatDiagnosticMessage } from '@/domain/diagnostics/messages';
 import {
   ContextMenuItem,
@@ -13,73 +8,28 @@ import {
   ContextMenuSubContent,
   ContextMenuSubTrigger,
 } from '@/components/ui/context-menu';
-import { diagnosticsForTargets, entryDiagnosticTargets } from '@/domain/diagnostics/suppression';
-import { identityForMod, resolveSourceKey } from '@/domain/mods/identity';
-import { catalogItemKey } from '@/domain/mods/catalog';
-import { useDiagnosticSuppression } from '@/features/library/hooks/use-diagnostic-suppression';
-import {
-  useOrderWorkspaceDerived,
-  useOrderWorkspaceDraftState,
-  useOrderWorkspaceSelection,
-} from '@/features/order/context/hooks';
+import type { DiagnosticMenu } from '@/domain/diagnostics/suppression';
+import type { OrderDiagnosticTarget } from '../model/diagnostic-targets';
+import type { DiagnosticActions } from './diagnostic-report';
+
+export type RowDiagnosticMenus = {
+  forTarget: (target: OrderDiagnosticTarget) => DiagnosticMenu;
+  actions: DiagnosticActions;
+  modByPackageId: Map<string, ModMetadataDto>;
+};
 
 export function DiagnosticMenuItems({
-  entry,
-  identity,
-  catalog = false,
+  target,
+  menus,
 }: {
-  entry?: ModListEntryDto;
-  identity?: ModIdentityDto;
-  catalog?: boolean;
+  target: OrderDiagnosticTarget;
+  menus: RowDiagnosticMenus;
 }) {
   const { t } = useTranslation();
-  const { rawDiagnostics, mods, modByPackageId } = useOrderWorkspaceDerived();
-  const { draft } = useOrderWorkspaceDraftState();
-  const selection = useOrderWorkspaceSelection();
-  const commands = useDiagnosticSuppression();
-  let targets = entry ? entryDiagnosticTargets(entry) : identity ? [identity] : [];
-  if (entry && selection.selectedEntryIds.has(entry.id)) {
-    targets = (draft?.entries ?? [])
-      .filter((candidate) => selection.selectedEntryIds.has(candidate.id))
-      .flatMap(entryDiagnosticTargets);
-  } else if (catalog && identity) {
-    const clicked = mods.find((mod) => mod.sourceKey === identity.sourceKey);
-    if (clicked && selection.selectedInactiveCatalogKeys.has(catalogItemKey(clicked))) {
-      targets = mods
-        .filter((mod) => selection.selectedInactiveCatalogKeys.has(catalogItemKey(mod)))
-        .map(identityForMod);
-    }
-  }
-  if (!catalog)
-    targets = targets.map((target) => ({
-      ...target,
-      sourceKey: resolveSourceKey(target, modByPackageId) ?? target.sourceKey,
-    }));
-  const descriptors = diagnosticsForTargets(rawDiagnostics, targets).flatMap((diagnostic) =>
-    diagnostic.suppression ? [diagnostic.suppression] : [],
-  );
-  const existingKeys = new Set(commands.rules.map((rule) => rule.key));
-  const pending = descriptors.filter((item) => !existingKeys.has(item.key));
-  // Dormant rules remain recoverable even after the report or the mod disappears.
-  const restored = commands.rules.filter(
-    (rule) =>
-      diagnosticsForTargets(
-        [
-          {
-            severity: 'info',
-            code: rule.code,
-            params: rule.params,
-            relatedPackages: rule.relatedPackages,
-            message: '',
-            location: null,
-            relatedLocations: [],
-            suppression: rule,
-          },
-        ],
-        targets,
-      ).length > 0,
-  );
-  if (targets.length === 0 || (pending.length === 0 && restored.length === 0)) return null;
+  const { pending, ignored } = menus.forTarget(target);
+  const commands = menus.actions;
+  const { modByPackageId } = menus;
+  if (pending.length === 0 && ignored.length === 0) return null;
   return (
     <>
       <ContextMenuSeparator />
@@ -92,7 +42,7 @@ export function DiagnosticMenuItems({
       />
       <DiagnosticMenuGroup
         label={t('suppression.restoreMenu')}
-        items={restored}
+        items={ignored}
         disabled={commands.pending || !commands.ready}
         action={commands.restore}
         modByPackageId={modByPackageId}

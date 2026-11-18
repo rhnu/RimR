@@ -10,10 +10,8 @@ import {
   addSuppressions,
   collectDiagnostics,
   deriveDiagnosticState,
-  diagnosticsForTargets,
   entryDiagnosticTargets,
   filterSuppressions,
-  isSuppressed,
   removeSuppressions,
 } from './suppression';
 
@@ -68,11 +66,15 @@ describe('diagnostic suppression identity and targets', () => {
       message: 'Another language',
       params: { supportedVersions: '1.6' },
     };
-    expect(isSuppressed(translated, [saved])).toBe(true);
-    expect(isSuppressed(diagnostic(rule('version:a:1.8', { gameVersion: '1.8' })), [saved])).toBe(
-      false,
-    );
-    expect(isSuppressed(diagnostic(null), [saved])).toBe(false);
+    const nextVersion = diagnostic(rule('version:a:1.8', { gameVersion: '1.8' }));
+    const noRule = diagnostic(null);
+    expect(
+      deriveDiagnosticState([translated, nextVersion, noRule], null, [saved]).diagnostics,
+    ).toEqual([
+      { diagnostic: translated, ignored: true },
+      { diagnostic: nextVersion, ignored: false },
+      { diagnostic: noRule, ignored: false },
+    ]);
   });
 
   it('collects selection union, deduplicating a shared relationship without adding unrelated future rules', () => {
@@ -83,25 +85,22 @@ describe('diagnostic suppression identity and targets', () => {
       rule('conflict:a:c', { code: 'incompatibleActive', relatedPackages: ['a.mod', 'c.mod'] }),
     );
     const d = diagnostic(rule('version:d', { relatedPackages: ['d.mod'] }));
-    const selected = diagnosticsForTargets(
-      [ab, ab, ac, d],
-      [{ packageId: 'A.MOD' }, { packageId: 'b.mod' }],
-    );
-    expect(selected.map((item) => item.suppression?.key)).toEqual(['conflict:a:b', 'conflict:a:c']);
-    const rules = selected.flatMap((item) => (item.suppression ? [item.suppression] : []));
-    expect(isSuppressed(d, rules)).toBe(false);
+    const state = deriveDiagnosticState([ab, ab, ac, d], null, []);
+    const selected = [{ packageId: 'A.MOD' }, { packageId: 'b.mod' }];
+    expect(state.forTargets(selected)).toEqual([
+      { diagnostic: ab, ignored: false },
+      { diagnostic: ac, ignored: false },
+    ]);
+    expect(state.menuForTargets(selected)).toEqual({
+      pending: [ab.suppression, ac.suppression],
+      ignored: [],
+    });
   });
 
   it('requires exact source identity even when another installed copy shares the package ID', () => {
     const source = diagnostic(
       rule('xml:broken', { code: 'xmlMalformed', sourceKeys: ['local:broken'] }),
     );
-    expect(
-      diagnosticsForTargets([source], [{ packageId: 'a.mod', sourceKey: 'local:healthy' }]),
-    ).toEqual([]);
-    expect(
-      diagnosticsForTargets([source], [{ packageId: 'a.mod', sourceKey: 'local:broken' }]),
-    ).toEqual([source]);
     const missingPackage = diagnostic(
       rule('xml:unknown', {
         code: 'packageIdMissing',
@@ -109,12 +108,14 @@ describe('diagnostic suppression identity and targets', () => {
         sourceKeys: ['local:unknown'],
       }),
     );
+    const state = deriveDiagnosticState([source, missingPackage], null, []);
+    expect(state.forTargets([{ packageId: 'a.mod', sourceKey: 'local:healthy' }])).toEqual([]);
+    expect(state.forTargets([{ packageId: 'a.mod', sourceKey: 'local:broken' }])).toEqual([
+      { diagnostic: source, ignored: false },
+    ]);
     expect(
-      diagnosticsForTargets(
-        [missingPackage],
-        [{ packageId: 'invalid:unknown', sourceKey: 'local:unknown' }],
-      ),
-    ).toEqual([missingPackage]);
+      state.forTargets([{ packageId: 'invalid:unknown', sourceKey: 'local:unknown' }]),
+    ).toEqual([{ diagnostic: missingPackage, ignored: false }]);
   });
 
   it('expands groups including disabled children and ignores separators', () => {
@@ -141,7 +142,7 @@ describe('diagnostic suppression projection and persistence', () => {
     );
     const warning = diagnostic(rule('version:a'));
     const input = validation([suppressed, warning]);
-    const state = deriveDiagnosticState([suppressed], input, [suppressed.suppression!], new Map());
+    const state = deriveDiagnosticState([suppressed], input, [suppressed.suppression!]);
     expect(collectDiagnostics([suppressed], input)).toEqual([suppressed, warning]);
     expect(state.validationSummary).toEqual({
       errors: 0,
@@ -150,32 +151,37 @@ describe('diagnostic suppression projection and persistence', () => {
       isClean: false,
       suppressed: 1,
     });
-    expect(state.diagnosticsMap.get('a.mod')).toEqual([warning]);
-    expect(state.diagnosticsMap.has('b.mod')).toBe(false);
+    expect(state.forTargets([{ packageId: 'a.mod' }])).toEqual([
+      { diagnostic: suppressed, ignored: true },
+      { diagnostic: warning, ignored: false },
+    ]);
+    expect(state.menuForTargets([{ packageId: 'b.mod' }])).toEqual({
+      pending: [],
+      ignored: [suppressed.suppression],
+    });
     expect(input.report.errors).toEqual([suppressed]);
   });
 
   it('counts suppressed-only results separately and never marks pending validation clean', () => {
     const issue = diagnostic(rule('version:a'));
     expect(
-      deriveDiagnosticState([], validation([issue]), [issue.suppression!], new Map())
-        .validationSummary,
+      deriveDiagnosticState([], validation([issue]), [issue.suppression!]).validationSummary,
     ).toEqual({ errors: 0, warnings: 0, infos: 0, isClean: true, suppressed: 1 });
-    expect(deriveDiagnosticState([], null, [], new Map()).validationSummary.isClean).toBe(false);
+    expect(deriveDiagnosticState([], null, []).validationSummary.isClean).toBe(false);
   });
 
-  it('associates source reports only with the primary copy and still supports invalid source records', () => {
-    const issue = diagnostic(
-      rule('xml:broken', { code: 'xmlMalformed', sourceKeys: ['local:broken'] }),
-    );
-    const mods = new Map([['a.mod', mod('a.mod', 'Healthy', { sourceKey: 'local:healthy' })]]);
-    expect(
-      deriveDiagnosticState([issue], validation([]), [], mods).diagnosticsMap.has('a.mod'),
-    ).toBe(false);
-    mods.set('a.mod', mod('a.mod', 'Broken', { sourceKey: 'local:broken' }));
-    expect(
-      deriveDiagnosticState([issue], validation([]), [], mods).diagnosticsMap.get('a.mod'),
-    ).toEqual([issue]);
+  it('leaves dormant rules available only for their matching package or copy', () => {
+    const dormantSource = rule('xml:broken', { sourceKeys: ['local:broken'] });
+    const dormantPackage = rule('version:a');
+    const state = deriveDiagnosticState([], null, [dormantSource, dormantPackage]);
+    expect(state.menuForTargets([{ packageId: 'a.mod', sourceKey: 'workshop:healthy' }])).toEqual({
+      pending: [],
+      ignored: [dormantPackage],
+    });
+    expect(state.menuForTargets([{ packageId: 'a.mod', sourceKey: 'local:broken' }])).toEqual({
+      pending: [],
+      ignored: [dormantSource, dormantPackage],
+    });
   });
 
   it('merges and restores rules by key, retaining dormant unrelated rules', () => {

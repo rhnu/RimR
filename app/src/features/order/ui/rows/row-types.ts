@@ -1,6 +1,5 @@
 import type { MouseEvent } from 'react';
 import type {
-  DiagnosticDto,
   DisplayAliasDto,
   ModIdentityDto,
   ModListEntryDto,
@@ -10,6 +9,8 @@ import type {
   SteamWorkshopOpenTarget,
   TagDefDto,
 } from '@/commands';
+import type { DiagnosticItem } from '@/domain/diagnostics/suppression';
+import type { RowDiagnosticMenus } from '../diagnostic-menu-items';
 import type { Selection } from '@/features/order/types';
 import type { DropIndicatorStore } from '@/features/order/hooks/drop-indicator-store';
 
@@ -17,10 +18,10 @@ export type WarmFileInfo = (sourceKey: string | null | undefined, immediate?: bo
 
 export type ActiveEntryRowProps = {
   entry: ModListEntryDto;
-  index: number;
   aliases: DisplayAliasDto[];
   modByPackageId: Map<string, ModMetadataDto>;
-  diagnosticsByPackage: Map<string, DiagnosticDto[]>;
+  diagnostics: DiagnosticItem[];
+  diagnosticMenus: RowDiagnosticMenus;
   tagDefs: TagDefDto[];
   modTags: ModTagBindingDto[];
   tagTargetIdentities: ModIdentityDto[];
@@ -59,7 +60,8 @@ export type GroupChildRowProps = {
   modByPackageId: Map<string, ModMetadataDto>;
   tagDefs: TagDefDto[];
   modTags: ModTagBindingDto[];
-  diagnostics: DiagnosticDto[];
+  diagnostics: DiagnosticItem[];
+  diagnosticMenus: RowDiagnosticMenus;
   onWarmFileInfo: WarmFileInfo;
   onSelect: (child: ModListGroupChildDto) => void;
   onDoubleClick: (groupId: string, childId: string) => void;

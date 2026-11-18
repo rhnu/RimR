@@ -10,19 +10,19 @@ export function useSteamWorkshopLog() {
   return useQuery({
     queryKey: queryKeys.steamWorkshopLog(epoch),
     queryFn: ({ signal }) => readQuery(rimrClient.loadSteamWorkshopLog(), signal),
-    enabled: false,
-    staleTime: Infinity,
     gcTime: Infinity,
+    refetchOnReconnect: false,
   });
 }
 
-export function usePlayerLog(source: LogSourceDto) {
+export function usePlayerLog(source: LogSourceDto, live: boolean) {
   const epoch = useWorkspaceStore((state) => state.epoch);
   return useQuery({
     queryKey: queryKeys.playerLog(epoch, source),
     queryFn: ({ signal }) => readQuery(rimrClient.loadPlayerLog({ source }), signal),
-    enabled: false,
-    staleTime: Infinity,
     gcTime: Infinity,
+    refetchOnReconnect: false,
+    refetchInterval: live ? 3000 : false,
+    refetchIntervalInBackground: true,
   });
 }

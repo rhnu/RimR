@@ -1,17 +1,20 @@
+const workspaceKey = (epoch: number) => ['workspace', epoch] as const;
+
 export const queryKeys = {
   appVersion: ['appVersion'] as const,
   update: ['update'] as const,
-  gameVersion: (epoch: number) => ['workspace', epoch, 'gameVersion'] as const,
+  gameVersion: (epoch: number) => [...workspaceKey(epoch), 'gameVersion'] as const,
   bootstrap: ['bootstrap'] as const,
   appConfig: ['appConfig'] as const,
-  workspaceRoot: ['workspace'] as const,
-  catalogSnapshot: (epoch: number) => ['workspace', epoch, 'catalog'] as const,
-  activeList: (epoch: number) => ['workspace', epoch, 'gameConfig'] as const,
-  library: (epoch: number) => ['workspace', epoch, 'library'] as const,
+  workspace: workspaceKey,
+  catalogSnapshot: (epoch: number) => [...workspaceKey(epoch), 'catalog'] as const,
+  activeList: (epoch: number) => [...workspaceKey(epoch), 'gameConfig'] as const,
+  library: (epoch: number) => [...workspaceKey(epoch), 'library'] as const,
   modPreview: (epoch: number, sourceKey: string | null, catalogRevision: number) =>
-    ['workspace', epoch, 'preview', catalogRevision, sourceKey] as const,
+    [...workspaceKey(epoch), 'preview', catalogRevision, sourceKey] as const,
   modFolderSize: (epoch: number, sourceKey: string | null, catalogRevision: number) =>
-    ['workspace', epoch, 'folderSize', catalogRevision, sourceKey] as const,
-  steamWorkshopLog: (epoch: number) => ['workspace', epoch, 'steamWorkshopLog'] as const,
-  playerLog: (epoch: number, source: string) => ['workspace', epoch, 'playerLog', source] as const,
+    [...workspaceKey(epoch), 'folderSize', catalogRevision, sourceKey] as const,
+  steamWorkshopLog: (epoch: number) => [...workspaceKey(epoch), 'steamWorkshopLog'] as const,
+  playerLog: (epoch: number, source: string) =>
+    [...workspaceKey(epoch), 'playerLog', source] as const,
 };

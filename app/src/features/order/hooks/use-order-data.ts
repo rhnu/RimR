@@ -1,4 +1,4 @@
-import type { OrderData } from '../context/workspace-types';
+import type { OrderData } from '../workspace/workspace-types';
 import { useAppConfig } from '@/queries/config';
 import { useLibrary } from '@/queries/library';
 import { useLoadActiveList } from '@/queries/game-config';
@@ -13,5 +13,5 @@ export function useOrderData(): OrderData {
   const activeList = useLoadActiveList({ enabled: scan.isSuccess });
   const library = useLibrary({ enabled: activeList.isSuccess });
 
-  return { appConfig, scan, activeList, library };
+  return { scan, activeList, library };
 }

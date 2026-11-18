@@ -1,18 +1,8 @@
-import type { ModListDto, ModListEntryDto, ModMetadataDto } from '@/commands';
-import {
-  childIndex,
-  dragEdgeByIndex,
-  entryIndex,
-  parseCatalogId,
-  parseChildId,
-  parseEntryId,
-} from '@/features/order/dnd-ids';
-import {
-  resolveInactiveChildDropAction,
-  resolveInactiveEntryDropOnEntry,
-} from './drag-inactive-actions';
-import { isPackageAddressableMod } from '@/domain/mods/catalog';
+import type { ModListDto } from '@/commands';
 import type { DropEdge, ModListAction } from '@/domain/mod-list/types';
+import { entryIndex, parseDragTarget } from '@/features/order/dnd-ids';
+import { computeDropIntent } from './dnd';
+import { groupChildAt, type DragSource } from './drag-source';
 
 export type DropIndicatorState = {
   targetId: string;
@@ -24,281 +14,210 @@ export function sameDropIndicator(
   right: DropIndicatorState | null,
 ): boolean {
   if (left === right) return true;
-  if (!left || !right) return false;
-  return left.targetId === right.targetId && left.edge === right.edge;
+  return left?.targetId === right?.targetId && left?.edge === right?.edge;
 }
 
-export type ResolveDragActionInput = {
-  activeId: string;
-  overId: string;
-  modList: ModListDto;
-  modByPackageId: Map<string, ModMetadataDto>;
-  modByCatalogKey: Map<string, ModMetadataDto>;
-  selectedInactiveCatalogKeys: Set<string>;
-  orderedInactiveCatalogKeys: string[];
-  selectedEntryIds: Set<string>;
-  visibleActiveEntryIds: string[];
-  dropIndicator: DropIndicatorState | null;
-};
+type DropTarget = NonNullable<ReturnType<typeof resolveDropTarget>>;
 
-export function resolveDragAction(input: ResolveDragActionInput): ModListAction | null {
-  if (input.activeId === input.overId) {
-    return null;
+function resolveDropTarget(modList: ModListDto, id: string) {
+  const row = parseDragTarget(id);
+  if (row?.kind === 'entry') {
+    const index = entryIndex(modList, row.entryId);
+    const entry = modList.entries[index];
+    return entry ? { ...row, index, entry } : null;
   }
-  if (parseCatalogId(input.activeId)) return resolveCatalogDrag(input);
-  const activeEntry = parseEntryId(input.activeId);
-  if (activeEntry) return resolveEntryDrag(input);
-  const activeChild = parseChildId(input.activeId);
-  if (activeChild) return resolveChildDrag(input);
-  return null;
-}
-
-export function entryById(modList: ModListDto, entryId: string): ModListEntryDto | undefined {
-  return modList.entries.find((entry) => entry.id === entryId);
-}
-
-export function orderedSelectedDragIds(
-  grabbedId: string,
-  selected: Set<string>,
-  orderedIds: string[],
-): string[] {
-  if (!selected.has(grabbedId)) {
-    return [grabbedId];
+  if (row?.kind === 'child') {
+    const child = groupChildAt(modList, row.groupId, row.childId);
+    return child ? { ...row, index: child.index } : null;
   }
-  const ordered = orderedIds.filter((id) => selected.has(id));
-  return ordered.length > 0 ? ordered : [grabbedId];
+  return row;
 }
 
-function resolveCatalogDrag(input: ResolveDragActionInput): ModListAction | null {
-  const catalogId = parseCatalogId(input.activeId);
-  if (!catalogId) return null;
-  const itemKey = catalogId.catalogKey;
-  const itemKeys = orderedSelectedDragIds(
-    itemKey,
-    input.selectedInactiveCatalogKeys,
-    input.orderedInactiveCatalogKeys,
+function canInsertMods(source: DragSource): boolean {
+  if (source.kind === 'catalog') return source.mods.length > 0;
+  return (
+    source.kind === 'entry' &&
+    source.entries.length > 0 &&
+    source.entries.every((entry) => entry.kind === 'mod')
   );
-  const mods = itemKeys
-    .map((id) => input.modByCatalogKey.get(id))
-    .filter((mod): mod is ModMetadataDto => mod != null && isPackageAddressableMod(mod));
-  if (mods.length === 0) return null;
-  return catalogDropAction(input, mods);
 }
 
-function catalogDropAction(
-  input: ResolveDragActionInput,
-  mods: ModMetadataDto[],
+function receivingGroup(source: DragSource, target: DropTarget) {
+  return target.kind === 'entry' &&
+    target.side === 'active' &&
+    target.entry.kind === 'group' &&
+    canInsertMods(source)
+    ? target.entry
+    : null;
+}
+
+/** Interprets dnd-kit coordinates against the same rows and group rules as the resulting action. */
+export function resolveDropIndicator(
+  modList: ModListDto,
+  source: DragSource | null,
+  overId: string,
+  rect: { top: number; height: number },
+  pointerY: number,
+): DropIndicatorState | null {
+  const target = resolveDropTarget(modList, overId);
+  if (
+    !source ||
+    source.id === overId ||
+    !target ||
+    (target.kind !== 'entry' && target.kind !== 'child')
+  )
+    return null;
+  const edge = computeDropIntent(
+    target.side,
+    overId,
+    rect,
+    pointerY,
+    receivingGroup(source, target) !== null,
+  ).edge;
+  return { targetId: overId, edge };
+}
+
+export function resolveDragAction(
+  modList: ModListDto,
+  source: DragSource | null,
+  overId: string,
+  dropIndicator: DropIndicatorState | null,
 ): ModListAction | null {
-  if (input.overId === 'active-drop') {
-    return { type: 'addMods', mods, index: input.modList.entries.length };
-  }
-  const entry = parseEntryId(input.overId);
-  if (entry?.side === 'active') {
-    return catalogDropOnEntry(input, mods, entry.entryId);
-  }
-  const child = parseChildId(input.overId);
-  if (child?.side === 'active') {
+  if (!source || source.id === overId) return null;
+  const target = resolveDropTarget(modList, overId);
+  if (!target) return null;
+  const edge = dropIndicator?.targetId === overId ? dropIndicator.edge : undefined;
+  const appendIndex = modList.entries.length;
+  if (source.kind === 'catalog') return catalogDrop(source, target, edge, appendIndex);
+  if (source.kind === 'entry') return entryDrop(source, target, edge, appendIndex);
+  return childDrop(source, target, edge, appendIndex);
+}
+
+function catalogDrop(
+  source: Extract<DragSource, { kind: 'catalog' }>,
+  target: DropTarget,
+  edge: DropEdge | undefined,
+  appendIndex: number,
+): ModListAction | null {
+  const { mods } = source;
+  if (mods.length === 0) return null;
+  if (
+    (target.kind === 'panel' && target.side === 'active') ||
+    (target.kind === 'entry' && target.side === 'inactive')
+  )
+    return { type: 'addMods', mods, index: appendIndex };
+  if (target.side !== 'active') return null;
+  if (target.kind === 'child') {
     return {
       type: 'addModsToGroup',
-      groupId: child.groupId,
+      groupId: target.groupId,
       mods,
-      index: childIndexWithEdge(input.modList, child.groupId, child.childId, input.dropIndicator),
+      index: insertionIndex(target.index, edge),
     };
   }
-  if (entry?.side === 'inactive') {
-    return { type: 'addMods', mods, index: input.modList.entries.length };
+  const group = edge === 'inside' ? receivingGroup(source, target) : null;
+  if (group)
+    return { type: 'addModsToGroup', groupId: group.id, mods, index: group.entries.length };
+  if (target.kind === 'entry') {
+    return { type: 'addMods', mods, index: insertionIndex(target.index, edge) };
   }
   return null;
 }
 
-function catalogDropOnEntry(
-  input: ResolveDragActionInput,
-  mods: ModMetadataDto[],
-  targetId: string,
+function entryDrop(
+  source: Extract<DragSource, { kind: 'entry' }>,
+  target: DropTarget,
+  edge: DropEdge | undefined,
+  appendIndex: number,
 ): ModListAction | null {
-  const targetEntry = entryById(input.modList, targetId);
-  if (targetEntry?.kind === 'group' && input.dropIndicator?.edge === 'inside') {
-    return { type: 'addModsToGroup', groupId: targetId, mods, index: targetEntry.entries.length };
+  const entryIds = source.entries.map((entry) => entry.id);
+  const activating = source.side === 'inactive';
+  if (target.kind === 'panel') {
+    if (activating && target.side === 'active') {
+      return { type: 'moveEntriesToIndexAndSetActive', entryIds, index: appendIndex, active: true };
+    }
+    if (!activating && target.side === 'inactive') {
+      return { type: 'setEntriesActive', entryIds, active: false };
+    }
+    return null;
   }
-  return {
-    type: 'addMods',
-    mods,
-    index: entryIndexWithEdge(input.modList, targetId, input.dropIndicator, input.overId),
-  };
-}
-
-function resolveEntryDrag(input: ResolveDragActionInput): ModListAction | null {
-  const active = parseEntryId(input.activeId);
-  if (!active) return null;
-  const entryId = active.entryId;
-  const entryIds =
-    active.side === 'active'
-      ? orderedSelectedDragIds(entryId, input.selectedEntryIds, input.visibleActiveEntryIds)
-      : [entryId];
-  if (active.side === 'active' && input.overId === 'inactive-drop') {
-    return { type: 'setEntriesActive', entryIds, active: false };
+  if (target.side !== 'active') return null;
+  if (target.kind === 'child') {
+    return canInsertMods(source)
+      ? moveIntoGroup(entryIds, target.groupId, insertionIndex(target.index, edge), activating)
+      : null;
   }
-  if (active.side === 'inactive' && input.overId === 'active-drop') {
+  const group = edge === 'inside' ? receivingGroup(source, target) : null;
+  if (group) return moveIntoGroup(entryIds, group.id, group.entries.length, activating);
+  const targetEntryId = target.entryId;
+  if (activating) {
     return {
-      type: 'moveEntriesToIndexAndSetActive',
+      type: 'moveEntriesAndSetActive',
       entryIds,
-      index: input.modList.entries.length,
+      targetEntryId,
+      edge: edge === 'after' ? 'after' : 'before',
       active: true,
-    };
-  }
-  const overEntry = parseEntryId(input.overId);
-  if (overEntry) {
-    return entryDropOnEntry(input, active, entryIds, overEntry);
-  }
-  const overChild = parseChildId(input.overId);
-  if (overChild) {
-    return entryDropOnChild(input, active, entryIds, overChild);
-  }
-  return null;
-}
-
-function entryDropOnEntry(
-  input: ResolveDragActionInput,
-  active: { side: 'active' | 'inactive'; entryId: string },
-  entryIds: string[],
-  over: { side: 'active' | 'inactive'; entryId: string },
-): ModListAction | null {
-  if (over.side !== 'active') return null;
-  if (active.side === 'inactive') {
-    return resolveInactiveEntryDropOnEntry(input, entryIds, over.entryId);
-  }
-  const targetEntry = entryById(input.modList, over.entryId);
-  const movingEntries = entriesByIds(input.modList, entryIds);
-  if (canDropInsideGroup(targetEntry, input.dropIndicator, movingEntries)) {
-    return {
-      type: 'moveEntriesToGroup',
-      entryIds,
-      groupId: over.entryId,
-      index: targetEntry.entries.length,
     };
   }
   return {
     type: 'moveEntries',
     entryIds,
-    targetEntryId: over.entryId,
-    edge: entryEdge(input.modList, active.entryId, over.entryId, input.dropIndicator, input.overId),
+    targetEntryId,
+    edge: reorderEdge(source.index, target.index, edge),
   };
 }
 
-function entryDropOnChild(
-  input: ResolveDragActionInput,
-  active: { side: 'active' | 'inactive'; entryId: string },
+function moveIntoGroup(
   entryIds: string[],
-  over: { side: 'active' | 'inactive'; groupId: string; childId: string },
+  groupId: string,
+  index: number,
+  activating: boolean,
+): ModListAction {
+  return activating
+    ? { type: 'moveEntriesToGroupAndSetActive', entryIds, groupId, index, active: true }
+    : { type: 'moveEntriesToGroup', entryIds, groupId, index };
+}
+
+function childDrop(
+  source: Extract<DragSource, { kind: 'child' }>,
+  target: DropTarget,
+  edge: DropEdge | undefined,
+  appendIndex: number,
 ): ModListAction | null {
-  const movingEntries = entriesByIds(input.modList, entryIds);
-  if (over.side !== 'active' || !allMods(movingEntries)) return null;
-  if (active.side === 'inactive') {
-    return {
-      type: 'moveEntriesToGroupAndSetActive',
-      entryIds,
-      groupId: over.groupId,
-      index: childIndexWithEdge(input.modList, over.groupId, over.childId, input.dropIndicator),
+  const { groupId, child } = source;
+  if (source.side === 'inactive') {
+    if (target.side !== 'active') return null;
+    const activation = {
+      type: 'setGroupChildrenActiveAndMoveGroup' as const,
+      groupId,
+      childIds: [child.id],
       active: true,
     };
-  }
-  return {
-    type: 'moveEntriesToGroup',
-    entryIds,
-    groupId: over.groupId,
-    index: childIndexWithEdge(input.modList, over.groupId, over.childId, input.dropIndicator),
-  };
-}
-
-function resolveChildDrag(input: ResolveDragActionInput): ModListAction | null {
-  const active = parseChildId(input.activeId);
-  if (!active) return null;
-  if (active.side === 'active' && input.overId === 'inactive-drop') {
+    if (target.kind === 'panel') return { ...activation, index: appendIndex };
     return {
-      type: 'setGroupChildrenActive',
-      groupId: active.groupId,
-      childIds: [active.childId],
-      active: false,
+      ...activation,
+      targetEntryId: target.kind === 'entry' ? target.entryId : target.groupId,
+      edge: edge === 'after' ? 'after' : 'before',
     };
   }
-  if (active.side === 'inactive') {
-    return resolveInactiveChildDropAction(input, active);
+  if (target.kind === 'panel' && target.side === 'inactive') {
+    return { type: 'setGroupChildrenActive', groupId, childIds: [child.id], active: false };
   }
-  const over = parseChildId(input.overId);
-  if (!over || active.groupId !== over.groupId || active.side !== over.side) {
+  if (target.kind !== 'child' || target.side !== 'active' || target.groupId !== groupId)
     return null;
-  }
   return {
     type: 'moveGroupChild',
-    groupId: active.groupId,
-    childId: active.childId,
-    targetChildId: over.childId,
-    edge: childEdge(input.modList, active, over, input.dropIndicator, input.overId),
+    groupId,
+    childId: child.id,
+    targetChildId: target.childId,
+    edge: reorderEdge(source.index, target.index, edge),
   };
 }
 
-function entriesByIds(modList: ModListDto, entryIds: string[]): ModListEntryDto[] {
-  const selected = new Set(entryIds);
-  return modList.entries.filter((entry) => selected.has(entry.id));
+function insertionIndex(index: number, edge: DropEdge | undefined): number {
+  return edge === 'after' ? index + 1 : index;
 }
 
-function canDropInsideGroup(
-  entry: ModListEntryDto | undefined,
-  indicator: DropIndicatorState | null,
-  movingEntries: ModListEntryDto[],
-): entry is Extract<ModListEntryDto, { kind: 'group' }> {
-  return entry?.kind === 'group' && indicator?.edge === 'inside' && allMods(movingEntries);
-}
-
-function allMods(entries: ModListEntryDto[]): boolean {
-  return entries.every((entry) => entry.kind === 'mod');
-}
-
-function entryIndexWithEdge(
-  modList: ModListDto,
-  entryId: string,
-  indicator: DropIndicatorState | null,
-  overId: string,
-): number {
-  const index = entryIndex(modList, entryId);
-  return indicator?.targetId === overId && indicator.edge === 'after' ? index + 1 : index;
-}
-
-function childIndexWithEdge(
-  modList: ModListDto,
-  groupId: string,
-  childId: string,
-  indicator: DropIndicatorState | null,
-): number {
-  const index = childIndex(modList, groupId, childId);
-  return indicator?.edge === 'after' ? index + 1 : index;
-}
-
-function entryEdge(
-  modList: ModListDto,
-  entryId: string,
-  targetEntryId: string,
-  indicator: DropIndicatorState | null,
-  overId: string,
-): 'before' | 'after' {
-  if (indicator?.targetId === overId && indicator.edge !== 'inside') {
-    return indicator.edge;
-  }
-  return dragEdgeByIndex(entryIndex(modList, entryId), entryIndex(modList, targetEntryId));
-}
-
-function childEdge(
-  modList: ModListDto,
-  active: { groupId: string; childId: string },
-  over: { groupId: string; childId: string },
-  indicator: DropIndicatorState | null,
-  overId: string,
-): 'before' | 'after' {
-  if (indicator?.targetId === overId && indicator.edge !== 'inside') {
-    return indicator.edge;
-  }
-  return dragEdgeByIndex(
-    childIndex(modList, active.groupId, active.childId),
-    childIndex(modList, over.groupId, over.childId),
-  );
+function reorderEdge(from: number, to: number, edge: DropEdge | undefined): 'before' | 'after' {
+  return edge && edge !== 'inside' ? edge : from < to ? 'after' : 'before';
 }

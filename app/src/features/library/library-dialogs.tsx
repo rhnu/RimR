@@ -9,8 +9,6 @@ import {
 import { DialogForm } from '@/components/ui/dialog-form';
 import { Input } from '@/components/ui/input';
 import { useOrderDialogStore } from '@/stores/order-dialog-store';
-import { useOrderDraftStore } from '@/stores/order-draft-store';
-import { useLibraryDialogActions } from './hooks/use-library-dialog-actions';
 import { isLibraryDialog } from './types';
 
 const titles = {
@@ -20,13 +18,17 @@ const titles = {
   deleteModList: 'order.dialog.deleteModListTitle',
 } as const;
 
-export function LibraryDialogs() {
+type LibraryDialogsProps = {
+  canDelete: boolean;
+  pending: boolean;
+  onSubmit: () => void;
+};
+
+export function LibraryDialogs({ canDelete, pending, onSubmit }: LibraryDialogsProps) {
   const { t } = useTranslation();
   const dialog = useOrderDialogStore((state) => state.dialog);
   const close = useOrderDialogStore((state) => state.close);
   const updateValue = useOrderDialogStore((state) => state.updateValue);
-  const draft = useOrderDraftStore((state) => state.draft);
-  const actions = useLibraryDialogActions(draft ?? undefined);
   if (!isLibraryDialog(dialog)) return null;
   const deleting = dialog.kind === 'deleteModList';
   const description = deleting
@@ -48,13 +50,17 @@ export function LibraryDialogs() {
         </DialogHeader>
         <DialogForm
           onCancel={close}
-          onSubmit={() => actions.onSubmit('value' in dialog ? dialog.value : '')}
+          onSubmit={onSubmit}
           submitLabel={t(deleting ? 'common.delete' : 'common.save')}
           submitVariant={deleting ? 'destructive' : 'default'}
-          submitDisabled={actions.pending || (deleting && !actions.canDelete)}
+          submitDisabled={pending || (deleting && !canDelete)}
         >
           {'value' in dialog ? (
-            <Input value={dialog.value} onChange={(event) => updateValue(event.target.value)} />
+            <Input
+              disabled={pending}
+              value={dialog.value}
+              onChange={(event) => updateValue(event.target.value)}
+            />
           ) : null}
         </DialogForm>
       </DialogContent>

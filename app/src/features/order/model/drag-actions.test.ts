@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { baseModList, catalogMods, mod } from '@/domain/mod-list/test-fixtures';
 import { computeDropIntent } from './dnd';
-import { resolveDragAction, sameDropIndicator, type ResolveDragActionInput } from './drag-actions';
+import {
+  resolveDragAction as resolveDrop,
+  resolveDropIndicator,
+  sameDropIndicator,
+  type DropIndicatorState,
+} from './drag-actions';
+import { resolveDragSource, type DragSelection } from './drag-source';
+import { dragOverlayForSource } from './drag-overlay';
 import { modListReducer } from '@/domain/mod-list/reducer';
 import { catalogItemKey } from '@/domain/mods/catalog';
 
@@ -146,6 +153,75 @@ describe('order model drag actions basics', () => {
   });
 });
 
+describe('drag overlay and drop placement', () => {
+  it('uses the same visible multiselection for the preview and the drop', () => {
+    const unselected = mod('d.hidden', 'Hidden');
+    const visibleFirst = mod('e.first', 'Visible first');
+    const catalog = [...catalogMods, unselected, visibleFirst];
+    const keys = [visibleFirst, unselected, catalogMods[2]].map(catalogItemKey);
+    const [firstKey, hiddenKey, grabbedKey] = keys;
+    const drag = input({
+      activeId: `inactive:catalog:${grabbedKey}`,
+      modByCatalogKey: new Map(catalog.map((item) => [catalogItemKey(item), item])),
+      selectedInactiveCatalogKeys: new Set([firstKey, hiddenKey, grabbedKey]),
+      orderedInactiveCatalogKeys: [firstKey, grabbedKey],
+    });
+    const source = resolveDragSource(drag.activeId, drag.modList, drag);
+    expect(
+      dragOverlayForSource(source, {
+        aliases: [],
+        modByPackageId: new Map(catalog.map((item) => [item.packageId, item])),
+        tagDefs: [],
+        modTags: [],
+      }),
+    ).toMatchObject({ label: 'Visible first', count: 2 });
+    expect(resolveDragAction(drag)).toMatchObject({
+      type: 'addMods',
+      mods: [visibleFirst, catalogMods[2]],
+    });
+  });
+
+  it('previews adjacent placement when the dragged entries cannot enter a group', () => {
+    const drag = input({
+      activeId: 'active:entry:sep-1',
+      overId: 'active:entry:group-required',
+    });
+    const source = resolveDragSource(drag.activeId, drag.modList, drag);
+    const indicator = resolveDropIndicator(
+      drag.modList,
+      source,
+      drag.overId,
+      { top: 100, height: 30 },
+      115,
+    );
+    expect(indicator?.edge).toBe('after');
+    expect(resolveDragAction({ ...drag, dropIndicator: indicator })).toEqual({
+      type: 'moveEntries',
+      entryIds: ['sep-1'],
+      targetEntryId: 'group-required',
+      edge: 'after',
+    });
+  });
+
+  it('uses draft positions for keyboard reordering when no indicator is available', () => {
+    expect(
+      resolveDragAction(
+        input({
+          activeId: 'active:entry:entry-a',
+          overId: 'active:entry:group-required',
+          visibleActiveEntryIds: ['entry-a'],
+          dropIndicator: { targetId: 'active:entry:sep-1', edge: 'before' },
+        }),
+      ),
+    ).toEqual({
+      type: 'moveEntries',
+      entryIds: ['entry-a'],
+      targetEntryId: 'group-required',
+      edge: 'after',
+    });
+  });
+});
+
 describe('order model inactive entry drag actions', () => {
   it('activates inactive structured entries dropped on active rows at the drop target', () => {
     const action = resolveDragAction(
@@ -201,12 +277,23 @@ describe('order model inactive entry drag actions', () => {
   });
 });
 
+type ResolveDragActionInput = DragSelection & {
+  activeId: string;
+  overId: string;
+  modList: ReturnType<typeof baseModList>;
+  dropIndicator: DropIndicatorState | null;
+};
+
+function resolveDragAction(input: ResolveDragActionInput) {
+  const { activeId, overId, modList, dropIndicator } = input;
+  return resolveDrop(modList, resolveDragSource(activeId, modList, input), overId, dropIndicator);
+}
+
 function input(overrides: Partial<ResolveDragActionInput>): ResolveDragActionInput {
   return {
     activeId: 'inactive:catalog:source:local:c.extra',
     overId: 'active-drop',
     modList: baseModList(),
-    modByPackageId: new Map(catalogMods.map((item) => [item.packageId, item])),
     modByCatalogKey: new Map(catalogMods.map((item) => [catalogItemKey(item), item])),
     selectedInactiveCatalogKeys: new Set(),
     orderedInactiveCatalogKeys: ['source:local:c.extra'],

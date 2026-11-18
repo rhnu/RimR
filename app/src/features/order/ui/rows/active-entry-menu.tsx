@@ -16,6 +16,7 @@ import type { ActiveEntryRowProps } from '@/features/order/ui/rows/row-types';
 type ActiveEntryMenuProps = Pick<
   ActiveEntryRowProps,
   | 'canCreateGroup'
+  | 'diagnosticMenus'
   | 'onRemove'
   | 'onUngroup'
   | 'onCreateGroup'
@@ -44,7 +45,10 @@ export function ActiveEntryMenu(props: ActiveEntryMenuProps) {
   return (
     <ContextMenuContent>
       <EntryActions {...props} />
-      <DiagnosticMenuItems entry={props.entry} />
+      <DiagnosticMenuItems
+        target={{ kind: 'entry', entry: props.entry }}
+        menus={props.diagnosticMenus}
+      />
       <ContextMenuSeparator />
       <ContextMenuItem onSelect={() => props.onAddSeparator(props.entry)}>
         <SplitSquareHorizontal className="size-4" />

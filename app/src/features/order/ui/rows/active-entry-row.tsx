@@ -13,10 +13,9 @@ import type { ActiveEntryRowProps } from '@/features/order/ui/rows/row-types';
 
 export const ActiveEntryRow = memo(function ActiveEntryRow({
   entry,
-  index: _index,
   aliases,
   modByPackageId,
-  diagnosticsByPackage,
+  diagnostics,
   tagDefs,
   modTags,
   selected,
@@ -28,7 +27,6 @@ export const ActiveEntryRow = memo(function ActiveEntryRow({
 }: ActiveEntryRowProps) {
   const rowId = entrySortableId(entry.id);
   const dragDrop = useDragDropNode(rowId);
-  const diagnostics = diagnosticsForEntry(entry, diagnosticsByPackage);
   return (
     <ContextMenu onOpenChange={(open) => open && onContextOpen(entry)}>
       <ContextMenuTrigger asChild>
@@ -52,7 +50,7 @@ export const ActiveEntryRow = memo(function ActiveEntryRow({
               onWarmFileInfo={onWarmFileInfo}
               onSelect={menuAndContentProps.onSelect}
             />
-            <DiagnosticIcon diagnostics={diagnostics} />
+            <DiagnosticIcon items={diagnostics} />
           </div>
         </div>
       </ContextMenuTrigger>
@@ -66,21 +64,6 @@ export const ActiveEntryRow = memo(function ActiveEntryRow({
     </ContextMenu>
   );
 });
-
-function diagnosticsForEntry(
-  entry: ActiveEntryRowProps['entry'],
-  diagnosticsByPackage: ActiveEntryRowProps['diagnosticsByPackage'],
-) {
-  if (entry.kind === 'mod') {
-    return diagnosticsByPackage.get(entry.identity.packageId) ?? [];
-  }
-  if (entry.kind === 'group') {
-    return entry.entries.flatMap(
-      (child) => diagnosticsByPackage.get(child.identity.packageId) ?? [],
-    );
-  }
-  return [];
-}
 
 function warmEntryPreview(
   entry: ActiveEntryRowProps['entry'],

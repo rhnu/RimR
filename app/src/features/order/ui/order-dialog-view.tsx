@@ -1,4 +1,3 @@
-import { useModCatalog } from '../context/mod-catalog-context';
 import { useTranslation } from 'react-i18next';
 import type { ModMetadataDto } from '@/commands';
 import {
@@ -12,21 +11,27 @@ import { DialogForm } from '@/components/ui/dialog-form';
 import { Input } from '@/components/ui/input';
 import { OrderDiffBody } from '@/features/order/ui/order-diff-view';
 import type { OrderDiff } from '@/domain/mod-list/types';
-import { dialogHasValue, isOrderDialog, type OrderDialog } from '@/features/order/types';
-import { useOrderDialogStore } from '@/stores/order-dialog-store';
+import { dialogHasValue, type OrderDialog } from '@/features/order/types';
 
-export function OrderDialogView({ onSubmit }: { onSubmit: (value: string) => void }) {
-  const modByPackageId = useModCatalog();
+export function OrderDialogView({
+  dialog,
+  modByPackageId,
+  onSubmit,
+  onClose,
+  onValueChange,
+}: {
+  dialog: OrderDialog;
+  modByPackageId: Map<string, ModMetadataDto>;
+  onSubmit: (value: string) => void;
+  onClose: () => void;
+  onValueChange: (value: string) => void;
+}) {
   const { t } = useTranslation();
-  const currentDialog = useOrderDialogStore((state) => state.dialog);
-  const dialog = isOrderDialog(currentDialog) ? currentDialog : null;
-  const close = useOrderDialogStore((state) => state.close);
-  const updateValue = useOrderDialogStore((state) => state.updateValue);
   const open = dialog !== null;
   const model = dialog ? getOrderDialogViewModel(dialog) : null;
   const dialogClassName = dialog?.kind === 'diffConfirm' ? 'sm:max-w-3xl' : undefined;
   return (
-    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && close()}>
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent className={dialogClassName}>
         {model ? (
           <DialogHeader>
@@ -36,7 +41,7 @@ export function OrderDialogView({ onSubmit }: { onSubmit: (value: string) => voi
         ) : null}
         <DialogForm
           className="flex-1"
-          onCancel={close}
+          onCancel={onClose}
           onSubmit={() => onSubmit(dialog && dialogHasValue(dialog) ? dialog.value : '')}
           submitLabel={t(model?.submitLabelKey ?? 'common.save')}
           submitVariant={model?.submitVariant}
@@ -44,7 +49,7 @@ export function OrderDialogView({ onSubmit }: { onSubmit: (value: string) => voi
         >
           <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
             {dialog && dialogHasValue(dialog) ? (
-              <Input value={dialog.value} onChange={(event) => updateValue(event.target.value)} />
+              <Input value={dialog.value} onChange={(event) => onValueChange(event.target.value)} />
             ) : null}
             {model ? <DialogBodyView body={model.body} modByPackageId={modByPackageId} /> : null}
           </div>

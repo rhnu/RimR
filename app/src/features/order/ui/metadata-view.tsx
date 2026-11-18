@@ -1,11 +1,11 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { DiagnosticDto, ModIdentityDto, ModMetadataDto, TagDefDto } from '@/commands';
+import type { ModIdentityDto, ModMetadataDto, TagDefDto } from '@/commands';
 import { Collapsible } from '@/components/ui/collapsible';
 import { SteamBbcode } from '@/components/ui/steam-bbcode';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Col } from '@/components/ui/layout';
 import { formatFileSize } from '@/features/order/model';
-import { DiagnosticReport } from '@/features/order/ui/diagnostic-report';
 import { Meta } from '@/features/order/ui/meta-row';
 import { TagsMeta } from '@/features/order/ui/tags-meta';
 
@@ -24,8 +24,7 @@ export function SelectedModMetadata({
   previewLoading,
   previewDataUrl,
   folderSizeBytes,
-  diagnostics,
-  modByPackageId,
+  diagnosticReport,
   tags,
 }: {
   identity: ModIdentityDto;
@@ -33,8 +32,7 @@ export function SelectedModMetadata({
   previewLoading: boolean;
   previewDataUrl: string | undefined;
   folderSizeBytes: number | null | undefined;
-  diagnostics: DiagnosticDto[];
-  modByPackageId: Map<string, ModMetadataDto>;
+  diagnosticReport: ReactNode;
   tags: TagDefDto[];
 }) {
   const { t } = useTranslation();
@@ -51,9 +49,7 @@ export function SelectedModMetadata({
         <Meta label={t('order.inspector.sourceKey')} value={identity.sourceKey ?? '-'} mono />
       </Collapsible>
       {mod ? <RulesMetadata mod={mod} /> : null}
-      {diagnostics.length > 0 ? (
-        <DiagnosticList diagnostics={diagnostics} modByPackageId={modByPackageId} />
-      ) : null}
+      {diagnosticReport ? <DiagnosticList>{diagnosticReport}</DiagnosticList> : null}
       {mod?.description && (
         <Collapsible title={t('modDetails.sections.description')}>
           <SteamBbcode>{mod.description}</SteamBbcode>
@@ -114,12 +110,10 @@ function RulesMetadata({ mod }: { mod: ModMetadataDto }) {
 
 export function SelectedGroupMetadata({
   entryCount,
-  diagnostics,
-  modByPackageId,
+  diagnosticReport,
 }: {
   entryCount: number;
-  diagnostics: DiagnosticDto[];
-  modByPackageId: Map<string, ModMetadataDto>;
+  diagnosticReport: ReactNode;
 }) {
   const { t } = useTranslation();
   return (
@@ -127,9 +121,7 @@ export function SelectedGroupMetadata({
       <div className="p-2">
         <Meta label={t('order.inspector.groupEntries')} value={String(entryCount)} />
       </div>
-      {diagnostics.length > 0 ? (
-        <DiagnosticList diagnostics={diagnostics} modByPackageId={modByPackageId} />
-      ) : null}
+      {diagnosticReport ? <DiagnosticList>{diagnosticReport}</DiagnosticList> : null}
     </Col>
   );
 }
@@ -144,17 +136,11 @@ export function SelectedSeparatorMetadata({ id, note }: { id: string; note: stri
   );
 }
 
-function DiagnosticList({
-  diagnostics,
-  modByPackageId,
-}: {
-  diagnostics: DiagnosticDto[];
-  modByPackageId: Map<string, ModMetadataDto>;
-}) {
+function DiagnosticList({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   return (
     <Collapsible title={t('order.metadata.diagnostics')} defaultOpen contentClassName="p-0">
-      <DiagnosticReport diagnostics={diagnostics} modByPackageId={modByPackageId} />
+      {children}
     </Collapsible>
   );
 }

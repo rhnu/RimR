@@ -1,9 +1,10 @@
 import { toast } from 'sonner';
 import { reportError } from '@/queries/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { chooseRimrSavePath, pickRimrFile, pickSaveGameFile } from '@/commands';
-import type { ConfiguredDirectoryKind, ModListDto } from '@/commands';
-import { useOpenConfiguredDirectory } from '@/queries/native';
+import type { ConfiguredDirectoryKind } from '@/commands';
+import { useOpenConfiguredDirectory, useReadSaveModIds } from '@/queries/native';
 import { useAppConfig } from '@/queries/config';
 import {
   useExportLibrarySettingsFile,
@@ -11,9 +12,9 @@ import {
   useImportLibrarySettingsFile,
   useImportModListFile,
 } from '@/queries/files';
-import { useReadSaveModIds } from '@/queries/native';
+import { readCurrentLibrary, useLibrary } from '@/queries/library';
 import { useOrderDraftStore } from '@/stores/order-draft-store';
-import { useOrderCommandStore } from '@/stores/order-command-store';
+import { matchesOrderCommandTarget, useOrderCommandStore } from '@/stores/order-command-store';
 import { isConfiguredDirectoryAvailable } from './file-menu-directory-model';
 
 export function useFileMenuActions() {
@@ -24,10 +25,8 @@ export function useFileMenuActions() {
   const exportLibraryMutation = useExportLibrarySettingsFile();
   const importLibraryMutation = useImportLibrarySettingsFile();
   const openDirectoryMutation = useOpenConfiguredDirectory();
-  const draft = useOrderDraftStore((state) => state.draft);
-  const importFromSave = useImportFromSave(draft, appConfig.data?.paths.gameDataDir ?? undefined);
-
   const paths = appConfig.data?.paths;
+  const { importFromSave, canImportFromSave } = useImportFromSave(paths?.gameDataDir);
 
   const openDirectory = (kind: ConfiguredDirectoryKind): void => {
     openDirectoryMutation.mutate({ kind });
@@ -83,20 +82,32 @@ export function useFileMenuActions() {
     importModList,
     importLibrary,
     importFromSave,
-    canImportFromSave: draft != null,
+    canImportFromSave,
     openDirectory,
     isDirectoryAvailable: (kind: ConfiguredDirectoryKind) =>
       isConfiguredDirectoryAvailable(paths, kind),
   };
 }
 
-function useImportFromSave(draft: ModListDto | null, gameDataDir: string | undefined) {
+function useImportFromSave(gameDataDir: string | null | undefined) {
   const { t } = useTranslation();
+  const client = useQueryClient();
+  const library = useLibrary();
+  const draftId = useOrderDraftStore((state) => state.draft?.id);
   const readSaveModIdsMutation = useReadSaveModIds();
-  const commandStore = useOrderCommandStore();
 
   async function importFromSave(): Promise<void> {
-    if (!draft) return;
+    const { epoch: workspaceEpoch, library: currentLibrary } = readCurrentLibrary(client);
+    const modListId = currentLibrary?.currentModList.id;
+    if (!modListId || useOrderDraftStore.getState().draft?.id !== modListId) return;
+    const target = { workspaceEpoch, modListId };
+    function checkTarget(): boolean {
+      const { epoch, library } = readCurrentLibrary(client);
+      if (matchesOrderCommandTarget(target, epoch, library?.currentModList.id)) return true;
+      toast.info(t('toast.saveSyncTargetChanged'));
+      return false;
+    }
+
     const defaultPath = gameDataDir ? `${gameDataDir}/Saves` : undefined;
     const inputPath = await pickSaveGameFile({
       title: t('dialog.importFromSave'),
@@ -109,22 +120,28 @@ function useImportFromSave(draft: ModListDto | null, gameDataDir: string | undef
         return null;
       },
     );
-    if (!inputPath) return;
+    if (!inputPath || !checkTarget()) return;
     readSaveModIdsMutation.mutate(
       { path: inputPath },
       {
         onSuccess: (dto) => {
+          if (!checkTarget()) return;
           if (dto.modIds.length === 0) {
             toast.info(t('toast.saveOrderEmpty'));
             return;
           }
-          commandStore.request({ kind: 'syncFromSave', modIds: dto.modIds });
+          useOrderCommandStore
+            .getState()
+            .request({ kind: 'syncFromSave', target, modIds: dto.modIds });
         },
       },
     );
   }
 
-  return importFromSave;
+  return {
+    importFromSave,
+    canImportFromSave: draftId !== undefined && draftId === library.data?.currentModList.id,
+  };
 }
 
 function chooseFilePath(

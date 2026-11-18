@@ -1,19 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import { KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import type { SteamWorkshopOpenTarget } from '@/commands';
+import { useQueryClient } from '@tanstack/react-query';
+import type { CatalogSnapshotDto, ModListDto, SteamWorkshopOpenTarget } from '@/commands';
 import { useOrderDraftStore } from '@/stores/order-draft-store';
 import { useWorkspaceStore } from '@/stores/workspace-store';
 import { useOpenModFolder, useOpenSteamWorkshopPage } from '@/queries/native';
+import { queryKeys } from '@/queries/keys';
 import { buildApplyProjection, buildOrderDiff } from '@/domain/mod-list/diff';
-import { type ModListAction } from '@/domain/mod-list/types';
-import { useOrderCommands } from '@/features/order/hooks/use-order-commands';
-import { useOrderDrag } from '@/features/order/hooks/use-order-drag';
 import { useOrderSync } from '@/features/order/hooks/use-order-sync';
-import { ACTIVE_DROP_ID, INACTIVE_DROP_ID } from '@/features/order/workspace-constants';
 import type { OrderDialog } from '@/features/order/types';
 
 import type {
-  OrderData,
+  OrderWorkspaceData,
   OrderDraftState,
   OrderDerived,
   OrderSelection,
@@ -49,15 +47,8 @@ export function useOrderSensors() {
   );
 }
 
-export function useControllerCommands(draftState: OrderDraftState) {
-  return useOrderCommands({
-    draft: draftState.draft,
-    acceptSaved: draftState.acceptSaved,
-  });
-}
-
 export function useControllerSync(
-  data: OrderData,
+  data: OrderWorkspaceData,
   draftState: OrderDraftState,
   mods: OrderDerived['mods'],
   selection: OrderSelection,
@@ -71,32 +62,9 @@ export function useControllerSync(
     refetchScan: () => data.scan.refetch({ throwOnError: true }).then((result) => result.data),
     refetchActiveList: () =>
       data.activeList.refetch({ throwOnError: true }).then((result) => result.data?.activeMods),
-    applyDraft: draftState.applyDraft as (action: ModListAction) => void,
+    applyDraft: draftState.applyDraft,
     resetSelections: selection.resetSelections,
     setDialog,
-  });
-}
-
-export function useControllerDrag(
-  data: OrderData,
-  draftState: OrderDraftState,
-  derived: OrderDerived,
-  selection: OrderSelection,
-) {
-  return useOrderDrag({
-    activeDropId: ACTIVE_DROP_ID,
-    inactiveDropId: INACTIVE_DROP_ID,
-    draft: draftState.draft,
-    aliases: data.library.data?.settings.aliases ?? [],
-    modByPackageId: derived.modByPackageId,
-    modByCatalogKey: derived.modByCatalogKey,
-    selectedInactiveCatalogKeys: selection.selectedInactiveCatalogKeys,
-    orderedInactiveCatalogKeys: derived.inactiveCatalogKeys,
-    selectedEntryIds: selection.selectedEntryIds,
-    visibleActiveEntryIds: derived.visibleActiveEntryIds,
-    tagDefs: data.library.data?.settings.tagDefs ?? [],
-    modTags: data.library.data?.settings.modTags ?? [],
-    applyDraft: draftState.applyDraft,
   });
 }
 
@@ -116,39 +84,59 @@ export function useOpenHandlers() {
 }
 
 export function useResetSelectionsOnModListChange(
-  currentModList: unknown,
+  currentModList: ModListDto,
   resetSelections: () => void,
 ) {
   useEffect(() => {
-    if (currentModList) {
-      resetSelections();
-    }
+    resetSelections();
   }, [currentModList, resetSelections]);
 }
 
 export function useApplyWithDiff(
-  data: OrderData,
+  data: OrderWorkspaceData,
   draftState: OrderDraftState,
   derived: OrderDerived,
   setDialog: (dialog: OrderDialog) => void,
 ) {
+  const queryClient = useQueryClient();
   return useCallback(() => {
     const draft = draftState.draft;
-    if (!draft) return;
+    const scan = data.scan.data;
+    const catalogRevision = data.scan.dataUpdatedAt;
+    if (!draft || !scan) return;
     const epoch = useWorkspaceStore.getState().epoch;
+    const catalogKey = queryKeys.catalogSnapshot(epoch);
+    const isCurrentCatalog = () => {
+      const current = queryClient.getQueryState<CatalogSnapshotDto>(catalogKey);
+      return (
+        current?.data === scan &&
+        current.dataUpdatedAt === catalogRevision &&
+        current.fetchStatus === 'idle'
+      );
+    };
+    if (!isCurrentCatalog()) return;
     void data.activeList
       .refetch({ throwOnError: true })
       .then((result) => {
         if (
           useWorkspaceStore.getState().epoch !== epoch ||
-          useOrderDraftStore.getState().draft !== draft
+          useOrderDraftStore.getState().draft !== draft ||
+          !isCurrentCatalog()
         )
           return;
         const before = result.data?.activeMods ?? data.activeList.data?.activeMods ?? [];
         const projection = buildApplyProjection(draft, derived.modByPackageId);
         const diff = buildOrderDiff(before, projection.activeMods, projection.events);
-        setDialog({ kind: 'diffConfirm', action: 'apply', modList: draft, diff });
+        setDialog({ kind: 'diffConfirm', action: 'apply', modList: draft, diff, catalogRevision });
       })
       .catch(() => undefined);
-  }, [data.activeList, derived.modByPackageId, draftState.draft, setDialog]);
+  }, [
+    data.activeList,
+    data.scan.data,
+    data.scan.dataUpdatedAt,
+    derived.modByPackageId,
+    draftState.draft,
+    queryClient,
+    setDialog,
+  ]);
 }

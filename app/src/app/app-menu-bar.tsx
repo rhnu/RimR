@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import {
@@ -14,6 +14,7 @@ import { ExportSettingsDialog } from '@/features/library/export-settings-dialog'
 import { ModListMenu } from '@/features/library/mod-list-menu';
 import { SUPPORTED_LOCALES_LIST, useLocaleStore, type Locale } from '@/stores/locale';
 import { useThemeStore } from '@/stores/theme';
+import { AppUpdaterContext } from './app-updater-context';
 import { HelpMenu } from './help-menu';
 import { TOOL_CLEANUP_ITEMS } from './tools-menu-model';
 import type { useFileMenuActions } from './use-file-menu-actions';
@@ -39,9 +40,15 @@ export function AppMenuBar(props: AppMenuBarProps) {
       <ToolsMenu {...props} />
       <ViewMenu {...props} />
       <SettingsMenu {...props} />
-      <HelpMenu {...props} />
+      <AppHelpMenu openMenu={props.openMenu} setOpenMenu={props.setOpenMenu} />
     </nav>
   );
+}
+
+function AppHelpMenu(props: Pick<AppMenuBarProps, 'openMenu' | 'setOpenMenu'>) {
+  const updater = useContext(AppUpdaterContext);
+  if (!updater) throw new Error('AppMenuBar requires AppUpdaterContext');
+  return <HelpMenu {...props} updater={updater} />;
 }
 
 function FileMenu({ openMenu, setOpenMenu, fileActions }: AppMenuBarProps) {
@@ -106,8 +113,12 @@ function ModListDesktopMenu({ openMenu, setOpenMenu, modListMenu }: AppMenuBarPr
       openMenu={openMenu}
       setOpenMenu={setOpenMenu}
     >
-      {modListMenu.currentModList ? (
-        <ModListMenu canDelete={modListMenu.canDelete} onAction={modListMenu.onAction} />
+      {modListMenu.hasCurrentModList ? (
+        <ModListMenu
+          canDelete={modListMenu.canDelete}
+          pending={modListMenu.pending}
+          onAction={modListMenu.onAction}
+        />
       ) : (
         <MenuItem disabled onSelect={() => undefined}>
           {t('order.state.modListNotLoaded')}
@@ -143,7 +154,7 @@ function ToolsMenu({ openMenu, setOpenMenu, toolsActions }: AppMenuBarProps) {
           <MenuItem
             key={item.kind}
             disabled={toolsActions.isPending}
-            onSelect={() => void toolsActions.preview(item.kind)}
+            onSelect={() => toolsActions.preview(item.kind)}
           >
             {t(item.labelKey)}
           </MenuItem>

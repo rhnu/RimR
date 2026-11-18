@@ -1,4 +1,4 @@
-import type { OrderPreview } from '../context/workspace-types';
+import type { OrderPreview } from '../workspace/workspace-types';
 import { useCallback } from 'react';
 import { usePrefetchModPreview } from '@/queries/previews';
 

@@ -11,21 +11,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { rimrClient } from '@/commands';
-import { downloadPercent, supportsUpdateInstall } from '@/domain/updates';
-import { updateErrorMessage } from '@/commands/updater-client';
-import { reportError, unwrap } from '@/queries/client';
-import type { useAppUpdater } from './use-app-updater';
+import { downloadPercent } from '@/domain/updates';
+import type { AppUpdater, AppUpdaterState } from './use-app-updater';
 
-type Updater = ReturnType<typeof useAppUpdater>;
 type UpdateDialogProps = {
-  updater: Updater;
+  updater: AppUpdater;
   onCloseAutoFocus: ComponentProps<typeof DialogContent>['onCloseAutoFocus'];
 };
 
-function updateStatus({ operation, query, desktop }: Updater, t: TFunction): string {
+function updateStatus(
+  { operation, check, available, desktop }: AppUpdaterState,
+  t: TFunction,
+): string {
   if (!desktop) return t('updates.desktopOnly');
-  if (query.isFetching) return t('updates.checking');
+  if (check.status === 'checking') return t('updates.checking');
   if (operation.phase === 'failed')
     return t(operation.retry === 'restart' ? 'updates.restartFailed' : 'updates.failed');
   if (operation.phase === 'blocked')
@@ -40,36 +39,37 @@ function updateStatus({ operation, query, desktop }: Updater, t: TFunction): str
   if (operation.phase === 'verifying') return t('updates.verifying');
   if (operation.phase === 'installing') return t('updates.installing');
   if (operation.phase === 'restarting') return t('updates.restarting');
-  if (query.isError) return t('updates.checkFailed');
-  if (query.data?.update) return t('updates.available', { version: query.data.update.version });
+  if (check.status === 'failed') return t('updates.checkFailed');
+  if (available) return t('updates.available', { version: available.version });
   return t('updates.upToDate');
 }
 
 export function UpdateDialog({ updater, onCloseAutoFocus }: UpdateDialogProps) {
   const { t } = useTranslation();
+  const { open, busy } = updater.state;
   return (
-    <Dialog open={updater.open} onOpenChange={updater.setOpen}>
+    <Dialog open={open} onOpenChange={updater.setOpen}>
       <DialogContent
         className="max-w-sm gap-4 p-5"
-        showCloseButton={!updater.busy}
+        showCloseButton={!busy}
         onCloseAutoFocus={onCloseAutoFocus}
         onEscapeKeyDown={(event) => {
-          if (updater.busy) event.preventDefault();
+          if (busy) event.preventDefault();
         }}
         onInteractOutside={(event) => {
-          if (updater.busy) event.preventDefault();
+          if (busy) event.preventDefault();
         }}
       >
         <DialogHeader className="gap-1.5 pr-5">
           <DialogTitle>{t('updates.title')}</DialogTitle>
           <DialogDescription>{t('updates.description')}</DialogDescription>
         </DialogHeader>
-        <UpdateDetails updater={updater} />
+        <UpdateDetails state={updater.state} />
         <DialogFooter className="gap-2">
           <Button
             variant="outline"
             size="sm"
-            disabled={updater.busy}
+            disabled={busy}
             onClick={() => updater.setOpen(false)}
           >
             {t('window.close')}
@@ -81,35 +81,33 @@ export function UpdateDialog({ updater, onCloseAutoFocus }: UpdateDialogProps) {
   );
 }
 
-function UpdateDetails({ updater }: { updater: Updater }) {
+function UpdateDetails({ state }: { state: AppUpdaterState }) {
   const { t } = useTranslation();
-  const { operation, query, busy } = updater;
-  const update = query.data?.update;
-  const canInstall = query.data && supportsUpdateInstall(query.data.bundleType);
+  const { operation, check, available, busy } = state;
   return (
     <div className="space-y-3 text-xs" aria-live="polite" aria-busy={busy}>
       <p className="flex items-center gap-2">
         {busy ? <Loader2 className="size-3.5 shrink-0 animate-spin" /> : null}
-        {updateStatus(updater, t)}
+        {updateStatus(state, t)}
       </p>
       {operation.phase === 'downloading' ? (
         <DownloadProgress downloaded={operation.downloaded} total={operation.total} />
       ) : null}
-      {query.isError && !query.isFetching ? (
-        <p className="break-words text-destructive">{updateErrorMessage(query.error)}</p>
+      {check.status === 'failed' ? (
+        <p className="break-words text-destructive">{check.message}</p>
       ) : null}
       {operation.phase === 'failed' ? (
         <p className="break-words text-destructive">{operation.message}</p>
       ) : null}
-      {update && !canInstall ? (
+      {available && !available.canInstall ? (
         <p className="text-muted-foreground">{t('updates.manualInstall')}</p>
       ) : null}
-      {update && canInstall && !busy && operation.phase === 'idle' ? (
+      {available?.canInstall && !busy && operation.phase === 'idle' ? (
         <p className="text-muted-foreground">{t('updates.restartNotice')}</p>
       ) : null}
-      {update?.body && !busy ? (
+      {available?.body && !busy ? (
         <div className="max-h-40 overflow-auto border-t border-border pt-3 whitespace-pre-wrap text-muted-foreground">
-          {update.body}
+          {available.body}
         </div>
       ) : null}
     </div>
@@ -136,24 +134,19 @@ function DownloadProgress({ downloaded, total }: { downloaded: number; total?: n
   );
 }
 
-function UpdateAction({ updater }: { updater: Updater }) {
+function UpdateAction({ updater }: { updater: AppUpdater }) {
   const { t } = useTranslation();
-  const { operation, query } = updater;
-  if (!updater.desktop || updater.busy) return null;
-  if (query.isError || !query.data?.update)
+  const { operation, check, available, desktop, busy } = updater.state;
+  if (!desktop || busy) return null;
+  if (check.status === 'failed' || !available)
     return (
-      <Button size="sm" onClick={() => void updater.check()}>
+      <Button size="sm" onClick={updater.check}>
         {t('common.retry')}
       </Button>
     );
-  if (!supportsUpdateInstall(query.data.bundleType))
+  if (!available.canInstall)
     return (
-      <Button
-        size="sm"
-        onClick={() => {
-          void unwrap(rimrClient.openReleasesPage()).catch(reportError);
-        }}
-      >
+      <Button size="sm" onClick={updater.openReleasesPage}>
         {t('updates.openReleases')}
       </Button>
     );
@@ -168,7 +161,7 @@ function UpdateAction({ updater }: { updater: Updater }) {
           ? 'updates.install'
           : 'updates.downloadInstall';
   return (
-    <Button size="sm" onClick={() => void updater.install()}>
+    <Button size="sm" onClick={updater.install}>
       {t(label)}
     </Button>
   );

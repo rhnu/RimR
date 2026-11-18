@@ -1,4 +1,4 @@
-import type { OrderDerived } from '../context/workspace-types';
+import type { OrderDerived } from '../workspace/workspace-types';
 import { activeModsKey, flattenModListEntries } from '@/domain/mod-list/normalize';
 import { primaryModsByPackageId } from '@/domain/mods/catalog';
 import { useMemo } from 'react';
@@ -34,6 +34,8 @@ import { resolveSourceKey } from '@/domain/mods/identity';
 const EMPTY_ALIASES: DisplayAliasDto[] = [];
 const EMPTY_TAG_DEFS: TagDefDto[] = [];
 const EMPTY_MOD_TAGS: ModTagBindingDto[] = [];
+const EMPTY_DIAGNOSTICS: DiagnosticDto[] = [];
+const EMPTY_SUPPRESSIONS: DiagnosticSuppressionDto[] = [];
 
 type UseOrderDerivedDataParams = {
   scan: CatalogSnapshotDto | undefined;
@@ -93,9 +95,8 @@ export function useOrderDerivedData({
     draft,
     activeMods,
     validationResult,
-    scan?.diagnostics ?? [],
-    library?.settings.diagnosticSuppressions ?? [],
-    modByPackageId,
+    scan?.diagnostics ?? EMPTY_DIAGNOSTICS,
+    library?.settings.diagnosticSuppressions ?? EMPTY_SUPPRESSIONS,
   );
   const visibleActiveEntryIds = useMemo(() => visibleModEntryIds(activeRows), [activeRows]);
   const activeSourceKeys = useMemo(
@@ -235,14 +236,20 @@ function useOrderStatus(
   validationResult: ValidateOrderDto | null,
   scanDiagnostics: DiagnosticDto[],
   rules: DiagnosticSuppressionDto[],
-  mods: Map<string, ModMetadataDto>,
 ) {
-  return useMemo(
-    () => ({
-      ...deriveDiagnosticState(scanDiagnostics, validationResult, rules, mods),
-      draftActiveModsKey: activeModsKey(draft ? flattenModListEntries(draft.entries) : []),
-      gameActiveModsKey: activeModsKey(activeMods),
-    }),
-    [draft, activeMods, validationResult, scanDiagnostics, rules, mods],
+  const diagnostics = useMemo(
+    () => deriveDiagnosticState(scanDiagnostics, validationResult, rules),
+    [validationResult, scanDiagnostics, rules],
   );
+  const draftActiveMods = useMemo(
+    () => (draft ? flattenModListEntries(draft.entries) : []),
+    [draft],
+  );
+  const gameActiveModsKey = useMemo(() => activeModsKey(activeMods), [activeMods]);
+  return {
+    diagnostics,
+    activeCount: draftActiveMods.length,
+    draftActiveModsKey: activeModsKey(draftActiveMods),
+    gameActiveModsKey,
+  };
 }

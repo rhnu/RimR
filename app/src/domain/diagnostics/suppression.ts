@@ -16,56 +16,95 @@ export type ValidationSummary = {
   suppressed: number;
 };
 
+export type DiagnosticItem = { diagnostic: DiagnosticDto; ignored: boolean };
+
+export type DiagnosticMenu = {
+  pending: DiagnosticSuppressionDto[];
+  ignored: DiagnosticSuppressionDto[];
+};
+
 /** One projection drives counters, row icons and reports without altering raw diagnostics. */
 export function deriveDiagnosticState(
   scanDiagnostics: readonly DiagnosticDto[],
   validation: ValidateOrderDto | null,
   rules: readonly DiagnosticSuppressionDto[],
-  mods: Map<string, ModMetadataDto>,
 ) {
-  const rawDiagnostics = collectDiagnostics(scanDiagnostics, validation);
-  const active = rawDiagnostics.filter((diagnostic) => !isSuppressed(diagnostic, rules));
-  const diagnosticsMap = new Map<string, DiagnosticDto[]>();
-  const sourcePackages = new Map(
-    [...mods.values()].map((mod) => [mod.sourceKey, normalizePackageId(mod.packageId)]),
-  );
-  for (const diagnostic of active) {
-    const sources = diagnostic.suppression?.sourceKeys ?? [];
-    const packages =
-      sources.length > 0
-        ? sources.flatMap((source) => sourcePackages.get(source) ?? [])
-        : diagnostic.relatedPackages.map(normalizePackageId);
-    if (sources.length === 0 && packages.length === 0 && diagnostic.location?.sourceKey) {
-      const packageId = sourcePackages.get(diagnostic.location.sourceKey);
-      if (packageId) packages.push(packageId);
-    }
-    for (const packageId of new Set(packages)) {
-      const items = diagnosticsMap.get(packageId) ?? [];
-      items.push(diagnostic);
-      diagnosticsMap.set(packageId, items);
+  const ignoredKeys = new Set(rules.map((rule) => rule.key));
+  const diagnostics = collectDiagnostics(scanDiagnostics, validation).map((diagnostic) => ({
+    diagnostic,
+    ignored: isSuppressed(diagnostic, ignoredKeys),
+  }));
+  const indexesByTarget = new Map<string, number[]>();
+  const counts = { error: 0, warning: 0, info: 0 };
+  let suppressed = 0;
+  for (const [index, { diagnostic, ignored }] of diagnostics.entries()) {
+    if (ignored) suppressed += 1;
+    else counts[diagnostic.severity] += 1;
+    const keys = matchKeys(
+      diagnostic.relatedPackages,
+      diagnostic.suppression?.sourceKeys ?? [],
+      diagnostic.location?.sourceKey,
+    );
+    for (const key of new Set(keys)) {
+      const indexes = indexesByTarget.get(key) ?? [];
+      indexes.push(index);
+      indexesByTarget.set(key, indexes);
     }
   }
   const validationSummary: ValidationSummary = {
-    errors: active.filter((diagnostic) => diagnostic.severity === 'error').length,
-    warnings: active.filter((diagnostic) => diagnostic.severity === 'warning').length,
-    infos: active.filter((diagnostic) => diagnostic.severity === 'info').length,
-    isClean: validation !== null && active.length === 0,
-    suppressed: rawDiagnostics.length - active.length,
+    errors: counts.error,
+    warnings: counts.warning,
+    infos: counts.info,
+    isClean: validation !== null && diagnostics.length === suppressed,
+    suppressed,
   };
-  return { rawDiagnostics, allDiagnostics: rawDiagnostics, diagnosticsMap, validationSummary };
+
+  function findForKeys(keys: Set<string>): DiagnosticItem[] {
+    const indexes = new Set<number>();
+    for (const key of keys) {
+      for (const index of indexesByTarget.get(key) ?? []) indexes.add(index);
+    }
+    if (indexes.size === 0) return EMPTY_ITEMS;
+    return [...indexes].sort((left, right) => left - right).map((index) => diagnostics[index]!);
+  }
+
+  return {
+    diagnostics,
+    validationSummary,
+    forTargets: (identities: readonly ModIdentityDto[]) => findForKeys(targetKeys(identities)),
+    menuForTargets(identities: readonly ModIdentityDto[]): DiagnosticMenu {
+      const keys = targetKeys(identities);
+      const pending: DiagnosticSuppressionDto[] = [];
+      const shownIgnored = new Set<string>();
+      for (const {
+        diagnostic: { suppression },
+        ignored,
+      } of findForKeys(keys)) {
+        if (!suppression) continue;
+        if (ignored) shownIgnored.add(suppression.key);
+        else pending.push(suppression);
+      }
+      // Rules remain restorable after the corresponding diagnostic disappears.
+      const ignored = rules.filter(
+        (rule) =>
+          shownIgnored.has(rule.key) ||
+          matchKeys(rule.relatedPackages, rule.sourceKeys).some((key) => keys.has(key)),
+      );
+      return { pending, ignored };
+    },
+  };
 }
+
+export type DiagnosticState = ReturnType<typeof deriveDiagnosticState>;
+
+const EMPTY_ITEMS: DiagnosticItem[] = [];
 
 /** Match backend semantic keys; presentation text never defines diagnostic identity. */
-export function isSuppressed(
-  diagnostic: DiagnosticDto,
-  rules: readonly DiagnosticSuppressionDto[],
-): boolean {
-  return Boolean(
-    diagnostic.suppression && rules.some((rule) => rule.key === diagnostic.suppression?.key),
-  );
+function isSuppressed(diagnostic: DiagnosticDto, ignoredKeys: ReadonlySet<string>): boolean {
+  return diagnostic.suppression != null && ignoredKeys.has(diagnostic.suppression.key);
 }
 
-export function uniqueDiagnostics(diagnostics: readonly DiagnosticDto[]): DiagnosticDto[] {
+function uniqueDiagnostics(diagnostics: readonly DiagnosticDto[]): DiagnosticDto[] {
   const seen = new Set<string>();
   return diagnostics.filter((diagnostic) => {
     const key =
@@ -94,24 +133,21 @@ export function collectDiagnostics(
   ]);
 }
 
-export function diagnosticsForTargets(
-  diagnostics: readonly DiagnosticDto[],
-  identities: readonly ModIdentityDto[],
-): DiagnosticDto[] {
-  const packages = new Set(identities.map((identity) => normalizePackageId(identity.packageId)));
-  const sources = new Set(
-    identities.flatMap((identity) => (identity.sourceKey ? [identity.sourceKey] : [])),
+function targetKeys(identities: readonly ModIdentityDto[]): Set<string> {
+  return new Set(
+    identities.flatMap(({ packageId, sourceKey }) => matchKeys([packageId], [], sourceKey)),
   );
-  return uniqueDiagnostics(
-    diagnostics.filter((diagnostic) => {
-      const sourceKeys = diagnostic.suppression?.sourceKeys ?? [];
-      if (sourceKeys.length > 0) return sourceKeys.some((source) => sources.has(source));
-      return (
-        diagnostic.relatedPackages.some((pkg) => packages.has(normalizePackageId(pkg))) ||
-        Boolean(diagnostic.location?.sourceKey && sources.has(diagnostic.location.sourceKey))
-      );
-    }),
-  );
+}
+
+function matchKeys(
+  packages: readonly string[],
+  sources: readonly string[],
+  location?: string | null,
+): string[] {
+  if (sources.length > 0) return sources.map((source) => `source:${source}`);
+  const keys = packages.map((pkg) => `package:${normalizePackageId(pkg)}`);
+  if (location) keys.push(`source:${location}`);
+  return keys;
 }
 
 export function entryDiagnosticTargets(entry: ModListEntryDto): ModIdentityDto[] {

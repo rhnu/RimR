@@ -1,4 +1,4 @@
-import type { OrderCommands } from '../context/workspace-types';
+import type { OrderCommands } from '../workspace/workspace-types';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import type { ModIdentityDto, ModListDto } from '@/commands';

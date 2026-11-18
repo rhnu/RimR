@@ -9,17 +9,24 @@ export type ModListMenuAction =
 
 export interface ModListMenuProps {
   canDelete: boolean;
+  pending: boolean;
   onAction: (action: ModListMenuAction) => void;
 }
 
-export function ModListMenu({ canDelete, onAction }: ModListMenuProps) {
+export function ModListMenu({ canDelete, pending, onAction }: ModListMenuProps) {
   const { t } = useTranslation();
   return (
     <>
-      <MenuItem onSelect={() => onAction({ kind: 'new' })}>{t('menu.newModList')}</MenuItem>
-      <MenuItem onSelect={() => onAction({ kind: 'rename' })}>{t('menu.renameModList')}</MenuItem>
-      <MenuItem onSelect={() => onAction({ kind: 'saveAs' })}>{t('menu.saveAsModList')}</MenuItem>
-      <MenuItem disabled={!canDelete} onSelect={() => onAction({ kind: 'delete' })}>
+      <MenuItem disabled={pending} onSelect={() => onAction({ kind: 'new' })}>
+        {t('menu.newModList')}
+      </MenuItem>
+      <MenuItem disabled={pending} onSelect={() => onAction({ kind: 'rename' })}>
+        {t('menu.renameModList')}
+      </MenuItem>
+      <MenuItem disabled={pending} onSelect={() => onAction({ kind: 'saveAs' })}>
+        {t('menu.saveAsModList')}
+      </MenuItem>
+      <MenuItem disabled={pending || !canDelete} onSelect={() => onAction({ kind: 'delete' })}>
         {t('menu.deleteModList')}
       </MenuItem>
     </>

@@ -1,33 +1,23 @@
 import type { MouseEvent } from 'react';
+import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core';
 import type {
-  DragEndEvent,
-  DragOverEvent,
-  DragStartEvent,
-  SensorDescriptor,
-  SensorOptions,
-} from '@dnd-kit/core';
-import type {
-  AppConfig,
   ActiveListLoadDto,
   CatalogSnapshotDto,
   LibraryDto,
+  LibrarySettingsDto,
   ModIdentityDto,
   ModListDto,
   ModListEntryDto,
   ModListGroupChildDto,
   ModMetadataDto,
-  DiagnosticDto,
-  SteamWorkshopOpenTarget,
 } from '@/commands';
 import type { ModListAction, GameSyncResult } from '@/domain/mod-list/types';
-import type { ValidationSummary } from '@/domain/diagnostics/suppression';
+import type { DiagnosticState } from '@/domain/diagnostics/suppression';
 import type { AvailableModSortKey, SortDirection } from '@/domain/mods/available-mods';
 import type { ActiveRenderRow, InactiveRenderRow } from '../model/selectors';
 import type { DropIndicatorStore } from '../hooks/drop-indicator-store';
-import type { DragOverlayState } from '../ui/view/drag-overlay';
+import type { DragOverlayState } from '../model/drag-overlay';
 import type { OrderDialog, Selection } from '../types';
-import type { OrderValidation } from '../hooks/use-order-validation';
-import type { TagCommands } from '@/features/library/hooks/use-tag-commands';
 
 export type QueryResource<T> = {
   data: T | undefined;
@@ -37,12 +27,16 @@ export type QueryResource<T> = {
   fetchStatus: 'fetching' | 'paused' | 'idle';
   refetch: (options?: { throwOnError?: boolean }) => Promise<{ data: T | undefined }>;
 };
-export type OrderData = {
-  appConfig: QueryResource<AppConfig>;
+export type OrderWorkspaceData = {
   scan: QueryResource<CatalogSnapshotDto>;
   activeList: QueryResource<ActiveListLoadDto>;
+};
+export type OrderData = OrderWorkspaceData & {
   library: QueryResource<LibraryDto>;
 };
+export type OrderModSettings = Required<
+  Pick<LibrarySettingsDto, 'aliases' | 'tagDefs' | 'modTags'>
+>;
 export type OrderDraftState = {
   draft: ModListDto | null;
   baseline: ModListDto | null;
@@ -70,10 +64,8 @@ export type OrderDerived = {
   sortedInactiveMods: ModMetadataDto[];
   inactiveRows: InactiveRenderRow[];
   activeRows: ActiveRenderRow[];
-  diagnosticsMap: Map<string, DiagnosticDto[]>;
-  validationSummary: ValidationSummary;
-  allDiagnostics: DiagnosticDto[];
-  rawDiagnostics: DiagnosticDto[];
+  diagnostics: DiagnosticState;
+  activeCount: number;
   draftActiveModsKey: string;
   gameActiveModsKey: string;
   inactiveCatalogKeys: string[];
@@ -144,28 +136,3 @@ export type OrderDrag = {
   handleDragEnd: (event: DragEndEvent) => void;
   handleDragCancel: () => void;
 };
-export type OrderContentValue = {
-  data: OrderData;
-  draftState: OrderDraftState;
-  validation: OrderValidation;
-  derived: OrderDerived & { differsFromGame: boolean };
-};
-export type OrderInteractionValue = {
-  filters: OrderFilters;
-  preview: OrderPreview;
-  selection: OrderSelection;
-};
-export type OrderActionsValue = {
-  commands: OrderCommands & { handleApplyWithDiff: () => void };
-  sync: OrderSync;
-  editActions: OrderEditActions;
-  tagCommands: TagCommands;
-  setDialog: (dialog: OrderDialog) => void;
-  handleOpenModFolder: (sourceKey: string) => void;
-  handleOpenSteamWorkshopPage: (sourceKey: string, target: SteamWorkshopOpenTarget) => void;
-};
-export type OrderDragValue = {
-  drag: OrderDrag;
-  sensors: SensorDescriptor<SensorOptions>[];
-};
-export type OrderWorkspaceBase = OrderContentValue & OrderInteractionValue & OrderActionsValue;

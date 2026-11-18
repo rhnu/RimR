@@ -16,6 +16,7 @@ import type { GroupChildRowProps } from '@/features/order/ui/rows/row-types';
 type GroupChildMenuProps = Pick<
   GroupChildRowProps,
   | 'groupId'
+  | 'diagnosticMenus'
   | 'modByPackageId'
   | 'tagDefs'
   | 'modTags'
@@ -37,6 +38,7 @@ type GroupChildMenuProps = Pick<
 
 export function GroupChildMenu({
   identity,
+  diagnosticMenus,
   sourceKey,
   groupId,
   childId,
@@ -58,7 +60,7 @@ export function GroupChildMenu({
   const workshopSourceKey = steamWorkshopSourceKey(identity, modByPackageId);
   return (
     <ContextMenuContent>
-      <DiagnosticMenuItems identity={identity} />
+      <DiagnosticMenuItems target={{ kind: 'mod', identity }} menus={diagnosticMenus} />
       <ContextMenuItem onSelect={() => onEditAlias(identity)}>
         <Pencil className="size-4" />
         {t('order.context.editAlias')}

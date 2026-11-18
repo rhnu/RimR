@@ -1,4 +1,4 @@
-import { DiagnosticMenuItems } from './diagnostic-menu-items';
+import { DiagnosticMenuItems, type RowDiagnosticMenus } from './diagnostic-menu-items';
 import { Pencil, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type {
@@ -29,6 +29,7 @@ type TagMenuProps = {
 };
 
 export function InactiveEntryMenu({
+  diagnosticMenus,
   entry,
   sourceKey,
   onRenameGroup,
@@ -47,6 +48,7 @@ export function InactiveEntryMenu({
   onDeleteTag,
   onReorderModTags,
 }: {
+  diagnosticMenus: RowDiagnosticMenus;
   entry: ModListEntryDto;
   sourceKey: string | null | undefined;
   onRenameGroup: (entryId: string, name: string) => void;
@@ -59,7 +61,7 @@ export function InactiveEntryMenu({
   const { t } = useTranslation();
   return (
     <ContextMenuContent>
-      <DiagnosticMenuItems entry={entry} />
+      <DiagnosticMenuItems target={{ kind: 'entry', entry }} menus={diagnosticMenus} />
       <ContextMenuItem onSelect={() => onAddActive(entry.id)}>
         <Plus className="size-4" />
         {t('order.context.addToActive')}
@@ -94,6 +96,7 @@ export function InactiveEntryMenu({
 }
 
 export function InactiveChildMenu({
+  diagnosticMenus,
   row,
   sourceKey,
   onAddActive,
@@ -110,6 +113,7 @@ export function InactiveChildMenu({
   onDeleteTag,
   onReorderModTags,
 }: {
+  diagnosticMenus: RowDiagnosticMenus;
   row: Extract<InactiveRenderRow, { kind: 'child' }>;
   sourceKey: string | null | undefined;
   onAddActive: (groupId: string, childId: string) => void;
@@ -121,7 +125,10 @@ export function InactiveChildMenu({
   const { t } = useTranslation();
   return (
     <ContextMenuContent>
-      <DiagnosticMenuItems identity={row.child.identity} />
+      <DiagnosticMenuItems
+        target={{ kind: 'mod', identity: row.child.identity }}
+        menus={diagnosticMenus}
+      />
       <ContextMenuItem onSelect={() => onAddActive(row.groupId, row.child.id)}>
         <Plus className="size-4" />
         {t('order.context.addToActive')}

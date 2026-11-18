@@ -11,9 +11,8 @@ import {
   Undo2,
 } from 'lucide-react';
 
+import type { ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { DiagnosticDto, ModMetadataDto } from '@/commands';
-import { useLaunchGame } from '@/queries/native';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
@@ -26,83 +25,79 @@ import {
 import { Row } from '@/components/ui/layout';
 import { ModListSwitcher } from '@/features/library/mod-list-switcher';
 import { ValidationSummaryBadge } from '@/features/order/ui/validation-summary';
-import {
-  useOrderWorkspaceCommands,
-  useOrderWorkspaceData,
-  useOrderWorkspaceDerived,
-  useOrderWorkspaceDialog,
-  useOrderWorkspaceDraftState,
-  useOrderWorkspaceSync,
-  useOrderWorkspaceValidation,
-} from '@/features/order/context/hooks';
+export type OrderToolbarProps = ComponentProps<typeof ModListSwitcher> & {
+  modListDirty: boolean;
+  hasConflict: boolean;
+  differsFromGame: boolean;
+  validation: ComponentProps<typeof ValidationSummaryBadge>;
+  savePending: boolean;
+  applyPending: boolean;
+  applyDisabled: boolean;
+  activeListFetching: boolean;
+  catalogFetching: boolean;
+  launchPending: boolean;
+  onSave: () => void;
+  onApply: () => void;
+  onDiscardDraft: () => void;
+  onSyncFromGame: () => void;
+  onRebuildCatalog: () => void;
+  onLaunch: () => void;
+};
 
-import type { ValidationSummary } from '@/domain/diagnostics/suppression';
-
-export function OrderToolbar() {
+export function OrderToolbar(props: OrderToolbarProps) {
   const { t } = useTranslation();
-  const { library, activeList, scan } = useOrderWorkspaceData();
-  const { draft, modListDirty, hasConflict } = useOrderWorkspaceDraftState();
-  const derived = useOrderWorkspaceDerived();
-  const validation = useOrderWorkspaceValidation();
-  const commands = useOrderWorkspaceCommands();
-  const sync = useOrderWorkspaceSync();
-  const { setDialog } = useOrderWorkspaceDialog();
-  if (!library.data || !draft) return null;
   return (
     <Row asChild wrap className="border-b border-border pb-1">
       <header>
         <ModListSwitcher
-          modLists={library.data.modListsIndex.modLists}
-          current={draft}
-          onChange={commands.handleSetCurrentModList}
+          modLists={props.modLists}
+          current={props.current}
+          onChange={props.onChange}
         />
         <Row wrap className="ml-auto min-w-0">
-          <ToolbarBadges
-            dirty={modListDirty}
-            differsFromGame={derived.differsFromGame}
-            summary={derived.validationSummary}
-            phase={validation.phase}
-            diagnostics={derived.allDiagnostics}
-            modByPackageId={derived.modByPackageId}
-          />
+          <ValidationSummaryBadge {...props.validation} />
+          {props.modListDirty ? (
+            <Badge variant="secondary">{t('order.modListUnsaved')}</Badge>
+          ) : null}
+          {props.differsFromGame ? <Badge variant="outline">{t('order.notApplied')}</Badge> : null}
           <ToolbarActions
-            savePending={commands.savePending}
-            saveDisabled={hasConflict}
-            applyPending={commands.applyPending}
-            differsFromGame={derived.differsFromGame}
-            modListDirty={modListDirty}
-            onSave={commands.handleSaveModList}
-            onApply={commands.handleApplyWithDiff}
-            onDiscardDraft={() => setDialog({ kind: 'discardDraft' })}
+            savePending={props.savePending}
+            saveDisabled={props.hasConflict}
+            applyPending={props.applyPending}
+            applyDisabled={props.applyDisabled}
+            differsFromGame={props.differsFromGame}
+            modListDirty={props.modListDirty}
+            onSave={props.onSave}
+            onApply={props.onApply}
+            onDiscardDraft={props.onDiscardDraft}
           />
-          {hasConflict ? (
+          {props.hasConflict ? (
             <Badge variant="destructive" title={t('order.conflict')}>
               {t('order.conflictLabel')}
             </Badge>
           ) : null}
           <RefreshMenu
-            activeListFetching={activeList.isFetching}
-            catalogFetching={scan.isFetching}
-            onSyncFromGame={sync.handleSyncFromGame}
-            onRebuildCatalog={sync.handleRebuildCatalog}
+            activeListFetching={props.activeListFetching}
+            catalogFetching={props.catalogFetching}
+            onSyncFromGame={props.onSyncFromGame}
+            onRebuildCatalog={props.onRebuildCatalog}
           />
-          <LaunchGameButton />
+          <LaunchGameButton pending={props.launchPending} onLaunch={props.onLaunch} />
         </Row>
       </header>
     </Row>
   );
 }
 
-function LaunchGameButton() {
+function LaunchGameButton({ pending, onLaunch }: { pending: boolean; onLaunch: () => void }) {
   const { t } = useTranslation();
-  const launch = useLaunchGame();
   return (
     <Button
       variant="default"
       className="gap-1.5 bg-launch px-4 text-launch-foreground hover:bg-launch-hover"
       title={t('order.launchGame')}
-      disabled={launch.isPending}
-      onClick={() => launch.mutate()}
+      disabled={pending}
+      onClick={onLaunch}
     >
       <Play className="size-4 fill-current" />
       {t('order.launchGame')}
@@ -132,40 +127,11 @@ export function SortDirectionButton({
   );
 }
 
-function ToolbarBadges({
-  dirty,
-  differsFromGame,
-  summary,
-  phase,
-  diagnostics,
-  modByPackageId,
-}: {
-  dirty: boolean;
-  differsFromGame: boolean;
-  summary: ValidationSummary;
-  phase: 'idle' | 'validating' | 'ready' | 'error';
-  diagnostics: DiagnosticDto[];
-  modByPackageId: Map<string, ModMetadataDto>;
-}) {
-  const { t } = useTranslation();
-  return (
-    <>
-      <ValidationSummaryBadge
-        summary={summary}
-        phase={phase}
-        diagnostics={diagnostics}
-        modByPackageId={modByPackageId}
-      />
-      {dirty ? <Badge variant="secondary">{t('order.modListUnsaved')}</Badge> : null}
-      {differsFromGame ? <Badge variant="outline">{t('order.notApplied')}</Badge> : null}
-    </>
-  );
-}
-
 function ToolbarActions({
   savePending,
   saveDisabled,
   applyPending,
+  applyDisabled,
   differsFromGame,
   modListDirty,
   onSave,
@@ -175,6 +141,7 @@ function ToolbarActions({
   savePending: boolean;
   saveDisabled: boolean;
   applyPending: boolean;
+  applyDisabled: boolean;
   differsFromGame: boolean;
   modListDirty: boolean;
   onSave: () => void;
@@ -200,7 +167,7 @@ function ToolbarActions({
       <IconAction
         label={t('order.apply')}
         onClick={onApply}
-        disabled={!differsFromGame || applyPending}
+        disabled={!differsFromGame || applyPending || applyDisabled}
         loading={applyPending}
         variant={differsFromGame ? 'default' : 'ghost'}
         icon={<ShieldCheck className="size-4" />}

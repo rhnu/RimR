@@ -1,6 +1,5 @@
 import { useOrderData } from './hooks/use-order-data';
-import { useInitializeOrderDraft } from './hooks/use-order-draft';
-import { useOrderDraftStore } from '@/stores/order-draft-store';
+import { useInitializeOrderDraft, useOrderDraft } from './hooks/use-order-draft';
 import {
   ActiveListError,
   ActiveListLoading,
@@ -9,19 +8,16 @@ import {
   ModListLoading,
   NoCatalogState,
 } from '@/features/order/ui/order-page-states';
-import { OrderWorkspaceProvider } from './context/order-workspace-provider';
-import { OrderWorkspaceView } from '@/features/order/ui/order-workspace-view';
+import { OrderWorkspace } from './workspace/order-workspace';
 import { selectOrderPageState, type QueryLoadState } from '@/features/order/model/order-page-state';
 
 export function OrderPage() {
   const data = useOrderData();
-  const { activeList, library, scan, appConfig } = data;
-  // Seed the draft store as soon as the library's currentModList is available.
-  // Must run BEFORE the switch below: the workspace branch is gated on
-  // `hasDraft`, and `OrderWorkspaceProvider` is only mounted inside that
-  // branch, so it cannot be the one responsible for seeding the store.
+  const { activeList, library, scan } = data;
+  // Initialize before mounting the workspace for the selected list.
   useInitializeOrderDraft(library.data?.currentModList);
-  const draft = useOrderDraftStore((state) => state.draft);
+  const draftState = useOrderDraft();
+  const draft = draftState.draft?.id === library.data?.currentModList.id ? draftState.draft : null;
   switch (
     selectOrderPageState({
       activeList: queryLoadState(activeList),
@@ -44,17 +40,14 @@ export function OrderPage() {
       return <ModListLoadError onRetry={() => void library.refetch()} />;
     case 'workspace': {
       if (!library.data || !draft) {
-        return <ModListLoadError onRetry={() => void library.refetch()} />;
+        return <ModListLoading />;
       }
       return (
-        <OrderWorkspaceProvider
-          appConfig={appConfig}
-          scan={scan}
-          library={library}
-          activeList={activeList}
-        >
-          <OrderWorkspaceView />
-        </OrderWorkspaceProvider>
+        <OrderWorkspace
+          data={{ scan, activeList }}
+          library={library.data}
+          draftState={{ ...draftState, draft }}
+        />
       );
     }
   }

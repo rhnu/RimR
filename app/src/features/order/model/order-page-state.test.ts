@@ -48,6 +48,15 @@ describe('selectOrderPageState', () => {
         activeList: loaded(),
         scan: loaded(),
         library: loaded(),
+        hasDraft: false,
+      }),
+    ).toBe('modListLoading');
+
+    expect(
+      selectOrderPageState({
+        activeList: loaded(),
+        scan: loaded(),
+        library: loaded(),
         hasDraft: true,
       }),
     ).toBe('workspace');

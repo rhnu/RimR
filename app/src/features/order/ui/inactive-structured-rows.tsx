@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react';
+import type { RowDiagnosticMenus } from './diagnostic-menu-items';
 import { useDraggable } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
 import { Layers } from 'lucide-react';
@@ -26,6 +27,7 @@ import type { Selection } from '@/features/order/types';
 import { cn } from '@/lib/utils';
 
 type TagRowProps = {
+  diagnosticMenus: RowDiagnosticMenus;
   tagDefs: TagDefDto[];
   modTags: ModTagBindingDto[];
   tagTargetIdentities?: ModIdentityDto[];
@@ -58,6 +60,7 @@ type InactiveEntryRowProps = {
 
 export function InactiveEntryRow({
   row,
+  diagnosticMenus,
   aliases,
   tagDefs,
   modTags,
@@ -112,6 +115,7 @@ export function InactiveEntryRow({
         </div>
       </ContextMenuTrigger>
       <InactiveEntryMenu
+        diagnosticMenus={diagnosticMenus}
         entry={row.entry}
         sourceKey={sourceKey}
         onRenameGroup={onRenameGroup}
@@ -149,6 +153,7 @@ type InactiveChildRowProps = {
 
 export function InactiveChildRow({
   row,
+  diagnosticMenus,
   aliases,
   tagDefs,
   modTags,
@@ -201,6 +206,7 @@ export function InactiveChildRow({
         </div>
       </ContextMenuTrigger>
       <InactiveChildMenu
+        diagnosticMenus={diagnosticMenus}
         row={row}
         sourceKey={sourceKey}
         onAddActive={onAddActive}

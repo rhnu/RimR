@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { LibraryDialogs } from '@/features/library/library-dialogs';
 import { useLibraryDialogActions } from '@/features/library/hooks/use-library-dialog-actions';
-import { useOrderDraftStore } from '@/stores/order-draft-store';
 import { windowClient } from '@/commands';
 import { AppMenuBar, type MenuId } from './app-menu-bar';
 import { ModCleanupDialog } from './mod-cleanup-dialog';
@@ -13,8 +12,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [openMenu, setOpenMenu] = useState<MenuId | null>(null);
   const fileActions = useFileMenuActions();
   const toolsActions = useToolsMenuActions();
-  const draft = useOrderDraftStore((state) => state.draft);
-  const modListMenu = useLibraryDialogActions(draft ?? undefined);
+  const libraryActions = useLibraryDialogActions();
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
@@ -31,7 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             setOpenMenu={setOpenMenu}
             fileActions={fileActions}
             toolsActions={toolsActions}
-            modListMenu={modListMenu}
+            modListMenu={libraryActions}
           />
         </div>
         <TitleDragRegion />
@@ -45,11 +43,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           <WindowControls />
         </div>
       </header>
-      <LibraryDialogs />
+      <LibraryDialogs
+        canDelete={libraryActions.canDelete}
+        pending={libraryActions.pending}
+        onSubmit={libraryActions.onSubmit}
+      />
       <ModCleanupDialog
         preview={toolsActions.cleanupPreview}
         pending={toolsActions.isPending}
-        onConfirm={() => void toolsActions.confirmCleanup()}
+        onConfirm={toolsActions.confirmCleanup}
         onClose={toolsActions.closeCleanupDialog}
       />
       <main className="min-h-0 flex-1 overflow-auto">{children}</main>

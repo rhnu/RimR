@@ -4,10 +4,18 @@ import { updaterClient, logUpdate, updateErrorMessage } from '@/commands/updater
 import { hasUnsavedSettings } from '@/features/settings/unsaved-settings';
 import { useOrderDraftStore } from '@/stores/order-draft-store';
 import type { UpdateCheck } from '@/queries/updates';
-import type { UpdateOperation } from './use-app-updater';
+
+type Resume = 'download' | 'install' | 'restart';
+export type UpdateOperation =
+  | { phase: 'idle' }
+  | { phase: 'blocked'; resume: Resume; reason: 'drafts' | 'operations' }
+  | { phase: 'downloading'; downloaded: number; total?: number }
+  | { phase: 'verifying' }
+  | { phase: 'installing' }
+  | { phase: 'restarting' }
+  | { phase: 'failed'; message: string; retry: 'download' | 'restart' };
 
 type PublishOperation = (operation: UpdateOperation) => void;
-type Resume = 'download' | 'install' | 'restart';
 
 function interruption(client: QueryClient): 'drafts' | 'operations' | undefined {
   if (useOrderDraftStore.getState().isDirty || hasUnsavedSettings()) return 'drafts';
@@ -16,7 +24,7 @@ function interruption(client: QueryClient): 'drafts' | 'operations' | undefined 
   return undefined;
 }
 
-export async function restartUpdatedApp(publish: PublishOperation): Promise<void> {
+async function restartUpdatedApp(publish: PublishOperation): Promise<void> {
   publish({ phase: 'restarting' });
   try {
     await updaterClient.relaunch();

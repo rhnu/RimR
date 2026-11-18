@@ -20,6 +20,7 @@ export const GroupChildRow = memo(function GroupChildRow({
   tagDefs,
   modTags,
   diagnostics,
+  diagnosticMenus,
   onWarmFileInfo,
   onSelect,
   onDoubleClick,
@@ -48,7 +49,7 @@ export const GroupChildRow = memo(function GroupChildRow({
           {...dragDrop.attributes}
           {...dragDrop.listeners}
         >
-          <RowDropIndicator rowId={rowId} store={dropIndicatorStore} allowInside={false} />
+          <RowDropIndicator rowId={rowId} store={dropIndicatorStore} />
           <TagColorBar colors={colorsForIdentity(modTags, tagDefs, child.identity)} />
           <ModTypeIcon
             hasAssemblies={modByPackageId.get(child.identity.packageId)?.hasAssemblies ?? false}
@@ -63,10 +64,11 @@ export const GroupChildRow = memo(function GroupChildRow({
           >
             {labelForIdentity(child.identity, aliases, modByPackageId)}
           </button>
-          <DiagnosticIcon diagnostics={diagnostics} />
+          <DiagnosticIcon items={diagnostics} />
         </div>
       </ContextMenuTrigger>
       <GroupChildMenu
+        diagnosticMenus={diagnosticMenus}
         identity={child.identity}
         sourceKey={child.identity.sourceKey}
         groupId={groupId}

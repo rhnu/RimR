@@ -1,26 +1,30 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { updaterClient, logUpdate, updateErrorMessage } from '@/commands/updater-client';
 import { supportsUpdateInstall } from '@/domain/updates';
-import { queryKeys } from '@/queries/keys';
-import { releaseUpdate, useUpdateCheck, type UpdateCheck } from '@/queries/updates';
-import { installUpdate } from './update-installation';
+import { useOpenReleasesPage } from '@/queries/app';
+import { disposeUpdateCheck, useUpdateCheck } from '@/queries/updates';
+import { installUpdate, type UpdateOperation } from './update-installation';
 
-export type UpdateOperation =
-  | { phase: 'idle' }
-  | {
-      phase: 'blocked';
-      resume: 'download' | 'install' | 'restart';
-      reason: 'drafts' | 'operations';
-    }
-  | { phase: 'downloading'; downloaded: number; total?: number }
-  | { phase: 'verifying' }
-  | { phase: 'installing' }
-  | { phase: 'restarting' }
-  | { phase: 'failed'; message: string; retry: 'download' | 'restart' };
+export type AppUpdaterState = {
+  open: boolean;
+  busy: boolean;
+  desktop: boolean;
+  operation: UpdateOperation;
+  check: { status: 'checking' | 'idle' } | { status: 'failed'; message: string };
+  available: { version: string; body?: string; canInstall: boolean } | null;
+};
+
+export type AppUpdater = {
+  state: AppUpdaterState;
+  check: () => void;
+  install: () => void;
+  setOpen: (open: boolean) => void;
+  openReleasesPage: () => void;
+};
 
 async function checkForUpdate(
   refetch: ReturnType<typeof useUpdateCheck>['refetch'],
@@ -47,28 +51,22 @@ async function checkForUpdate(
 
 function useUpdaterLifecycle(check: (automatic: boolean) => Promise<void>, desktop: boolean): void {
   const client = useQueryClient();
-  const started = useRef(false);
+  const checkOnStartup = useEffectEvent(() => void check(true));
   useEffect(() => {
-    if (import.meta.env.DEV || !desktop || started.current) return;
-    started.current = true;
-    void check(true);
-  }, [check, desktop]);
-  useEffect(
-    () => () => {
-      const result = client.getQueryData<UpdateCheck>(queryKeys.update);
-      client.removeQueries({ queryKey: queryKeys.update });
-      void releaseUpdate(result);
-    },
-    [client],
-  );
+    if (!import.meta.env.DEV && desktop) checkOnStartup();
+    return () => {
+      disposeUpdateCheck(client);
+      toast.dismiss('app-update');
+    };
+  }, [client, desktop]);
 }
 
 /** One controller serializes checks, downloads and installation for the entire app. */
-export function useAppUpdater() {
+export function useAppUpdater(): AppUpdater {
   const { t } = useTranslation();
   const client = useQueryClient();
   const query = useUpdateCheck();
-  const { refetch } = query;
+  const openReleases = useOpenReleasesPage();
   const [open, setOpen] = useState(false);
   const [operation, setOperation] = useState<UpdateOperation>({ phase: 'idle' });
   const running = useRef(false);
@@ -76,27 +74,24 @@ export function useAppUpdater() {
   const busy =
     query.isFetching ||
     ['downloading', 'verifying', 'installing', 'restarting'].includes(operation.phase);
-  const check = useCallback(
-    async (automatic = false) => {
-      if (running.current) return;
-      if (!automatic) setOpen(true);
-      if (
-        !automatic &&
-        ((operation.phase === 'blocked' && operation.resume !== 'download') ||
-          (operation.phase === 'failed' && operation.retry === 'restart'))
-      )
-        return;
-      if (!desktop) return;
-      running.current = true;
-      setOperation({ phase: 'idle' });
-      try {
-        await checkForUpdate(refetch, automatic, () => setOpen(true), t);
-      } finally {
-        running.current = false;
-      }
-    },
-    [desktop, operation, refetch, t],
-  );
+  async function check(automatic: boolean): Promise<void> {
+    if (running.current) return;
+    if (!automatic) setOpen(true);
+    if (
+      !automatic &&
+      ((operation.phase === 'blocked' && operation.resume !== 'download') ||
+        (operation.phase === 'failed' && operation.retry === 'restart'))
+    )
+      return;
+    if (!desktop) return;
+    running.current = true;
+    setOperation({ phase: 'idle' });
+    try {
+      await checkForUpdate(query.refetch, automatic, () => setOpen(true), t);
+    } finally {
+      running.current = false;
+    }
+  }
   useUpdaterLifecycle(check, desktop);
 
   async function install(): Promise<void> {
@@ -111,16 +106,31 @@ export function useAppUpdater() {
     }
   }
 
+  const result = query.data;
   return {
-    open,
-    setOpen: (nextOpen: boolean) => {
+    state: {
+      open,
+      operation,
+      desktop,
+      busy,
+      check: query.isFetching
+        ? { status: 'checking' }
+        : query.isError
+          ? { status: 'failed', message: updateErrorMessage(query.error) }
+          : { status: 'idle' },
+      available: result?.update
+        ? {
+            version: result.update.version,
+            body: result.update.body,
+            canInstall: supportsUpdateInstall(result.bundleType),
+          }
+        : null,
+    },
+    setOpen: (nextOpen) => {
       if (!busy) setOpen(nextOpen);
     },
-    operation,
-    query,
-    desktop,
-    busy,
-    check: () => check(false),
-    install,
+    check: () => void check(false),
+    install: () => void install(),
+    openReleasesPage: () => openReleases.mutate(),
   };
 }

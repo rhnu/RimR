@@ -1,8 +1,8 @@
 export type LibraryDialog =
   | { kind: 'newModList'; value: string }
-  | { kind: 'renameModList'; value: string }
-  | { kind: 'saveAsModList'; value: string }
-  | { kind: 'deleteModList' };
+  | { kind: 'renameModList'; modListId: string; value: string }
+  | { kind: 'saveAsModList'; modListId: string; value: string }
+  | { kind: 'deleteModList'; modListId: string };
 
 export function isLibraryDialog(dialog: { kind: string } | null): dialog is LibraryDialog {
   return (

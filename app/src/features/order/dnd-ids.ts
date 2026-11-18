@@ -1,7 +1,16 @@
-import type { ModMetadataDto, ModListDto, ModListEntryDto } from '@/commands';
+import type { ModMetadataDto, ModListDto } from '@/commands';
 import { catalogItemKey } from '@/domain/mods/catalog';
 
 export type DndSide = 'active' | 'inactive';
+export const ACTIVE_DROP_ID = 'active-drop';
+export const INACTIVE_DROP_ID = 'inactive-drop';
+
+type SortableRow =
+  | { kind: 'entry'; side: DndSide; entryId: string }
+  | { kind: 'child'; side: DndSide; groupId: string; childId: string }
+  | { kind: 'catalog'; side: 'inactive'; catalogKey: string };
+
+export type DragTarget = SortableRow | { kind: 'panel'; side: DndSide };
 
 export function entrySortableId(entryId: string, side: DndSide = 'active'): string {
   return `${side}:entry:${entryId}`;
@@ -23,48 +32,26 @@ export function childSortableId(
   return `${side}:child:${groupId}:${childId}`;
 }
 
-export function parseChildId(
-  id: string,
-): { side: DndSide; groupId: string; childId: string } | null {
+export function parseDragTarget(id: string): DragTarget | null {
+  if (id === ACTIVE_DROP_ID) return { kind: 'panel', side: 'active' };
+  if (id === INACTIVE_DROP_ID) return { kind: 'panel', side: 'inactive' };
   const parts = id.split(':');
-  if (parts.length < 4 || !isSide(parts[0]) || parts[1] !== 'child') {
-    return null;
+  const [side, kind, key] = parts;
+  if (!isSide(side) || key === undefined) return null;
+  if (kind === 'child' && parts.length >= 4) {
+    return { kind, side, groupId: key, childId: parts.slice(3).join(':') };
   }
-  return { side: parts[0], groupId: parts[2], childId: parts.slice(3).join(':') };
-}
-
-export function parseEntryId(id: string): { side: DndSide; entryId: string } | null {
-  const parts = id.split(':');
-  if (parts.length < 3 || !isSide(parts[0]) || parts[1] !== 'entry') {
-    return null;
+  if (kind === 'entry') return { kind, side, entryId: parts.slice(2).join(':') };
+  if (kind === 'catalog' && side === 'inactive') {
+    return { kind, side, catalogKey: parts.slice(2).join(':') };
   }
-  return { side: parts[0], entryId: parts.slice(2).join(':') };
-}
-
-export function parseCatalogId(id: string): { catalogKey: string } | null {
-  const parts = id.split(':');
-  if (parts.length < 3 || parts[0] !== 'inactive' || parts[1] !== 'catalog') {
-    return null;
-  }
-  return { catalogKey: parts.slice(2).join(':') };
+  return null;
 }
 
 export function entryIndex(modList: ModListDto, entryId: string): number {
   return modList.entries.findIndex((entry) => entry.id === entryId);
 }
 
-export function childIndex(modList: ModListDto, groupId: string, childId: string): number {
-  const group = modList.entries.find(
-    (entry): entry is Extract<ModListEntryDto, { kind: 'group' }> =>
-      entry.kind === 'group' && entry.id === groupId,
-  );
-  return group?.entries.findIndex((child) => child.id === childId) ?? -1;
-}
-
-export function dragEdgeByIndex(from: number, to: number): 'before' | 'after' {
-  return from >= 0 && to >= 0 && from < to ? 'after' : 'before';
-}
-
-function isSide(value: string): value is DndSide {
+function isSide(value: string | undefined): value is DndSide {
   return value === 'active' || value === 'inactive';
 }

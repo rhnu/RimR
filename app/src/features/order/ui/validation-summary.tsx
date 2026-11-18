@@ -1,7 +1,7 @@
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { DiagnosticDto, ModMetadataDto, SeverityDto } from '@/commands';
+import type { ModMetadataDto, SeverityDto } from '@/commands';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,14 +12,15 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Row } from '@/components/ui/layout';
-import type { ValidationSummary } from '@/domain/diagnostics/suppression';
+import type { DiagnosticItem, ValidationSummary } from '@/domain/diagnostics/suppression';
 import type { OrderValidation } from '../hooks/use-order-validation';
-import { DiagnosticReport } from './diagnostic-report';
+import { DiagnosticReport, type DiagnosticActions } from './diagnostic-report';
 import { SeverityIcon } from './severity-icon';
 
 interface ValidationSummaryProps {
   summary: ValidationSummary;
-  diagnostics: DiagnosticDto[];
+  diagnostics: DiagnosticItem[];
+  commands: DiagnosticActions;
   modByPackageId: Map<string, ModMetadataDto>;
 }
 
@@ -46,7 +47,12 @@ export function ValidationSummaryBadge({
   return <ReadyValidationSummary {...props} />;
 }
 
-function ReadyValidationSummary({ summary, diagnostics, modByPackageId }: ValidationSummaryProps) {
+function ReadyValidationSummary({
+  summary,
+  diagnostics,
+  modByPackageId,
+  commands,
+}: ValidationSummaryProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   if (summary.isClean && summary.suppressed === 0 && !open) {
@@ -99,7 +105,12 @@ function ReadyValidationSummary({ summary, diagnostics, modByPackageId }: Valida
           <DialogTitle>{t('order.validation.summaryTitle')}</DialogTitle>
         </DialogHeader>
         <div className="min-h-0 max-h-[70vh] overflow-y-auto">
-          <DiagnosticReport diagnostics={diagnostics} modByPackageId={modByPackageId} showClean />
+          <DiagnosticReport
+            diagnostics={diagnostics}
+            modByPackageId={modByPackageId}
+            commands={commands}
+            showClean
+          />
         </div>
       </DialogContent>
     </Dialog>
