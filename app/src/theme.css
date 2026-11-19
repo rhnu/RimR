@@ -11,6 +11,7 @@
   --color-secondary-foreground: oklch(0.205 0 0);
   --color-muted: oklch(0.97 0 0);
   --color-muted-foreground: oklch(0.556 0 0);
+  --color-scrollbar-thumb: color-mix(in oklab, var(--color-muted-foreground) 65%, transparent);
   --color-accent: oklch(0.97 0 0);
   --color-accent-foreground: oklch(0.205 0 0);
   --color-border: oklch(0.922 0 0);
@@ -36,6 +37,8 @@
   --color-splash-background: hsl(0 0% 45%);
   --color-splash-foreground: oklch(1 0 0);
   --color-splash-track: color-mix(in oklab, var(--color-splash-foreground) 25%, transparent);
+
+  --spacing-scrollbar: 5px;
 
   --radius-sm: 0px;
   --radius-md: 0px;
