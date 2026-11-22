@@ -22,7 +22,7 @@ export function Collapsible({
         {title}
         <ChevronDown
           aria-hidden="true"
-          className="size-4 shrink-0 text-muted-foreground group-data-[state=open]:rotate-180"
+          className="size-4 shrink-0 text-muted-foreground group-data-[state=open]:rotate-180 motion-safe:transition-transform motion-safe:duration-120 motion-safe:ease-out"
         />
       </Disclosure.Trigger>
       <Disclosure.Content className={cn('space-y-2 px-2 pb-2', contentClassName)}>

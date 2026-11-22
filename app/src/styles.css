@@ -39,7 +39,96 @@
   }
 }
 
+@layer components {
+  .menu-motion[data-state='closed'] {
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .menu-motion[data-state='open'] {
+      animation: fade-in 90ms ease-out;
+    }
+
+    .menu-motion[data-state='closed'] {
+      animation: fade-out 70ms ease-in;
+    }
+
+    .dialog-overlay-motion[data-state='open'] {
+      animation: fade-in 150ms ease-out;
+    }
+
+    .dialog-overlay-motion[data-state='closed'] {
+      animation: fade-out 100ms ease-in;
+    }
+
+    .dialog-motion {
+      --panel-offset-y: 4px;
+    }
+
+    .sheet-motion[data-side='top'] {
+      --panel-offset-y: -12px;
+    }
+
+    .sheet-motion[data-side='right'] {
+      --panel-offset-x: 12px;
+    }
+
+    .sheet-motion[data-side='bottom'] {
+      --panel-offset-y: 12px;
+    }
+
+    .sheet-motion[data-side='left'] {
+      --panel-offset-x: -12px;
+    }
+
+    :is(.dialog-motion, .sheet-motion)[data-state='open'] {
+      animation: panel-in 150ms ease-out;
+    }
+
+    :is(.dialog-motion, .sheet-motion)[data-state='closed'] {
+      animation: panel-out 100ms ease-in;
+    }
+
+    .preview-image-enter {
+      animation: fade-in 120ms ease-out;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  @keyframes panel-in {
+    from {
+      opacity: 0;
+      transform: translate(var(--panel-offset-x, 0px), var(--panel-offset-y, 0px));
+    }
+  }
+
+  @keyframes panel-out {
+    to {
+      opacity: 0;
+      transform: translate(var(--panel-offset-x, 0px), var(--panel-offset-y, 0px));
+    }
+  }
+}
+
 @layer utilities {
+  @media (prefers-reduced-motion: reduce) {
+    .animate-spin,
+    .animate-pulse {
+      animation: none;
+    }
+  }
+
   .scrollbar-hidden {
     scrollbar-width: none;
     -ms-overflow-style: none;

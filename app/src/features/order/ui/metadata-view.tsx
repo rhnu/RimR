@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ModIdentityDto, ModMetadataDto, TagDefDto } from '@/commands';
 import { Collapsible } from '@/components/ui/collapsible';
@@ -8,6 +8,7 @@ import { Col } from '@/components/ui/layout';
 import { formatFileSize } from '@/features/order/model';
 import { Meta } from '@/features/order/ui/meta-row';
 import { TagsMeta } from '@/features/order/ui/tags-meta';
+import { cn } from '@/lib/utils';
 
 export function EmptyMetadata() {
   const { t } = useTranslation();
@@ -60,10 +61,26 @@ export function SelectedModMetadata({
 }
 
 function PreviewImage({ loading, dataUrl }: { loading: boolean; dataUrl: string | undefined }) {
+  const [imageLoad, setImageLoad] = useState<{ dataUrl: string; status: 'loaded' | 'failed' }>();
+  const status = imageLoad && imageLoad.dataUrl === dataUrl ? imageLoad.status : undefined;
+
   if (loading) return <Skeleton className="aspect-video w-full border" />;
-  return dataUrl ? (
-    <img src={dataUrl} alt="" className="aspect-video w-full border object-cover" />
-  ) : null;
+  if (!dataUrl || status === 'failed') return null;
+
+  return (
+    <div className="aspect-video w-full border bg-muted">
+      <img
+        src={dataUrl}
+        alt=""
+        onLoad={() => setImageLoad({ dataUrl, status: 'loaded' })}
+        onError={() => setImageLoad({ dataUrl, status: 'failed' })}
+        className={cn(
+          'size-full object-cover',
+          status === 'loaded' ? 'preview-image-enter' : 'opacity-0',
+        )}
+      />
+    </div>
+  );
 }
 
 function ModIdentityMeta({
