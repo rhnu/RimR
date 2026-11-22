@@ -12,7 +12,7 @@ async-trait.workspace = true
 base64.workspace = true
 directories.workspace = true
 futures.workspace = true
-image = { workspace = true, features = ["jpeg", "png", "webp"] }
+image = { workspace = true, features = ["gif", "jpeg", "png", "webp"] }
 regex.workspace = true
 rimr-bindings.workspace = true
 rimr-core.workspace = true

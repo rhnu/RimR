@@ -82,9 +82,14 @@ pub fn load_mod_preview(
         });
     }
 
-    let preview_data_url = preview_path
-        .and_then(|path| preview_data_url(&path).ok())
-        .flatten();
+    let preview_data_url = preview_path.and_then(|path| {
+        preview_data_url(&path)
+            .inspect_err(|error| {
+                tracing::debug!(%source_key, ?path, error = ?error, "could not load mod preview");
+            })
+            .ok()
+            .flatten()
+    });
     let dto = ModPreviewDto {
         source_key,
         preview_data_url,
@@ -173,7 +178,7 @@ fn find_preview_path(mod_path: &Path, mod_icon_path: Option<&str>) -> Option<Pat
         .or_else(|| mod_icon_path.and_then(|path| find_mod_icon_path(mod_path, path)))
 }
 
-const ICON_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp"];
+const ICON_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp", "gif"];
 
 fn find_mod_icon_path(mod_path: &Path, mod_icon_path: &str) -> Option<PathBuf> {
     let raw = PathBuf::from(mod_icon_path);
@@ -230,8 +235,6 @@ fn resolve_icon_with_extension_fallback(mod_path: &Path, relative: &Path) -> Opt
 
 fn preview_data_url(path: &Path) -> AppResult<Option<String>> {
     const MAX_PREVIEW_BYTES: u64 = 8 * 1024 * 1024;
-    const MAX_ORIGINAL_FALLBACK_BYTES: usize = 256 * 1024;
-    const MAX_DISPLAY_PREVIEW_EDGE: u32 = 512;
     let metadata = std::fs::metadata(path).map_err(|error| {
         AppError::new(AppErrorCode::SourceIo, "operation failed")
             .with_source(error)
@@ -240,31 +243,48 @@ fn preview_data_url(path: &Path) -> AppResult<Option<String>> {
     if metadata.len() > MAX_PREVIEW_BYTES {
         return Ok(None);
     }
-    let (mime, format) = match path
-        .extension()
-        .and_then(|extension| extension.to_str())
-        .map(str::to_ascii_lowercase)
-        .as_deref()
-    {
-        Some("png") => ("image/png", ImageFormat::Png),
-        Some("jpg" | "jpeg") => ("image/jpeg", ImageFormat::Jpeg),
-        Some("webp") => ("image/webp", ImageFormat::WebP),
-        _ => return Ok(None),
-    };
     let bytes = std::fs::read(path).map_err(|error| {
         AppError::new(AppErrorCode::SourceIo, "operation failed")
             .with_source(error)
             .with_path(path.to_path_buf())
     })?;
-    let (mime, bytes) = match image::load_from_memory_with_format(&bytes, format) {
-        Ok(image) if needs_display_resize(&image, MAX_DISPLAY_PREVIEW_EDGE) => (
-            "image/png",
-            resized_png_bytes(&image, MAX_DISPLAY_PREVIEW_EDGE)?,
-        ),
-        Ok(_) => (mime, bytes),
-        Err(_) if bytes.len() <= MAX_ORIGINAL_FALLBACK_BYTES => (mime, bytes),
-        Err(_) => return Ok(None),
+    encode_preview(bytes)
+}
+
+fn encode_preview(bytes: Vec<u8>) -> AppResult<Option<String>> {
+    const MAX_ORIGINAL_FALLBACK_BYTES: usize = 256 * 1024;
+    const MAX_DISPLAY_PREVIEW_EDGE: u32 = 512;
+
+    // Workshop covers may use the conventional Preview.png name with a different image format.
+    let Ok(format @ (ImageFormat::Png | ImageFormat::Jpeg | ImageFormat::WebP | ImageFormat::Gif)) =
+        image::guess_format(&bytes)
+    else {
+        return Ok(None);
     };
+    let (format, bytes) = match image::load_from_memory_with_format(&bytes, format) {
+        // Resizing through DynamicImage would turn an animated GIF into a still image.
+        Ok(image)
+            if format != ImageFormat::Gif
+                && needs_display_resize(&image, MAX_DISPLAY_PREVIEW_EDGE) =>
+        {
+            (
+                ImageFormat::Png,
+                resized_png_bytes(&image, MAX_DISPLAY_PREVIEW_EDGE)?,
+            )
+        },
+        Ok(_) => (format, bytes),
+        Err(error) if bytes.len() <= MAX_ORIGINAL_FALLBACK_BYTES => {
+            tracing::debug!(?format, ?error, "using original bytes for mod preview");
+            (format, bytes)
+        },
+        Err(error) => {
+            return Err(
+                AppError::new(AppErrorCode::SourceIo, "could not decode mod preview")
+                    .with_source(error),
+            );
+        },
+    };
+    let mime = format.to_mime_type();
     let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
     Ok(Some(format!("data:{mime};base64,{encoded}")))
 }
@@ -284,3 +304,6 @@ fn resized_png_bytes(image: &DynamicImage, max_edge: u32) -> AppResult<Vec<u8>> 
         })?;
     Ok(bytes.into_inner())
 }
+
+#[cfg(test)]
+mod tests;
