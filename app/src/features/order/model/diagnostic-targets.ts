@@ -1,4 +1,11 @@
-import type { DisplayAliasDto, ModIdentityDto, ModListEntryDto, ModMetadataDto } from '@/commands';
+import type {
+  DiagnosticCodeDto,
+  DiagnosticSuppressionDto,
+  DisplayAliasDto,
+  ModIdentityDto,
+  ModListEntryDto,
+  ModMetadataDto,
+} from '@/commands';
 import { entryDiagnosticTargets, type DiagnosticState } from '@/domain/diagnostics/suppression';
 import { catalogItemKey } from '@/domain/mods/catalog';
 import {
@@ -18,6 +25,11 @@ export type OrderDiagnosticScope =
   | { kind: 'mod'; name: string; identities: [ModIdentityDto] }
   | { kind: 'selection'; identities: ModIdentityDto[] }
   | { kind: 'group'; name: string; identities: ModIdentityDto[] };
+
+export type DiagnosticIgnoreShortcut = {
+  code: DiagnosticCodeDto;
+  rules: DiagnosticSuppressionDto[];
+};
 
 type DiagnosticSelection = {
   entryIds: Set<string>;
@@ -62,9 +74,33 @@ export function createDiagnosticTargets(
     return [];
   }
 
+  function ignoreShortcutsForScope(scope: OrderDiagnosticScope): DiagnosticIgnoreShortcut[] {
+    if (scope.kind === 'group') return [];
+    type Group = { covered: number; rules: Map<string, DiagnosticSuppressionDto> };
+    const groups = new Map<DiagnosticCodeDto, Group>();
+    for (const identity of scope.identities) {
+      const coveredGroups = new Set<Group>();
+      for (const { diagnostic, ignored } of diagnostics.forTargets([identity])) {
+        const { code, suppression } = diagnostic;
+        if (ignored || !suppression) continue;
+        const group = groups.get(code) ?? { covered: 0, rules: new Map() };
+        group.rules.set(suppression.key, suppression);
+        groups.set(code, group);
+        coveredGroups.add(group);
+      }
+      for (const group of coveredGroups) group.covered += 1;
+    }
+    return [...groups]
+      .filter(([, group]) => group.covered === scope.identities.length)
+      .sort(([a, left], [b, right]) => right.rules.size - left.rules.size || a.localeCompare(b))
+      .slice(0, 3)
+      .map(([code, group]) => ({ code, rules: [...group.rules.values()] }));
+  }
+
   return {
     forTarget: (target: OrderDiagnosticTarget) => diagnostics.forTargets(identitiesFor(target)),
     forScope: (scope: OrderDiagnosticScope) => diagnostics.forTargets(scope.identities),
+    ignoreShortcutsForScope,
     scopeForTarget(
       target: OrderDiagnosticTarget,
       selected: DiagnosticSelection,

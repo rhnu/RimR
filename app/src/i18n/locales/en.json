@@ -374,6 +374,8 @@
       "infos_other": "{{count}} info messages",
       "summaryTitle": "Validation Summary",
       "view": "View diagnostics",
+      "quickIgnore_one": "Ignore {{type}} ({{count}} report)",
+      "quickIgnore_other": "Ignore {{type}} ({{count}} reports)",
       "scopeMod": "Mod: {{name}}",
       "scopeMods_one": "{{count}} selected mod",
       "scopeMods_other": "{{count}} selected mods",

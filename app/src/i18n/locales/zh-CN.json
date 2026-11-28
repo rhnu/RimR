@@ -370,6 +370,7 @@
       "infos": "{{count}} 条信息",
       "summaryTitle": "验证汇总",
       "view": "查看诊断",
+      "quickIgnore": "忽略{{type}}（{{count}} 项）",
       "scopeMod": "模组 {{name}}",
       "scopeMods": "已选 {{count}} 个模组",
       "scopeGroup": "{{name}}（{{count}} 个子项）",

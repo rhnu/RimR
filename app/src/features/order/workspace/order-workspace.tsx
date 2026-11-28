@@ -95,6 +95,7 @@ export function OrderWorkspace({ data, library, draftState }: OrderWorkspaceProp
           dropIndicatorStore={drag.dropIndicatorStore}
           diagnostics={diagnosticReport.targets}
           onOpenDiagnosticScope={diagnosticReport.open}
+          diagnosticActions={diagnosticReport.actions}
         />
       }
       dialog={

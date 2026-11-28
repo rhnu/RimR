@@ -42,6 +42,7 @@ type OrderListsProps = {
   dropIndicatorStore: OrderDrag['dropIndicatorStore'];
   diagnostics: ReturnType<typeof createDiagnosticTargets>;
   onOpenDiagnosticScope: RowDiagnosticNavigation['openScope'];
+  diagnosticActions: RowDiagnosticNavigation['actions'];
 };
 
 export function OrderWorkspaceLists(props: OrderListsProps) {
@@ -68,6 +69,7 @@ function useListRows({
   preview,
   diagnostics,
   onOpenDiagnosticScope,
+  diagnosticActions,
 }: OrderListsProps) {
   const { aliases, tagDefs, modTags } = settings;
   const { selectedEntryIds, selectedInactiveCatalogKeys } = selection;
@@ -90,6 +92,8 @@ function useListRows({
         return scope && diagnostics.forScope(scope).length > 0 ? scope : null;
       },
       openScope: onOpenDiagnosticScope,
+      ignoreShortcutsForScope: diagnostics.ignoreShortcutsForScope,
+      actions: diagnosticActions,
     }),
     [
       diagnostics,
@@ -99,6 +103,7 @@ function useListRows({
       modByCatalogKey,
       aliases,
       onOpenDiagnosticScope,
+      diagnosticActions,
     ],
   );
   return {

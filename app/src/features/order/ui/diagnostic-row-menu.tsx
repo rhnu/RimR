@@ -1,4 +1,4 @@
-import { ListChecks } from 'lucide-react';
+import { EyeOff, ListChecks } from 'lucide-react';
 import { useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -8,11 +8,18 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu';
-import type { OrderDiagnosticScope, OrderDiagnosticTarget } from '../model/diagnostic-targets';
+import type {
+  DiagnosticIgnoreShortcut,
+  OrderDiagnosticScope,
+  OrderDiagnosticTarget,
+} from '../model/diagnostic-targets';
+import type { DiagnosticActions } from './diagnostic-report';
 
 export type RowDiagnosticNavigation = {
   scopeForTarget: (target: OrderDiagnosticTarget) => OrderDiagnosticScope | null;
   openScope: (scope: OrderDiagnosticScope, trigger: HTMLElement | null) => void;
+  ignoreShortcutsForScope: (scope: OrderDiagnosticScope) => DiagnosticIgnoreShortcut[];
+  actions: Pick<DiagnosticActions, 'pending' | 'ready' | 'suppress'>;
 };
 
 export function DiagnosticRowMenu({
@@ -60,7 +67,7 @@ export function DiagnosticRowMenu({
           navigation.openScope(scope, focusOrigin.current);
         }}
       >
-        <DiagnosticMenuItem
+        <DiagnosticMenuItems
           target={target}
           navigation={navigation}
           onSelect={(scope) => {
@@ -73,7 +80,7 @@ export function DiagnosticRowMenu({
   );
 }
 
-function DiagnosticMenuItem({
+function DiagnosticMenuItems({
   target,
   navigation,
   onSelect,
@@ -85,12 +92,27 @@ function DiagnosticMenuItem({
   const { t } = useTranslation();
   const scope = navigation.scopeForTarget(target);
   if (!scope) return null;
+  const { actions } = navigation;
+  const shortcuts = navigation.ignoreShortcutsForScope(scope);
   return (
     <>
       <ContextMenuItem onSelect={() => onSelect(scope)}>
         <ListChecks aria-hidden="true" className="size-4" />
         {t('order.validation.view')}
       </ContextMenuItem>
+      {shortcuts.map(({ code, rules }) => (
+        <ContextMenuItem
+          key={code}
+          disabled={actions.pending || !actions.ready}
+          onSelect={() => void actions.suppress(rules)}
+        >
+          <EyeOff aria-hidden="true" className="size-4" />
+          {t('order.validation.quickIgnore', {
+            type: t(`suppression.types.${code}`),
+            count: rules.length,
+          })}
+        </ContextMenuItem>
+      ))}
       <ContextMenuSeparator />
     </>
   );

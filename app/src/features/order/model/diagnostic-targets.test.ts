@@ -121,6 +121,73 @@ it('uses all group children and includes other selected mods when opening from a
   ]);
 });
 
+it('offers up to three ignore shortcuts ordered by report count for one mod', () => {
+  const rules = [
+    rule('dependency-1', 'dependencyMissing', 'a.mod', 'one.mod'),
+    rule('dependency-2', 'dependencyMissing', 'a.mod', 'two.mod'),
+    rule('version', 'gameVersionUnsupported', 'a.mod'),
+    rule('conflict', 'incompatibleActive', 'a.mod', 'one.mod'),
+    rule('order', 'orderViolationLoadAfter', 'a.mod', 'one.mod'),
+  ];
+  const targets = createDiagnosticTargets(
+    deriveDiagnosticState(rules.map(issue), null, []),
+    new Map(),
+  );
+
+  expect(
+    targets.ignoreShortcutsForScope({
+      kind: 'mod',
+      name: 'A',
+      identities: [{ packageId: 'a.mod' }],
+    }),
+  ).toEqual([
+    { code: 'dependencyMissing', rules: rules.slice(0, 2) },
+    { code: 'gameVersionUnsupported', rules: [rules[2]] },
+    { code: 'incompatibleActive', rules: [rules[3]] },
+  ]);
+});
+
+it('requires pending ignorable matches for every selected mod and counts shared reports once', () => {
+  const shared = rule('shared', 'incompatibleActive', 'a.mod', 'b.mod');
+  const extra = rule('extra', 'incompatibleActive', 'a.mod', 'outside.mod');
+  const versionA = rule('version-a', 'gameVersionUnsupported', 'a.mod');
+  const versionB = rule('version-b', 'gameVersionUnsupported', 'b.mod');
+  const missingA = rule('missing-a', 'dependencyMissing', 'a.mod');
+  const missingB = rule('missing-b', 'dependencyMissing', 'b.mod');
+  const targets = createDiagnosticTargets(
+    deriveDiagnosticState(
+      [
+        ...[shared, extra, versionA, versionB, missingA].map(issue),
+        { ...issue(missingB), suppression: undefined },
+      ],
+      null,
+      [versionB],
+    ),
+    new Map(),
+  );
+
+  expect(
+    targets.ignoreShortcutsForScope({
+      kind: 'selection',
+      identities: [{ packageId: 'a.mod' }, { packageId: 'b.mod' }],
+    }),
+  ).toEqual([{ code: 'incompatibleActive', rules: [shared, extra] }]);
+  expect(
+    targets.ignoreShortcutsForScope({
+      kind: 'selection',
+      identities: [{ packageId: 'a.mod' }, { packageId: 'unaffected.mod' }],
+    }),
+  ).toEqual([]);
+});
+
+function rule(
+  key: string,
+  code: DiagnosticSuppressionDto['code'],
+  ...relatedPackages: string[]
+): DiagnosticSuppressionDto {
+  return { key, code, params: {}, relatedPackages, sourceKeys: [], gameVersion: null };
+}
+
 function issue(suppression: DiagnosticSuppressionDto): DiagnosticDto {
   return {
     code: suppression.code,
