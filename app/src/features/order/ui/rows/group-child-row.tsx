@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { ModTypeIcon } from '@/components/mod/mod-type-icon';
 import { cn } from '@/lib/utils';
-import { labelForIdentity } from '@/domain/mods/identity';
+import { labelForIdentity, resolveInstalledMod } from '@/domain/mods/identity';
 import { childSortableId } from '@/features/order/dnd-ids';
 import { useDragDropNode } from '@/features/order/hooks/use-drag-drop-node';
 import { TagColorBar } from '@/components/mod/tags/tag-color-bar';
@@ -38,6 +38,7 @@ export const GroupChildRow = memo(function GroupChildRow({
 }: GroupChildRowProps) {
   const rowId = childSortableId(groupId, child.id);
   const dragDrop = useDragDropNode(rowId);
+  const mod = resolveInstalledMod(child.identity, modByPackageId);
   return (
     <DiagnosticRowMenu
       target={{ kind: 'mod', identity: child.identity }}
@@ -45,7 +46,7 @@ export const GroupChildRow = memo(function GroupChildRow({
       trigger={
         <div
           ref={dragDrop.setNodeRef}
-          onPointerEnter={() => onWarmFileInfo(child.identity.sourceKey)}
+          onPointerEnter={() => onWarmFileInfo(mod?.sourceKey)}
           onDoubleClick={() => onDoubleClick(groupId, child.id)}
           className={rowClassName(dragDrop.isDragging)}
           {...dragDrop.attributes}
@@ -53,15 +54,12 @@ export const GroupChildRow = memo(function GroupChildRow({
         >
           <RowDropIndicator rowId={rowId} store={dropIndicatorStore} />
           <TagColorBar colors={colorsForIdentity(modTags, tagDefs, child.identity)} />
-          <ModTypeIcon
-            hasAssemblies={modByPackageId.get(child.identity.packageId)?.hasAssemblies ?? false}
-            sourceKind={modByPackageId.get(child.identity.packageId)?.sourceKind}
-          />
+          <ModTypeIcon hasAssemblies={mod?.hasAssemblies ?? false} sourceKind={mod?.sourceKind} />
           <button
             type="button"
             className="h-full min-w-0 flex-1 truncate text-left text-sm"
-            onPointerDown={() => onWarmFileInfo(child.identity.sourceKey, true)}
-            onFocus={() => onWarmFileInfo(child.identity.sourceKey, true)}
+            onPointerDown={() => onWarmFileInfo(mod?.sourceKey, true)}
+            onFocus={() => onWarmFileInfo(mod?.sourceKey, true)}
             onClick={() => onSelect(child)}
           >
             {labelForIdentity(child.identity, aliases, modByPackageId)}
@@ -72,10 +70,9 @@ export const GroupChildRow = memo(function GroupChildRow({
     >
       <GroupChildMenu
         identity={child.identity}
-        sourceKey={child.identity.sourceKey}
+        mod={mod}
         groupId={groupId}
         childId={child.id}
-        modByPackageId={modByPackageId}
         tagDefs={tagDefs}
         modTags={modTags}
         onEditAlias={onEditAlias}

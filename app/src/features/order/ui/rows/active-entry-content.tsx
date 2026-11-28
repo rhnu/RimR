@@ -8,6 +8,7 @@ import type { WarmFileInfo } from '@/features/order/ui/rows/row-types';
 type ActiveEntryContentProps = {
   entry: ModListEntryDto;
   aliases: DisplayAliasDto[];
+  mod: ModMetadataDto | undefined;
   modByPackageId: Map<string, ModMetadataDto>;
   onWarmFileInfo: WarmFileInfo;
   onSelect: (
@@ -30,19 +31,19 @@ export function ActiveEntryContent(props: ActiveEntryContentProps) {
 function ModEntryContent({
   entry,
   aliases,
+  mod,
   modByPackageId,
   onWarmFileInfo,
   onSelect,
 }: ActiveEntryContentProps & { entry: Extract<ModListEntryDto, { kind: 'mod' }> }) {
-  const mod = modByPackageId.get(entry.identity.packageId);
   return (
     <>
       <ModTypeIcon hasAssemblies={mod?.hasAssemblies ?? false} sourceKind={mod?.sourceKind} />
       <button
         type="button"
         className="h-full min-w-0 flex-1 truncate text-left text-sm font-medium"
-        onPointerDown={() => onWarmFileInfo(entry.identity.sourceKey, true)}
-        onFocus={() => onWarmFileInfo(entry.identity.sourceKey, true)}
+        onPointerDown={() => onWarmFileInfo(mod?.sourceKey, true)}
+        onFocus={() => onWarmFileInfo(mod?.sourceKey, true)}
         onClick={(event) => onSelect(entry, { kind: 'mod', identity: entry.identity }, event)}
       >
         {labelForIdentity(entry.identity, aliases, modByPackageId)}

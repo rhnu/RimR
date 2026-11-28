@@ -47,7 +47,7 @@ export function SelectedModMetadata({
       <Collapsible title={t('modDetails.sections.fileInfo')}>
         <Meta label={t('order.metadata.folderSize')} value={formatFileSize(folderSizeBytes)} />
         <Meta label={t('order.metadata.modifiedAt')} value={formatTimestamp(mod?.modifiedAtMs)} />
-        <Meta label={t('order.inspector.sourceKey')} value={identity.sourceKey ?? '-'} mono />
+        <Meta label={t('order.inspector.sourceKey')} value={mod?.sourceKey ?? '-'} mono />
       </Collapsible>
       {mod ? <RulesMetadata mod={mod} /> : null}
       {diagnosticReport ? <DiagnosticList>{diagnosticReport}</DiagnosticList> : null}
@@ -100,7 +100,7 @@ function ModIdentityMeta({
         label={t('modDetails.sections.supportedVersions')}
         value={mod?.supportedVersions.join(', ') || '-'}
       />
-      <Meta label={t('order.metadata.path')} value={mod?.path ?? identity.sourceKey ?? '-'} mono />
+      <Meta label={t('order.metadata.path')} value={mod?.path ?? '-'} mono />
     </section>
   );
 }

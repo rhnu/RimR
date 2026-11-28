@@ -4,6 +4,7 @@ import { entrySortableId } from '@/features/order/dnd-ids';
 import { useDragDropNode } from '@/features/order/hooks/use-drag-drop-node';
 import { TagColorBar } from '@/components/mod/tags/tag-color-bar';
 import { colorsForIdentity } from '@/domain/mods/tags';
+import { resolveInstalledMod } from '@/domain/mods/identity';
 import { ActiveEntryContent } from '@/features/order/ui/rows/active-entry-content';
 import { ActiveEntryMenu } from '@/features/order/ui/rows/active-entry-menu';
 import { DiagnosticIcon } from '@/features/order/ui/rows/diagnostic-icon';
@@ -28,6 +29,8 @@ export const ActiveEntryRow = memo(function ActiveEntryRow({
 }: ActiveEntryRowProps) {
   const rowId = entrySortableId(entry.id);
   const dragDrop = useDragDropNode(rowId);
+  const mod =
+    entry.kind === 'mod' ? resolveInstalledMod(entry.identity, modByPackageId) : undefined;
   return (
     <DiagnosticRowMenu
       target={{ kind: 'entry', entry }}
@@ -36,7 +39,7 @@ export const ActiveEntryRow = memo(function ActiveEntryRow({
       trigger={
         <div
           ref={dragDrop.setNodeRef}
-          onPointerEnter={() => warmEntryPreview(entry, onWarmFileInfo)}
+          onPointerEnter={() => onWarmFileInfo(mod?.sourceKey)}
           onDoubleClick={() => onDoubleClick(entry)}
           className={rowClassName(selected, dragDrop.isDragging)}
           {...dragDrop.attributes}
@@ -50,6 +53,7 @@ export const ActiveEntryRow = memo(function ActiveEntryRow({
             <ActiveEntryContent
               entry={entry}
               aliases={aliases}
+              mod={mod}
               modByPackageId={modByPackageId}
               onWarmFileInfo={onWarmFileInfo}
               onSelect={menuAndContentProps.onSelect}
@@ -61,7 +65,7 @@ export const ActiveEntryRow = memo(function ActiveEntryRow({
     >
       <ActiveEntryMenu
         entry={entry}
-        modByPackageId={modByPackageId}
+        mod={mod}
         tagDefs={tagDefs}
         modTags={modTags}
         {...menuAndContentProps}
@@ -69,15 +73,6 @@ export const ActiveEntryRow = memo(function ActiveEntryRow({
     </DiagnosticRowMenu>
   );
 });
-
-function warmEntryPreview(
-  entry: ActiveEntryRowProps['entry'],
-  warm: ActiveEntryRowProps['onWarmFileInfo'],
-): void {
-  if (entry.kind === 'mod') {
-    warm(entry.identity.sourceKey);
-  }
-}
 
 function rowClassName(selected: boolean, isDragging: boolean): string {
   return cn(

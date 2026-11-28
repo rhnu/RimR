@@ -19,7 +19,7 @@ import {
   InactiveEntryMenu,
 } from '@/features/order/ui/inactive-structured-menus';
 import type { InactiveRenderRow } from '@/features/order/model';
-import { labelForIdentity } from '@/domain/mods/identity';
+import { labelForIdentity, resolveInstalledMod } from '@/domain/mods/identity';
 import { TagColorBar } from '@/components/mod/tags/tag-color-bar';
 import { colorsForIdentity } from '@/domain/mods/tags';
 import type { Selection } from '@/features/order/types';
@@ -75,7 +75,8 @@ export function InactiveEntryRow({
 }: InactiveEntryRowProps) {
   const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: row.id });
-  const sourceKey = row.entry.kind === 'mod' ? row.entry.identity.sourceKey : null;
+  const mod =
+    row.entry.kind === 'mod' ? resolveInstalledMod(row.entry.identity, modByPackageId) : undefined;
   return (
     <DiagnosticRowMenu
       target={{ kind: 'entry', entry: row.entry }}
@@ -84,7 +85,7 @@ export function InactiveEntryRow({
       trigger={
         <div
           ref={setNodeRef}
-          onPointerEnter={() => warmInactiveEntry(row.entry, onWarmFileInfo)}
+          onPointerEnter={() => onWarmFileInfo(mod?.sourceKey)}
           onDoubleClick={() => onDoubleClick(row.entry.id)}
           className={inactiveRowClassName(isDragging, row.missing)}
           {...attributes}
@@ -93,12 +94,12 @@ export function InactiveEntryRow({
           {row.entry.kind === 'mod' && (
             <TagColorBar colors={colorsForIdentity(modTags, tagDefs, row.entry.identity)} />
           )}
-          <InactiveEntryIcon entry={row.entry} modByPackageId={modByPackageId} />
+          <InactiveEntryIcon entry={row.entry} mod={mod} />
           <button
             type="button"
             className="h-full min-w-0 flex-1 truncate text-left text-sm font-medium"
-            onPointerDown={() => sourceKey && onWarmFileInfo(sourceKey, true)}
-            onFocus={() => sourceKey && onWarmFileInfo(sourceKey, true)}
+            onPointerDown={() => onWarmFileInfo(mod?.sourceKey, true)}
+            onFocus={() => onWarmFileInfo(mod?.sourceKey, true)}
             onClick={(event) => onSelect(row.entry, selectionForInactiveEntry(row.entry), event)}
           >
             {inactiveEntryLabel(row.entry, aliases, modByPackageId)}
@@ -112,10 +113,9 @@ export function InactiveEntryRow({
       <InactiveEntryMenu
         {...menuActions}
         entry={row.entry}
-        sourceKey={sourceKey}
+        mod={mod}
         onRenameGroup={onRenameGroup}
         onAddActive={onAddActive}
-        modByPackageId={modByPackageId}
         tagDefs={tagDefs}
         modTags={modTags}
         tagTargetIdentities={tagTargetIdentities}
@@ -160,7 +160,7 @@ export function InactiveChildRow({
 }: InactiveChildRowProps) {
   const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: row.id });
-  const sourceKey = row.child.identity.sourceKey;
+  const mod = resolveInstalledMod(row.child.identity, modByPackageId);
   return (
     <DiagnosticRowMenu
       target={{ kind: 'mod', identity: row.child.identity }}
@@ -168,22 +168,19 @@ export function InactiveChildRow({
       trigger={
         <div
           ref={setNodeRef}
-          onPointerEnter={() => onWarmFileInfo(sourceKey)}
+          onPointerEnter={() => onWarmFileInfo(mod?.sourceKey)}
           onDoubleClick={() => onDoubleClick(row.groupId, row.child.id)}
           className={cn(inactiveRowClassName(isDragging, row.missing), 'h-6 pl-8')}
           {...attributes}
           {...listeners}
         >
           <TagColorBar colors={colorsForIdentity(modTags, tagDefs, row.child.identity)} />
-          <ModTypeIcon
-            hasAssemblies={modByPackageId.get(row.child.identity.packageId)?.hasAssemblies ?? false}
-            sourceKind={modByPackageId.get(row.child.identity.packageId)?.sourceKind}
-          />
+          <ModTypeIcon hasAssemblies={mod?.hasAssemblies ?? false} sourceKind={mod?.sourceKind} />
           <button
             type="button"
             className="h-full min-w-0 flex-1 truncate text-left text-sm"
-            onPointerDown={() => onWarmFileInfo(sourceKey, true)}
-            onFocus={() => onWarmFileInfo(sourceKey, true)}
+            onPointerDown={() => onWarmFileInfo(mod?.sourceKey, true)}
+            onFocus={() => onWarmFileInfo(mod?.sourceKey, true)}
             onClick={() => onSelect(row.child)}
           >
             {labelForIdentity(row.child.identity, aliases, modByPackageId)}
@@ -196,12 +193,11 @@ export function InactiveChildRow({
     >
       <InactiveChildMenu
         row={row}
-        sourceKey={sourceKey}
+        mod={mod}
         onAddActive={onAddActive}
         onEditAlias={onEditAlias}
         onOpenModFolder={onOpenModFolder}
         onOpenSteamWorkshopPage={onOpenSteamWorkshopPage}
-        modByPackageId={modByPackageId}
         tagDefs={tagDefs}
         modTags={modTags}
         onToggleModTag={onToggleModTag}
@@ -217,19 +213,14 @@ export function InactiveChildRow({
 
 function InactiveEntryIcon({
   entry,
-  modByPackageId,
+  mod,
 }: {
   entry: ModListEntryDto;
-  modByPackageId: Map<string, ModMetadataDto>;
+  mod: ModMetadataDto | undefined;
 }) {
   if (entry.kind === 'group') return <Layers className="size-4 text-muted-foreground" />;
   if (entry.kind === 'mod') {
-    return (
-      <ModTypeIcon
-        hasAssemblies={modByPackageId.get(entry.identity.packageId)?.hasAssemblies ?? false}
-        sourceKind={modByPackageId.get(entry.identity.packageId)?.sourceKind}
-      />
-    );
+    return <ModTypeIcon hasAssemblies={mod?.hasAssemblies ?? false} sourceKind={mod?.sourceKind} />;
   }
   return null;
 }
@@ -248,13 +239,6 @@ function selectionForInactiveEntry(entry: ModListEntryDto): Selection {
   if (entry.kind === 'mod') return { kind: 'mod', identity: entry.identity };
   if (entry.kind === 'group') return { kind: 'group', entryId: entry.id };
   return { kind: 'separator', entryId: entry.id };
-}
-
-function warmInactiveEntry(
-  entry: ModListEntryDto,
-  warm: (sourceKey: string | null | undefined, immediate?: boolean) => void,
-): void {
-  if (entry.kind === 'mod') warm(entry.identity.sourceKey);
 }
 
 function inactiveRowClassName(isDragging: boolean, missing: boolean): string {

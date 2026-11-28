@@ -169,8 +169,7 @@ function InactiveModContextMenu({
         {t('order.context.createGroup')}
       </ContextMenuItem>
       <OpenModActionsMenuItems
-        sourceKey={mod.sourceKey}
-        workshopSourceKey={mod.sourceKind === 'workshop' ? mod.sourceKey : null}
+        mod={mod}
         onOpenModFolder={onOpenModFolder}
         onOpenSteamWorkshopPage={onOpenSteamWorkshopPage}
       />

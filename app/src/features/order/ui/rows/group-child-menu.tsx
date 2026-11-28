@@ -1,17 +1,15 @@
 import { Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { ModIdentityDto } from '@/commands';
+import type { ModIdentityDto, ModMetadataDto } from '@/commands';
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu';
 import { OpenModActionsMenuItems } from '@/features/order/ui/open-mod-actions-menu-items';
 import { TagMenuItems } from '@/components/mod/tags/tag-menu-items';
 import { tagIdsForIdentities } from '@/domain/mods/tags';
-import { steamWorkshopSourceKey } from '@/domain/mods/workshop-links';
 import type { GroupChildRowProps } from '@/features/order/ui/rows/row-types';
 
 type GroupChildMenuProps = Pick<
   GroupChildRowProps,
   | 'groupId'
-  | 'modByPackageId'
   | 'tagDefs'
   | 'modTags'
   | 'onEditAlias'
@@ -26,16 +24,15 @@ type GroupChildMenuProps = Pick<
   | 'onRemove'
 > & {
   identity: ModIdentityDto;
-  sourceKey: string | null | undefined;
+  mod: ModMetadataDto | undefined;
   childId: string;
 };
 
 export function GroupChildMenu({
   identity,
-  sourceKey,
+  mod,
   groupId,
   childId,
-  modByPackageId,
   tagDefs,
   modTags,
   onEditAlias,
@@ -50,7 +47,6 @@ export function GroupChildMenu({
   onRemove,
 }: GroupChildMenuProps) {
   const { t } = useTranslation();
-  const workshopSourceKey = steamWorkshopSourceKey(identity, modByPackageId);
   return (
     <>
       <ContextMenuItem onSelect={() => onEditAlias(identity)}>
@@ -69,8 +65,7 @@ export function GroupChildMenu({
         onReorderModTags={onReorderModTags}
       />
       <OpenModActionsMenuItems
-        sourceKey={sourceKey}
-        workshopSourceKey={workshopSourceKey}
+        mod={mod}
         onOpenModFolder={onOpenModFolder}
         onOpenSteamWorkshopPage={onOpenSteamWorkshopPage}
         trailingSeparator={false}

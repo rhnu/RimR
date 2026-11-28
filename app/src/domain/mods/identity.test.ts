@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   baseDisplayName,
   baseLabelForIdentity,
+  identityForMod,
   identityMatches,
+  resolveInstalledMod,
   resolveSourceKey,
 } from '@/domain/mods/identity';
+import { primaryModsByPackageId } from '@/domain/mods/catalog';
 import { mod } from '@/domain/mod-list/test-fixtures';
 
 describe('identity base labels', () => {
@@ -110,4 +113,14 @@ describe('resolveSourceKey', () => {
       ),
     ).toBeNull();
   });
+});
+
+it('resolves a saved local mod to its renamed folder in the rebuilt catalog', () => {
+  const original = mod('foo.bar', 'Foo Bar', { sourceKey: 'C:/Mods/FooBar' });
+  const savedIdentity = identityForMod(original);
+  const renamed = mod('foo.bar', 'Foo Bar', { sourceKey: 'C:/Mods/FooBar-Renamed' });
+  const catalog = primaryModsByPackageId([renamed]);
+
+  expect(resolveInstalledMod(savedIdentity, catalog)?.sourceKey).toBe('C:/Mods/FooBar-Renamed');
+  expect(savedIdentity.sourceKey).toBe('C:/Mods/FooBar');
 });

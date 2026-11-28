@@ -1,11 +1,10 @@
 import { Layers, Pencil, SplitSquareHorizontal, Trash2, Ungroup } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { ModListEntryDto } from '@/commands';
+import type { ModListEntryDto, ModMetadataDto } from '@/commands';
 import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu';
 import { OpenModActionsMenuItems } from '@/features/order/ui/open-mod-actions-menu-items';
 import { TagMenuItems } from '@/components/mod/tags/tag-menu-items';
 import { tagIdsForIdentities } from '@/domain/mods/tags';
-import { steamWorkshopSourceKey } from '@/domain/mods/workshop-links';
 import type { ActiveEntryRowProps } from '@/features/order/ui/rows/row-types';
 
 type ActiveEntryMenuProps = Pick<
@@ -20,7 +19,6 @@ type ActiveEntryMenuProps = Pick<
   | 'onRenameSeparator'
   | 'onOpenModFolder'
   | 'onOpenSteamWorkshopPage'
-  | 'modByPackageId'
   | 'tagDefs'
   | 'modTags'
   | 'tagTargetIdentities'
@@ -32,6 +30,7 @@ type ActiveEntryMenuProps = Pick<
   | 'onReorderModTags'
 > & {
   entry: ModListEntryDto;
+  mod: ModMetadataDto | undefined;
 };
 
 export function ActiveEntryMenu(props: ActiveEntryMenuProps) {
@@ -66,7 +65,7 @@ function ModEntryActions({
   onEditAlias,
   onOpenModFolder,
   onOpenSteamWorkshopPage,
-  modByPackageId,
+  mod,
   tagDefs,
   modTags,
   tagTargetIdentities,
@@ -79,8 +78,6 @@ function ModEntryActions({
 }: ActiveEntryMenuProps) {
   const { t } = useTranslation();
   if (entry.kind !== 'mod') return null;
-  const sourceKey = entry.identity.sourceKey;
-  const workshopSourceKey = steamWorkshopSourceKey(entry.identity, modByPackageId);
   const targetIdentities = tagTargetIdentities.length > 0 ? tagTargetIdentities : [entry.identity];
   return (
     <>
@@ -108,8 +105,7 @@ function ModEntryActions({
         onReorderModTags={onReorderModTags}
       />
       <OpenModActionsMenuItems
-        sourceKey={sourceKey}
-        workshopSourceKey={workshopSourceKey}
+        mod={mod}
         onOpenModFolder={onOpenModFolder}
         onOpenSteamWorkshopPage={onOpenSteamWorkshopPage}
         trailingSeparator={false}

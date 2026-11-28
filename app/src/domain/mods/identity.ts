@@ -47,19 +47,19 @@ export function identityForMod(mod: ModMetadataDto): ModIdentityDto {
   };
 }
 
-/**
- * Resolves the *currently installed* source key for an identity.
- *
- * A mod list entry stores the source key it had when it was added. That path
- * goes stale as soon as the mod moves between the Workshop and local folders,
- * so anything touching the filesystem must resolve against the live catalog
- * instead of trusting the stored hint.
- */
+/** Resolves a list entry to the installation currently selected by the catalog. */
+export function resolveInstalledMod(
+  identity: ModIdentityDto,
+  modByPackageId: ReadonlyMap<string, ModMetadataDto> | null | undefined,
+): ModMetadataDto | undefined {
+  return modByPackageId?.get(normalizePackageId(identity.packageId));
+}
+
 export function resolveSourceKey(
   identity: ModIdentityDto,
-  modByPackageId: Map<string, ModMetadataDto> | null | undefined,
-): string | null | undefined {
-  return modByPackageId?.get(normalizePackageId(identity.packageId))?.sourceKey ?? null;
+  modByPackageId: ReadonlyMap<string, ModMetadataDto> | null | undefined,
+): string | null {
+  return resolveInstalledMod(identity, modByPackageId)?.sourceKey ?? null;
 }
 
 export function findAlias(

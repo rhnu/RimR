@@ -13,7 +13,6 @@ import { OpenModActionsMenuItems } from '@/features/order/ui/open-mod-actions-me
 import { TagMenuItems } from '@/components/mod/tags/tag-menu-items';
 import { tagIdsForIdentities } from '@/domain/mods/tags';
 import type { InactiveRenderRow } from '@/features/order/model';
-import { steamWorkshopSourceKey } from '@/domain/mods/workshop-links';
 
 type TagMenuProps = {
   tagDefs: TagDefDto[];
@@ -29,13 +28,12 @@ type TagMenuProps = {
 
 export function InactiveEntryMenu({
   entry,
-  sourceKey,
+  mod,
   onRenameGroup,
   onAddActive,
   onEditAlias,
   onOpenModFolder,
   onOpenSteamWorkshopPage,
-  modByPackageId,
   tagDefs,
   modTags,
   tagTargetIdentities,
@@ -47,13 +45,12 @@ export function InactiveEntryMenu({
   onReorderModTags,
 }: {
   entry: ModListEntryDto;
-  sourceKey: string | null | undefined;
+  mod: ModMetadataDto | undefined;
   onRenameGroup: (entryId: string, name: string) => void;
   onAddActive: (entryId: string) => void;
   onEditAlias: (identity: ModIdentityDto) => void;
   onOpenModFolder: (sourceKey: string) => void;
   onOpenSteamWorkshopPage: (sourceKey: string, target: SteamWorkshopOpenTarget) => void;
-  modByPackageId: Map<string, ModMetadataDto>;
 } & TagMenuProps) {
   const { t } = useTranslation();
   return (
@@ -71,11 +68,10 @@ export function InactiveEntryMenu({
       {entry.kind === 'mod' ? (
         <ModEntryMenuItems
           identity={entry.identity}
-          sourceKey={sourceKey}
+          mod={mod}
           onEditAlias={onEditAlias}
           onOpenModFolder={onOpenModFolder}
           onOpenSteamWorkshopPage={onOpenSteamWorkshopPage}
-          modByPackageId={modByPackageId}
           tagDefs={tagDefs}
           modTags={modTags}
           tagTargetIdentities={tagTargetIdentities}
@@ -93,12 +89,11 @@ export function InactiveEntryMenu({
 
 export function InactiveChildMenu({
   row,
-  sourceKey,
+  mod,
   onAddActive,
   onEditAlias,
   onOpenModFolder,
   onOpenSteamWorkshopPage,
-  modByPackageId,
   tagDefs,
   modTags,
   onToggleModTag,
@@ -109,12 +104,11 @@ export function InactiveChildMenu({
   onReorderModTags,
 }: {
   row: Extract<InactiveRenderRow, { kind: 'child' }>;
-  sourceKey: string | null | undefined;
+  mod: ModMetadataDto | undefined;
   onAddActive: (groupId: string, childId: string) => void;
   onEditAlias: (identity: ModIdentityDto) => void;
   onOpenModFolder: (sourceKey: string) => void;
   onOpenSteamWorkshopPage: (sourceKey: string, target: SteamWorkshopOpenTarget) => void;
-  modByPackageId: Map<string, ModMetadataDto>;
 } & TagMenuProps) {
   const { t } = useTranslation();
   return (
@@ -125,11 +119,10 @@ export function InactiveChildMenu({
       </ContextMenuItem>
       <ModEntryMenuItems
         identity={row.child.identity}
-        sourceKey={sourceKey}
+        mod={mod}
         onEditAlias={onEditAlias}
         onOpenModFolder={onOpenModFolder}
         onOpenSteamWorkshopPage={onOpenSteamWorkshopPage}
-        modByPackageId={modByPackageId}
         tagDefs={tagDefs}
         modTags={modTags}
         tagTargetIdentities={[row.child.identity]}
@@ -146,11 +139,10 @@ export function InactiveChildMenu({
 
 function ModEntryMenuItems({
   identity,
-  sourceKey,
+  mod,
   onEditAlias,
   onOpenModFolder,
   onOpenSteamWorkshopPage,
-  modByPackageId,
   tagDefs,
   modTags,
   tagTargetIdentities,
@@ -162,20 +154,17 @@ function ModEntryMenuItems({
   onReorderModTags,
 }: {
   identity: ModIdentityDto;
-  sourceKey: string | null | undefined;
+  mod: ModMetadataDto | undefined;
   onEditAlias: (identity: ModIdentityDto) => void;
   onOpenModFolder: (sourceKey: string) => void;
   onOpenSteamWorkshopPage: (sourceKey: string, target: SteamWorkshopOpenTarget) => void;
-  modByPackageId: Map<string, ModMetadataDto>;
 } & TagMenuProps) {
   const { t } = useTranslation();
-  const workshopSourceKey = steamWorkshopSourceKey(identity, modByPackageId);
   const targetIdentities = tagTargetIdentities?.length ? tagTargetIdentities : [identity];
   return (
     <>
       <OpenModActionsMenuItems
-        sourceKey={sourceKey}
-        workshopSourceKey={workshopSourceKey}
+        mod={mod}
         onOpenModFolder={onOpenModFolder}
         onOpenSteamWorkshopPage={onOpenSteamWorkshopPage}
       />

@@ -1,4 +1,4 @@
-import { normalizePackageId } from '@/domain/mods/identity';
+import { resolveInstalledMod } from '@/domain/mods/identity';
 import { sourceCatalogItemKey } from '@/domain/mods/catalog';
 import type { ModIdentityDto, ModListDto, ModMetadataDto } from '@/commands';
 import type { Selection } from '@/features/order/types';
@@ -17,7 +17,7 @@ export function deriveSelection(
   const selectedMod = selectedModIdentity
     ? selection?.kind === 'mod' && selection.sourceKey
       ? modByCatalogKey.get(sourceCatalogItemKey(selection.sourceKey))
-      : modByPackageId.get(normalizePackageId(selectedModIdentity.packageId))
+      : resolveInstalledMod(selectedModIdentity, modByPackageId)
     : null;
   const selectedEntry =
     selection?.kind === 'group' || selection?.kind === 'separator'
