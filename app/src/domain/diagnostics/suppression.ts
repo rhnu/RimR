@@ -18,11 +18,6 @@ export type ValidationSummary = {
 
 export type DiagnosticItem = { diagnostic: DiagnosticDto; ignored: boolean };
 
-export type DiagnosticMenu = {
-  pending: DiagnosticSuppressionDto[];
-  ignored: DiagnosticSuppressionDto[];
-};
-
 /** One projection drives counters, row icons and reports without altering raw diagnostics. */
 export function deriveDiagnosticState(
   scanDiagnostics: readonly DiagnosticDto[],
@@ -72,26 +67,6 @@ export function deriveDiagnosticState(
     diagnostics,
     validationSummary,
     forTargets: (identities: readonly ModIdentityDto[]) => findForKeys(targetKeys(identities)),
-    menuForTargets(identities: readonly ModIdentityDto[]): DiagnosticMenu {
-      const keys = targetKeys(identities);
-      const pending: DiagnosticSuppressionDto[] = [];
-      const shownIgnored = new Set<string>();
-      for (const {
-        diagnostic: { suppression },
-        ignored,
-      } of findForKeys(keys)) {
-        if (!suppression) continue;
-        if (ignored) shownIgnored.add(suppression.key);
-        else pending.push(suppression);
-      }
-      // Rules remain restorable after the corresponding diagnostic disappears.
-      const ignored = rules.filter(
-        (rule) =>
-          shownIgnored.has(rule.key) ||
-          matchKeys(rule.relatedPackages, rule.sourceKeys).some((key) => keys.has(key)),
-      );
-      return { pending, ignored };
-    },
   };
 }
 

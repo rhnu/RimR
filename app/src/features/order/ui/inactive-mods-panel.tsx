@@ -22,7 +22,7 @@ import type { Selection } from '@/features/order/types';
 import { INACTIVE_DROP_ID } from '@/features/order/dnd-ids';
 import type { DiagnosticItem } from '@/domain/diagnostics/suppression';
 import type { OrderDiagnosticTarget } from '../model/diagnostic-targets';
-import type { RowDiagnosticMenus } from './diagnostic-menu-items';
+import type { RowDiagnosticNavigation } from './diagnostic-row-menu';
 
 type RowProps = {
   aliases: DisplayAliasDto[];
@@ -31,7 +31,7 @@ type RowProps = {
   selectedCatalogKeys: Set<string>;
   canCreateGroup: boolean;
   diagnosticsForTarget: (target: OrderDiagnosticTarget) => DiagnosticItem[];
-  diagnosticMenus: RowDiagnosticMenus;
+  diagnosticNavigation: RowDiagnosticNavigation;
   modByPackageId: Map<string, ModMetadataDto>;
   onSelect: (mod: ModMetadataDto, event: MouseEvent<HTMLButtonElement>) => void;
   onSelectEntry: (
@@ -112,7 +112,7 @@ function CatalogInactivePanelRow({
   return (
     <InactiveModRow
       diagnostics={props.diagnosticsForTarget({ kind: 'catalog', mod: row.mod })}
-      diagnosticMenus={props.diagnosticMenus}
+      diagnosticNavigation={props.diagnosticNavigation}
       mod={row.mod}
       label={displayName(row.mod, props.aliases)}
       tagDefs={props.tagDefs}
@@ -148,7 +148,7 @@ function StructuredInactiveEntryPanelRow({
   return (
     <InactiveEntryRow
       row={row}
-      diagnosticMenus={props.diagnosticMenus}
+      diagnosticNavigation={props.diagnosticNavigation}
       aliases={props.aliases}
       tagDefs={props.tagDefs}
       modTags={props.modTags}
@@ -180,7 +180,7 @@ function StructuredInactiveChildPanelRow({
   return (
     <InactiveChildRow
       row={row}
-      diagnosticMenus={props.diagnosticMenus}
+      diagnosticNavigation={props.diagnosticNavigation}
       aliases={props.aliases}
       tagDefs={props.tagDefs}
       modTags={props.modTags}

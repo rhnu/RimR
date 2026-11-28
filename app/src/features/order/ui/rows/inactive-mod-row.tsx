@@ -1,4 +1,4 @@
-import { DiagnosticMenuItems, type RowDiagnosticMenus } from '../diagnostic-menu-items';
+import { DiagnosticRowMenu, type RowDiagnosticNavigation } from '../diagnostic-row-menu';
 import { DiagnosticIcon } from './diagnostic-icon';
 import type { DiagnosticItem } from '@/domain/diagnostics/suppression';
 import { memo, type MouseEvent } from 'react';
@@ -12,12 +12,7 @@ import type {
   SteamWorkshopOpenTarget,
   TagDefDto,
 } from '@/commands';
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from '@/components/ui/context-menu';
+import { ContextMenuItem } from '@/components/ui/context-menu';
 import { cn } from '@/lib/utils';
 import { inactiveSortableIdForMod } from '@/features/order/dnd-ids';
 import { ModTypeIcon } from '@/components/mod/mod-type-icon';
@@ -30,7 +25,7 @@ import type { WarmFileInfo } from '@/features/order/ui/rows/row-types';
 
 type InactiveModRowProps = {
   diagnostics: DiagnosticItem[];
-  diagnosticMenus: RowDiagnosticMenus;
+  diagnosticNavigation: RowDiagnosticNavigation;
   mod: ModMetadataDto;
   label: string;
   tagDefs: TagDefDto[];
@@ -59,7 +54,7 @@ type InactiveModRowProps = {
 export const InactiveModRow = memo(function InactiveModRow({
   mod,
   diagnostics,
-  diagnosticMenus,
+  diagnosticNavigation,
   label,
   tagDefs,
   modTags,
@@ -71,24 +66,19 @@ export const InactiveModRow = memo(function InactiveModRow({
   canAdd,
   canCreateGroup,
   onCreateGroup,
-  onEditAlias,
-  onOpenModFolder,
-  onOpenSteamWorkshopPage,
-  onToggleModTag,
-  onCreateTag,
-  onRenameTag,
-  onSetTagColor,
-  onDeleteTag,
-  onReorderModTags,
   onWarmFileInfo,
   onDoubleClick,
+  ...menuActions
 }: InactiveModRowProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: inactiveSortableIdForMod(mod),
   });
   return (
-    <ContextMenu onOpenChange={(open) => open && onContextOpen(mod)}>
-      <ContextMenuTrigger asChild>
+    <DiagnosticRowMenu
+      target={{ kind: 'catalog', mod }}
+      navigation={diagnosticNavigation}
+      onOpen={() => onContextOpen(mod)}
+      trigger={
         <div
           ref={setNodeRef}
           onPointerEnter={() => onWarmFileInfo(mod.sourceKey)}
@@ -110,9 +100,10 @@ export const InactiveModRow = memo(function InactiveModRow({
           </button>
           <DiagnosticIcon items={diagnostics} />
         </div>
-      </ContextMenuTrigger>
+      }
+    >
       <InactiveModContextMenu
-        diagnosticMenus={diagnosticMenus}
+        {...menuActions}
         mod={mod}
         tagDefs={tagDefs}
         modTags={modTags}
@@ -121,22 +112,12 @@ export const InactiveModRow = memo(function InactiveModRow({
         canCreateGroup={canCreateGroup}
         onAdd={onAdd}
         onCreateGroup={onCreateGroup}
-        onEditAlias={onEditAlias}
-        onOpenModFolder={onOpenModFolder}
-        onOpenSteamWorkshopPage={onOpenSteamWorkshopPage}
-        onToggleModTag={onToggleModTag}
-        onCreateTag={onCreateTag}
-        onRenameTag={onRenameTag}
-        onSetTagColor={onSetTagColor}
-        onDeleteTag={onDeleteTag}
-        onReorderModTags={onReorderModTags}
       />
-    </ContextMenu>
+    </DiagnosticRowMenu>
   );
 });
 
 function InactiveModContextMenu({
-  diagnosticMenus,
   mod,
   tagDefs,
   modTags,
@@ -157,7 +138,6 @@ function InactiveModContextMenu({
 }: Pick<
   InactiveModRowProps,
   | 'mod'
-  | 'diagnosticMenus'
   | 'tagDefs'
   | 'modTags'
   | 'tagTargetIdentities'
@@ -179,8 +159,7 @@ function InactiveModContextMenu({
   const identity = identityForMod(mod);
   const targetIdentities = tagTargetIdentities.length > 0 ? tagTargetIdentities : [identity];
   return (
-    <ContextMenuContent>
-      <DiagnosticMenuItems target={{ kind: 'catalog', mod }} menus={diagnosticMenus} />
+    <>
       <ContextMenuItem disabled={!canAdd} onSelect={() => onAdd(mod)}>
         <Plus className="size-4" />
         {t('order.context.addToActive')}
@@ -210,7 +189,7 @@ function InactiveModContextMenu({
         onDeleteTag={onDeleteTag}
         onReorderModTags={onReorderModTags}
       />
-    </ContextMenuContent>
+    </>
   );
 }
 

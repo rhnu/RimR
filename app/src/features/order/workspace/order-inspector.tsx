@@ -50,6 +50,7 @@ export function OrderInspector({
             diagnostics={diagnostics}
             modByPackageId={modByPackageId}
             commands={diagnosticActions}
+            subjectPackageId={view?.selectedModIdentity?.packageId}
           />
         ) : null
       }

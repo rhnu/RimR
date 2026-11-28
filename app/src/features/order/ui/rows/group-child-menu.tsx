@@ -1,12 +1,7 @@
-import { DiagnosticMenuItems } from '../diagnostic-menu-items';
 import { Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ModIdentityDto } from '@/commands';
-import {
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-} from '@/components/ui/context-menu';
+import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu';
 import { OpenModActionsMenuItems } from '@/features/order/ui/open-mod-actions-menu-items';
 import { TagMenuItems } from '@/components/mod/tags/tag-menu-items';
 import { tagIdsForIdentities } from '@/domain/mods/tags';
@@ -16,7 +11,6 @@ import type { GroupChildRowProps } from '@/features/order/ui/rows/row-types';
 type GroupChildMenuProps = Pick<
   GroupChildRowProps,
   | 'groupId'
-  | 'diagnosticMenus'
   | 'modByPackageId'
   | 'tagDefs'
   | 'modTags'
@@ -38,7 +32,6 @@ type GroupChildMenuProps = Pick<
 
 export function GroupChildMenu({
   identity,
-  diagnosticMenus,
   sourceKey,
   groupId,
   childId,
@@ -59,8 +52,7 @@ export function GroupChildMenu({
   const { t } = useTranslation();
   const workshopSourceKey = steamWorkshopSourceKey(identity, modByPackageId);
   return (
-    <ContextMenuContent>
-      <DiagnosticMenuItems target={{ kind: 'mod', identity }} menus={diagnosticMenus} />
+    <>
       <ContextMenuItem onSelect={() => onEditAlias(identity)}>
         <Pencil className="size-4" />
         {t('order.context.editAlias')}
@@ -88,6 +80,6 @@ export function GroupChildMenu({
         <Trash2 className="size-4" />
         {t('order.context.removeFromActive')}
       </ContextMenuItem>
-    </ContextMenuContent>
+    </>
   );
 }

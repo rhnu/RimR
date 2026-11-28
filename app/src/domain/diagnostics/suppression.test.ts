@@ -91,10 +91,6 @@ describe('diagnostic suppression identity and targets', () => {
       { diagnostic: ab, ignored: false },
       { diagnostic: ac, ignored: false },
     ]);
-    expect(state.menuForTargets(selected)).toEqual({
-      pending: [ab.suppression, ac.suppression],
-      ignored: [],
-    });
   });
 
   it('requires exact source identity even when another installed copy shares the package ID', () => {
@@ -155,10 +151,9 @@ describe('diagnostic suppression projection and persistence', () => {
       { diagnostic: suppressed, ignored: true },
       { diagnostic: warning, ignored: false },
     ]);
-    expect(state.menuForTargets([{ packageId: 'b.mod' }])).toEqual({
-      pending: [],
-      ignored: [suppressed.suppression],
-    });
+    expect(state.forTargets([{ packageId: 'b.mod' }])).toEqual([
+      { diagnostic: suppressed, ignored: true },
+    ]);
     expect(input.report.errors).toEqual([suppressed]);
   });
 
@@ -170,18 +165,13 @@ describe('diagnostic suppression projection and persistence', () => {
     expect(deriveDiagnosticState([], null, []).validationSummary.isClean).toBe(false);
   });
 
-  it('leaves dormant rules available only for their matching package or copy', () => {
+  it('keeps dormant rules in the manager without showing them as live diagnostics', () => {
     const dormantSource = rule('xml:broken', { sourceKeys: ['local:broken'] });
     const dormantPackage = rule('version:a');
-    const state = deriveDiagnosticState([], null, [dormantSource, dormantPackage]);
-    expect(state.menuForTargets([{ packageId: 'a.mod', sourceKey: 'workshop:healthy' }])).toEqual({
-      pending: [],
-      ignored: [dormantPackage],
-    });
-    expect(state.menuForTargets([{ packageId: 'a.mod', sourceKey: 'local:broken' }])).toEqual({
-      pending: [],
-      ignored: [dormantSource, dormantPackage],
-    });
+    const rules = [dormantSource, dormantPackage];
+    const state = deriveDiagnosticState([], null, rules);
+    expect(state.forTargets([{ packageId: 'a.mod', sourceKey: 'local:broken' }])).toEqual([]);
+    expect(filterSuppressions(rules, '', '', '')).toEqual(rules);
   });
 
   it('merges and restores rules by key, retaining dormant unrelated rules', () => {

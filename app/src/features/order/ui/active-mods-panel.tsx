@@ -18,7 +18,7 @@ import type { Selection } from '@/features/order/types';
 import type { ActiveRenderRow } from '@/features/order/model';
 import type { DiagnosticItem } from '@/domain/diagnostics/suppression';
 import type { OrderDiagnosticTarget } from '../model/diagnostic-targets';
-import type { RowDiagnosticMenus } from './diagnostic-menu-items';
+import type { RowDiagnosticNavigation } from './diagnostic-row-menu';
 import { tagTargetsForEntry } from '@/features/order/model';
 import type { DropIndicatorStore } from '@/features/order/hooks/drop-indicator-store';
 import { ACTIVE_DROP_ID } from '@/features/order/dnd-ids';
@@ -34,7 +34,7 @@ export type ActiveModsPanelProps = {
   modTags: ModTagBindingDto[];
   selectedEntryIds: Set<string>;
   diagnosticsForTarget: (target: OrderDiagnosticTarget) => DiagnosticItem[];
-  diagnosticMenus: RowDiagnosticMenus;
+  diagnosticNavigation: RowDiagnosticNavigation;
   modByPackageId: Map<string, ModMetadataDto>;
   dropIndicatorStore: DropIndicatorStore;
   onWarmFileInfo: (sourceKey: string | null | undefined, immediate?: boolean) => void;
@@ -100,7 +100,7 @@ function ActiveRows(props: ActiveModsPanelProps) {
             tagTargetIdentities={tagTargetsForEntry(row.entry, props.selectedTagIdentities)}
             modByPackageId={props.modByPackageId}
             diagnostics={props.diagnosticsForTarget({ kind: 'entry', entry: row.entry })}
-            diagnosticMenus={props.diagnosticMenus}
+            diagnosticNavigation={props.diagnosticNavigation}
             selected={row.entry.kind === 'mod' && props.selectedEntryIds.has(row.entry.id)}
             canCreateGroup={props.canCreateGroup}
             dropIndicatorStore={props.dropIndicatorStore}
@@ -134,7 +134,7 @@ function ActiveRows(props: ActiveModsPanelProps) {
             modTags={props.modTags}
             modByPackageId={props.modByPackageId}
             diagnostics={props.diagnosticsForTarget({ kind: 'mod', identity: row.child.identity })}
-            diagnosticMenus={props.diagnosticMenus}
+            diagnosticNavigation={props.diagnosticNavigation}
             dropIndicatorStore={props.dropIndicatorStore}
             onWarmFileInfo={props.onWarmFileInfo}
             onSelect={props.onSelectChild}

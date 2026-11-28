@@ -1,23 +1,27 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useId, useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Loader2, ScanLine } from 'lucide-react';
-import type { DiagnosticDto, CatalogSnapshotDto, ModMetadataDto, SeverityDto } from '@/commands';
+import type { CatalogSnapshotDto, DiagnosticDto, ModMetadataDto } from '@/commands';
 import { Splash } from '@/components/splash';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useCatalogSnapshot } from '@/queries/catalog';
-import {
-  formatDiagnosticLocation,
-  formatDiagnosticMessage,
-  formatPackageLabel,
-} from '@/domain/diagnostics/messages';
+import { Col, Row } from '@/components/ui/layout';
+import { presentDiagnostic } from '@/domain/diagnostics/messages';
+import { primaryModsByPackageId } from '@/domain/mods/catalog';
 import { needsSetup } from '@/domain/workspace/config';
 import { canScanConfig } from '@/domain/workspace/path-settings';
+import { DiagnosticDetails } from '@/features/diagnostics/diagnostic-details';
+import { SeverityIcon } from '@/features/diagnostics/severity-icon';
 import { PathSettingsForm } from '@/features/settings/path-settings-form';
 import { usePathSettings } from '@/features/settings/path-settings-provider';
+import { useCatalogSnapshot } from '@/queries/catalog';
+
+const scanCountLabels = {
+  error: 'setup.errors',
+  warning: 'setup.warnings',
+  info: 'setup.info',
+} as const;
 
 export function SetupPage() {
   const { t } = useTranslation();
@@ -46,7 +50,8 @@ export function SetupPage() {
 
       <SetupScanCard
         report={scan.data}
-        loading={scan.isFetching || scan.fetchStatus === 'fetching'}
+        loading={scan.isFetching}
+        failed={scan.isError}
         canScan={canScanConfig(configQuery.data)}
         onScan={() => void scan.refetch()}
       />
@@ -57,11 +62,13 @@ export function SetupPage() {
 function SetupScanCard({
   report,
   loading,
+  failed,
   canScan,
   onScan,
 }: {
   report: CatalogSnapshotDto | undefined;
   loading: boolean;
+  failed: boolean;
   canScan: boolean;
   onScan: () => void;
 }) {
@@ -72,20 +79,26 @@ function SetupScanCard({
         <CardTitle className="text-sm font-medium">{t('setup.scanTitle')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex items-center gap-2">
-          <Button size="sm" onClick={onScan} disabled={!canScan || loading}>
+        <Row wrap>
+          <Button
+            type="button"
+            size="sm"
+            onClick={onScan}
+            disabled={!canScan || loading}
+            aria-busy={loading}
+          >
             {loading ? (
-              <Loader2 className="size-4 animate-spin" />
+              <Loader2 aria-hidden="true" className="size-4 motion-safe:animate-spin" />
             ) : (
-              <ScanLine className="size-4" />
+              <ScanLine aria-hidden="true" className="size-4" />
             )}
-            {t('setup.scan')}
+            {t(loading ? 'catalog.loading' : 'setup.scan')}
           </Button>
           {!canScan ? (
             <span className="text-xs text-muted-foreground">{t('setup.scanHint')}</span>
           ) : null}
-        </div>
-        <ScanResult report={report} loading={loading} />
+        </Row>
+        <ScanResult report={report} loading={loading} failed={failed} />
       </CardContent>
     </Card>
   );
@@ -94,33 +107,41 @@ function SetupScanCard({
 function ScanResult({
   report,
   loading,
+  failed,
 }: {
   report: CatalogSnapshotDto | undefined;
   loading: boolean;
+  failed: boolean;
 }) {
   const { t } = useTranslation();
   const modByPackageId = useMemo(
-    () => new Map((report?.catalog.mods ?? []).map((mod) => [mod.packageId, mod])),
+    () => primaryModsByPackageId(report?.catalog.mods ?? []),
     [report],
   );
+  if (failed && !loading) {
+    return (
+      <Row gap={1.5} role="alert" className="text-xs text-destructive">
+        <SeverityIcon severity="error" />
+        {t('setup.scanFailed')}
+      </Row>
+    );
+  }
   if (report) {
     return (
-      <div className="space-y-3">
+      <Col aria-busy={loading}>
         <ScanSummary report={report} />
         {report.diagnostics.length > 0 ? (
-          <ScrollArea className="h-80 rounded-slight border border-border">
-            <div className="space-y-2 p-3">
-              {report.diagnostics.map((diagnostic, index) => (
-                <DiagnosticRow
-                  key={`${diagnostic.code}-${index}`}
-                  diagnostic={diagnostic}
-                  modByPackageId={modByPackageId}
-                />
-              ))}
-            </div>
-          </ScrollArea>
+          <ul className="max-h-80 divide-y divide-border overflow-y-auto border border-border">
+            {report.diagnostics.map((diagnostic, index) => (
+              <DiagnosticRow
+                key={`${diagnostic.code}-${index}`}
+                diagnostic={diagnostic}
+                modByPackageId={modByPackageId}
+              />
+            ))}
+          </ul>
         ) : null}
-      </div>
+      </Col>
     );
   }
   return loading ? null : <p className="text-sm text-muted-foreground">{t('setup.noScanYet')}</p>;
@@ -128,21 +149,27 @@ function ScanResult({
 
 function ScanSummary({ report }: { report: CatalogSnapshotDto }) {
   const { t } = useTranslation();
-  const errors = report.diagnostics.filter((diagnostic) => diagnostic.severity === 'error').length;
-  const warnings = report.diagnostics.filter(
-    (diagnostic) => diagnostic.severity === 'warning',
-  ).length;
-  const infos = report.diagnostics.filter((diagnostic) => diagnostic.severity === 'info').length;
+  const counts = { error: 0, warning: 0, info: 0 };
+  for (const diagnostic of report.diagnostics) counts[diagnostic.severity] += 1;
   const duplicates = report.catalog.duplicatePackageIds.length;
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-      <Badge variant="secondary">{report.catalog.mods.length}</Badge>
-      {duplicates > 0 ? <Badge variant="warning">{duplicates}</Badge> : null}
-      {errors > 0 ? <Badge variant="destructive">{errors}</Badge> : null}
-      {warnings > 0 ? <Badge variant="warning">{warnings}</Badge> : null}
-      {infos > 0 ? <Badge variant="secondary">{infos}</Badge> : null}
-      {report.diagnostics.length === 0 ? <span>{t('setup.noDiagnostics')}</span> : null}
-    </div>
+    <Row asChild wrap className="text-xs text-muted-foreground">
+      <output>
+        <span>{t('setup.scanned', { count: report.catalog.mods.length })}</span>
+        {duplicates > 0 ? <span>{t('setup.duplicates', { count: duplicates })}</span> : null}
+        {(['error', 'warning', 'info'] as const).map((severity) =>
+          counts[severity] > 0 ? (
+            <Row asChild gap={1} key={severity}>
+              <span>
+                <SeverityIcon severity={severity} />
+                {t(scanCountLabels[severity], { count: counts[severity] })}
+              </span>
+            </Row>
+          ) : null,
+        )}
+        {report.diagnostics.length === 0 ? <span>{t('setup.noDiagnostics')}</span> : null}
+      </output>
+    </Row>
   );
 }
 
@@ -151,35 +178,22 @@ function DiagnosticRow({
   modByPackageId,
 }: {
   diagnostic: DiagnosticDto;
-  modByPackageId: Map<string, ModMetadataDto>;
+  modByPackageId: ReadonlyMap<string, ModMetadataDto>;
 }) {
   const { t } = useTranslation();
-  const location = formatDiagnosticLocation(diagnostic);
+  const messageId = useId();
+  const { subject, summary, details } = presentDiagnostic(diagnostic, t, modByPackageId);
   return (
-    <div className="flex flex-col gap-1 border border-border px-3 py-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={diagnosticBadgeVariants[diagnostic.severity]}>
-          {t(`severity.${diagnostic.severity}`)}
-        </Badge>
-        <span className="font-mono text-xs text-muted-foreground">{diagnostic.code}</span>
-        {location ? (
-          <span className="font-mono text-xs text-muted-foreground">{location}</span>
-        ) : null}
-      </div>
-      <p className="text-sm">{formatDiagnosticMessage(diagnostic, t, modByPackageId)}</p>
-      {diagnostic.relatedPackages.length > 0 ? (
-        <p className="text-xs text-muted-foreground">
-          {diagnostic.relatedPackages
-            .map((pkg) => formatPackageLabel(pkg, modByPackageId))
-            .join(', ')}
+    <Row asChild className="min-h-8 px-2 py-0.5 text-xs">
+      <li>
+        <SeverityIcon severity={diagnostic.severity} />
+        <span className="sr-only">{t(`severity.${diagnostic.severity}`)}</span>
+        <p id={messageId} className="min-w-0 flex-1 wrap-anywhere">
+          {subject ? <strong className="mr-1 font-medium">{subject.label} </strong> : null}
+          {summary}
         </p>
-      ) : null}
-    </div>
+        <DiagnosticDetails details={details} describedBy={messageId} />
+      </li>
+    </Row>
   );
 }
-
-const diagnosticBadgeVariants = {
-  error: 'destructive',
-  warning: 'warning',
-  info: 'secondary',
-} as const satisfies Record<SeverityDto, string>;

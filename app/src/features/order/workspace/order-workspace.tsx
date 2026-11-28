@@ -1,6 +1,5 @@
-import { useMemo, type ComponentProps } from 'react';
+import type { ComponentProps } from 'react';
 import type { LibraryDto, ModListDto, ModTagBindingDto, TagDefDto } from '@/commands';
-import { useDiagnosticSuppressionActions } from '@/features/library/hooks/use-diagnostic-suppression';
 import { useLaunchGame } from '@/queries/native';
 import { useOrderDialogStore } from '@/stores/order-dialog-store';
 import { useAutoMissingModsPrompt } from '../hooks/use-auto-missing-mods-prompt';
@@ -11,13 +10,13 @@ import { useOrderEditActions } from '../hooks/use-order-edit-actions';
 import { useOrderPreview } from '../hooks/use-order-preview';
 import { useOrderSelection } from '../hooks/use-order-selection';
 import { useOrderValidation } from '../hooks/use-order-validation';
-import { createDiagnosticTargets } from '../model/diagnostic-targets';
 import type { OrderDialog } from '../types';
 import { OrderToolbar } from '../ui/order-toolbar';
 import { OrderWorkspaceView } from '../ui/order-workspace-view';
 import { OrderInspector } from './order-inspector';
 import { OrderWorkspaceDialog } from './order-workspace-dialog';
 import { OrderWorkspaceLists } from './order-workspace-lists';
+import { useOrderDiagnosticReport } from './use-order-diagnostic-report';
 import {
   useApplyWithDiff,
   useControllerSync,
@@ -47,19 +46,16 @@ export function OrderWorkspace({ data, library, draftState }: OrderWorkspaceProp
     draftState,
     settings,
   );
+  const diagnosticReport = useOrderDiagnosticReport(derived, validation.phase);
   const { commands, sync, edit, onApply } = useWorkspaceEditing(
     data,
     draftState,
     derived,
     selection,
     aliases,
+    diagnosticReport.dialog !== null,
   );
   const { modByPackageId, modByCatalogKey } = derived;
-  const diagnosticActions = useDiagnosticSuppressionActions(true);
-  const diagnostics = useMemo(
-    () => createDiagnosticTargets(derived.diagnostics, modByPackageId),
-    [derived.diagnostics, modByPackageId],
-  );
   return (
     <OrderWorkspaceView
       drag={drag}
@@ -69,13 +65,7 @@ export function OrderWorkspace({ data, library, draftState }: OrderWorkspaceProp
           data={data}
           library={library}
           draftState={draftState}
-          validation={{
-            phase: validation.phase,
-            summary: derived.diagnostics.validationSummary,
-            diagnostics: derived.diagnostics.diagnostics,
-            modByPackageId,
-            commands: diagnosticActions,
-          }}
+          validation={diagnosticReport.summaryProps}
           differsFromGame={derived.draftActiveModsKey !== derived.gameActiveModsKey}
           commands={commands}
           sync={sync}
@@ -89,8 +79,8 @@ export function OrderWorkspace({ data, library, draftState }: OrderWorkspaceProp
           modByPackageId={modByPackageId}
           modByCatalogKey={modByCatalogKey}
           settings={settings}
-          diagnosticsForTarget={diagnostics.forTarget}
-          diagnosticActions={diagnosticActions}
+          diagnosticsForTarget={diagnosticReport.targets.forTarget}
+          diagnosticActions={diagnosticReport.actions}
         />
       }
       lists={
@@ -103,12 +93,18 @@ export function OrderWorkspace({ data, library, draftState }: OrderWorkspaceProp
           preview={preview}
           edit={edit}
           dropIndicatorStore={drag.dropIndicatorStore}
-          diagnostics={diagnostics}
-          diagnosticActions={diagnosticActions}
+          diagnostics={diagnosticReport.targets}
+          onOpenDiagnosticScope={diagnosticReport.open}
         />
       }
       dialog={
-        <OrderWorkspaceDialog modByPackageId={modByPackageId} onSubmit={edit.handleDialogSubmit} />
+        <>
+          <OrderWorkspaceDialog
+            modByPackageId={modByPackageId}
+            onSubmit={edit.handleDialogSubmit}
+          />
+          {diagnosticReport.dialog}
+        </>
       }
     />
   );
@@ -164,10 +160,16 @@ function useWorkspaceEditing(
   derived: ReturnType<typeof useWorkspaceOrder>['derived'],
   selection: ReturnType<typeof useWorkspaceOrder>['selection'],
   aliases: LibraryDto['settings']['aliases'],
+  hasDiagnosticReport: boolean,
 ) {
   const { draft, applyDraft } = draftState;
   const hasOpenDialog = useOrderDialogStore((state) => state.dialog !== null);
-  useAutoMissingModsPrompt({ draft, mods: derived.mods, hasOpenDialog, setDialog });
+  useAutoMissingModsPrompt({
+    draft,
+    mods: derived.mods,
+    hasOpenDialog: hasOpenDialog || hasDiagnosticReport,
+    setDialog,
+  });
   const commands = useOrderCommands({ draft, acceptSaved: draftState.acceptSaved });
   const sync = useControllerSync(data, draftState, derived.mods, selection, setDialog);
   const onApply = useApplyWithDiff(data, draftState, derived, setDialog);

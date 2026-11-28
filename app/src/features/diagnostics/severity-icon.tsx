@@ -8,7 +8,7 @@ const icons = {
   info: [Info, 'text-muted-foreground'],
 } as const;
 
-/** Keep diagnostic levels recognizable in the toolbar, lists, and reports. */
+/** Keeps diagnostic levels recognizable across the toolbar, lists, and reports. */
 export function SeverityIcon({
   severity,
   className,

@@ -1,33 +1,33 @@
 import { useTranslation } from 'react-i18next';
-import type { DiagnosticDto } from '@/commands';
 import type { DiagnosticItem } from '@/domain/diagnostics/suppression';
-import { formatDiagnosticMessage } from '@/domain/diagnostics/messages';
-import { SeverityIcon } from '../severity-icon';
+import { SeverityIcon } from '@/features/diagnostics/severity-icon';
 
 export function DiagnosticIcon({ items }: { items: DiagnosticItem[] }) {
-  const diagnostics = items.flatMap((item) => (item.ignored ? [] : [item.diagnostic]));
   const { t } = useTranslation();
-  if (diagnostics.length === 0) {
-    return null;
+  const counts = { error: 0, warning: 0, info: 0 };
+  for (const { diagnostic, ignored } of items) {
+    if (!ignored) counts[diagnostic.severity] += 1;
   }
-  const severity = highestSeverity(diagnostics);
-  const title = diagnostics.map((diagnostic) => formatDiagnosticMessage(diagnostic, t)).join('\n');
+  const total = counts.error + counts.warning + counts.info;
+  if (!total) return null;
+
+  const severity = counts.error ? 'error' : counts.warning ? 'warning' : 'info';
+  const title = [
+    counts.error ? t('order.validation.errors', { count: counts.error }) : null,
+    counts.warning ? t('order.validation.warnings', { count: counts.warning }) : null,
+    counts.info ? t('order.validation.infos', { count: counts.info }) : null,
+  ]
+    .filter(Boolean)
+    .join(', ');
   return (
-    <span title={title}>
+    <span title={title} className="inline-flex shrink-0 items-center gap-0.5">
       <SeverityIcon severity={severity} />
-      <span className="sr-only">
-        {t(`severity.${severity}`)}: {title}
-      </span>
+      {total > 1 ? (
+        <span aria-hidden="true" className="text-xs text-muted-foreground tabular-nums">
+          {total}
+        </span>
+      ) : null}
+      <span className="sr-only">{title}</span>
     </span>
   );
-}
-
-function highestSeverity(diagnostics: DiagnosticDto[]): DiagnosticDto['severity'] {
-  if (diagnostics.some((diagnostic) => diagnostic.severity === 'error')) {
-    return 'error';
-  }
-  if (diagnostics.some((diagnostic) => diagnostic.severity === 'warning')) {
-    return 'warning';
-  }
-  return 'info';
 }

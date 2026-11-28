@@ -1,5 +1,4 @@
 import { memo } from 'react';
-import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { ModTypeIcon } from '@/components/mod/mod-type-icon';
 import { cn } from '@/lib/utils';
 import { labelForIdentity } from '@/domain/mods/identity';
@@ -11,6 +10,7 @@ import { DiagnosticIcon } from '@/features/order/ui/rows/diagnostic-icon';
 import { RowDropIndicator } from '@/features/order/ui/rows/drop-indicator';
 import { GroupChildMenu } from '@/features/order/ui/rows/group-child-menu';
 import type { GroupChildRowProps } from '@/features/order/ui/rows/row-types';
+import { DiagnosticRowMenu } from '../diagnostic-row-menu';
 
 export const GroupChildRow = memo(function GroupChildRow({
   groupId,
@@ -20,7 +20,7 @@ export const GroupChildRow = memo(function GroupChildRow({
   tagDefs,
   modTags,
   diagnostics,
-  diagnosticMenus,
+  diagnosticNavigation,
   onWarmFileInfo,
   onSelect,
   onDoubleClick,
@@ -39,8 +39,10 @@ export const GroupChildRow = memo(function GroupChildRow({
   const rowId = childSortableId(groupId, child.id);
   const dragDrop = useDragDropNode(rowId);
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
+    <DiagnosticRowMenu
+      target={{ kind: 'mod', identity: child.identity }}
+      navigation={diagnosticNavigation}
+      trigger={
         <div
           ref={dragDrop.setNodeRef}
           onPointerEnter={() => onWarmFileInfo(child.identity.sourceKey)}
@@ -66,9 +68,9 @@ export const GroupChildRow = memo(function GroupChildRow({
           </button>
           <DiagnosticIcon items={diagnostics} />
         </div>
-      </ContextMenuTrigger>
+      }
+    >
       <GroupChildMenu
-        diagnosticMenus={diagnosticMenus}
         identity={child.identity}
         sourceKey={child.identity.sourceKey}
         groupId={groupId}
@@ -87,7 +89,7 @@ export const GroupChildRow = memo(function GroupChildRow({
         onReorderModTags={onReorderModTags}
         onRemove={onRemove}
       />
-    </ContextMenu>
+    </DiagnosticRowMenu>
   );
 });
 

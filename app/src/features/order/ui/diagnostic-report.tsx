@@ -1,190 +1,228 @@
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, EyeOff, RotateCcw } from 'lucide-react';
 import { useId, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DiagnosticDto, DiagnosticSuppressionDto, ModMetadataDto } from '@/commands';
 import { Button } from '@/components/ui/button';
-import { Col, Grid, Row } from '@/components/ui/layout';
+import { Col, Row } from '@/components/ui/layout';
+import { presentDiagnostic } from '@/domain/diagnostics/messages';
 import type { DiagnosticItem } from '@/domain/diagnostics/suppression';
-import {
-  formatDiagnosticLocation,
-  formatDiagnosticMessage,
-  formatPackageLabel,
-} from '@/domain/diagnostics/messages';
 import { normalizePackageId } from '@/domain/mods/identity';
-import { SeverityIcon } from './severity-icon';
+import { DiagnosticDetails } from '@/features/diagnostics/diagnostic-details';
+import { SeverityIcon } from '@/features/diagnostics/severity-icon';
+import { DiagnosticBatchControls, useDiagnosticBatch } from './diagnostic-report-batch';
 
 const severities = ['error', 'warning', 'info'] as const;
 
 export type DiagnosticActions = {
   pending: boolean;
   ready: boolean;
-  suppress: (items: DiagnosticSuppressionDto[]) => void;
-  restore: (items: DiagnosticSuppressionDto[]) => void;
+  suppress: (items: DiagnosticSuppressionDto[]) => Promise<boolean>;
+  restore: (items: DiagnosticSuppressionDto[]) => Promise<boolean>;
 };
 
-/** Shows the same diagnostic groups and suppression actions in either report view. */
+/** Shares compact report rows and per-diagnostic actions across report views. */
 export function DiagnosticReport({
   diagnostics,
   modByPackageId,
   commands,
+  subjectPackageId,
+  allowSelection = false,
   showClean = false,
 }: {
   diagnostics: DiagnosticItem[];
   modByPackageId: Map<string, ModMetadataDto>;
   commands: DiagnosticActions;
+  subjectPackageId?: string;
+  allowSelection?: boolean;
   showClean?: boolean;
 }) {
   const { t } = useTranslation();
   const { reportRef, rememberAction } = useDiagnosticActionFocus(commands.pending);
   const active: DiagnosticDto[] = [];
   const ignored: DiagnosticDto[] = [];
-  for (const { diagnostic, ignored: isIgnored } of diagnostics)
+  for (const { diagnostic, ignored: isIgnored } of diagnostics) {
     (isIgnored ? ignored : active).push(diagnostic);
-
-  function renderGroups(items: DiagnosticDto[], suppressed: boolean) {
-    return severities.map((severity) => {
-      const group = items.filter((item) => item.severity === severity);
-      if (group.length === 0) return null;
-      return (
-        <section key={severity}>
-          <Row
-            asChild
-            gap={1.5}
-            className="min-h-8 border-b border-border bg-muted px-2 text-xs font-semibold"
-          >
-            <h3>
-              <SeverityIcon severity={severity} />
-              <span className="capitalize">{t(`severity.${severity}`)}</span>
-              <span className="tabular-nums">{group.length}</span>
-            </h3>
-          </Row>
-          <ul className="divide-y divide-border border-b border-border">
-            {group.map((diagnostic, index) => (
-              <DiagnosticRow
-                key={diagnostic.suppression?.key ?? index}
-                diagnostic={diagnostic}
-                modByPackageId={modByPackageId}
-                suppressed={suppressed}
-                pending={commands.pending}
-                ready={commands.ready}
-                onAction={(descriptor, button) => {
-                  if (commands.pending || !commands.ready) return;
-                  rememberAction(button);
-                  const update = suppressed ? commands.restore : commands.suppress;
-                  update([descriptor]);
-                }}
-              />
-            ))}
-          </ul>
-        </section>
-      );
-    });
   }
+  const batch = useDiagnosticBatch(allowSelection ? active : [], commands);
+  const groupProps = { modByPackageId, subjectPackageId, commands, rememberAction };
 
   return (
     <Col ref={reportRef} className="min-w-0" tabIndex={-1}>
-      {showClean && active.length === 0 && ignored.length === 0 ? (
+      {allowSelection && batch.available ? <DiagnosticBatchControls batch={batch} /> : null}
+      {showClean && !batch.editing && active.length === 0 && ignored.length === 0 ? (
         <p className="px-2 py-2 text-xs text-muted-foreground">{t('order.validation.clean')}</p>
       ) : null}
-      {renderGroups(active, false)}
+      {batch.editing && batch.items.length === 0 ? (
+        <p className="px-2 py-2 text-xs text-muted-foreground">{t('suppression.noIgnorable')}</p>
+      ) : null}
+      <DiagnosticGroups
+        {...groupProps}
+        items={batch.editing ? batch.items : active}
+        selection={batch.editing ? batch : undefined}
+      />
       {ignored.length > 0 ? (
         <details className="group">
           <Row
             asChild
             gap={1.5}
-            className="min-h-8 cursor-pointer border-y border-border bg-muted px-2 text-xs font-semibold hover:bg-accent focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring [&::-webkit-details-marker]:hidden"
+            className="min-h-7 cursor-pointer border-y border-border bg-muted px-2 text-xs font-semibold hover:bg-accent focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring [&::-webkit-details-marker]:hidden"
           >
             <summary>
               <ChevronRight aria-hidden="true" className="size-4 shrink-0 group-open:rotate-90" />
+              <EyeOff aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
               {t('suppression.ignoredCount', { count: ignored.length })}
             </summary>
           </Row>
-          <Col className="mt-2">{renderGroups(ignored, true)}</Col>
+          <DiagnosticGroups {...groupProps} items={ignored} suppressed />
         </details>
       ) : null}
     </Col>
   );
 }
 
+function DiagnosticGroups({
+  items,
+  modByPackageId,
+  subjectPackageId,
+  commands,
+  rememberAction,
+  selection,
+  suppressed = false,
+}: {
+  items: DiagnosticDto[];
+  modByPackageId: Map<string, ModMetadataDto>;
+  subjectPackageId?: string;
+  commands: DiagnosticActions;
+  rememberAction: (button: HTMLButtonElement) => void;
+  selection?: Pick<ReturnType<typeof useDiagnosticBatch>, 'selected' | 'toggleSelected'>;
+  suppressed?: boolean;
+}) {
+  const { t } = useTranslation();
+  function handleAction(descriptor: DiagnosticSuppressionDto, button: HTMLButtonElement) {
+    if (commands.pending || !commands.ready) return;
+    rememberAction(button);
+    void (suppressed ? commands.restore : commands.suppress)([descriptor]);
+  }
+
+  return severities.map((severity) => {
+    const group = items.filter((item) => item.severity === severity);
+    if (group.length === 0) return null;
+
+    return (
+      <section key={severity}>
+        <Row
+          asChild
+          gap={1.5}
+          className="min-h-7 border-b border-border bg-muted px-2 text-xs font-semibold"
+        >
+          <h3>
+            <SeverityIcon severity={severity} />
+            <span>{t(`severity.${severity}`)}</span>
+            <span className="tabular-nums">{group.length}</span>
+          </h3>
+        </Row>
+        <ul className="divide-y divide-border border-b border-border">
+          {group.map((diagnostic, index) => {
+            const rule = diagnostic.suppression;
+            return (
+              <DiagnosticRow
+                key={rule?.key ?? `${diagnostic.code}-${index}`}
+                diagnostic={diagnostic}
+                modByPackageId={modByPackageId}
+                subjectPackageId={subjectPackageId}
+                suppressed={suppressed}
+                pending={commands.pending}
+                ready={commands.ready}
+                select={
+                  selection && rule
+                    ? {
+                        checked: selection.selected.has(rule.key),
+                        onToggle: () => selection.toggleSelected(rule.key),
+                      }
+                    : undefined
+                }
+                onAction={handleAction}
+              />
+            );
+          })}
+        </ul>
+      </section>
+    );
+  });
+}
+
 function DiagnosticRow({
   diagnostic,
   modByPackageId,
+  subjectPackageId,
   suppressed,
   pending,
   ready,
+  select,
   onAction,
 }: {
   diagnostic: DiagnosticDto;
   modByPackageId: Map<string, ModMetadataDto>;
+  subjectPackageId?: string;
   suppressed: boolean;
   pending: boolean;
   ready: boolean;
+  select?: { checked: boolean; onToggle: () => void };
   onAction: (descriptor: DiagnosticSuppressionDto, button: HTMLButtonElement) => void;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const messageId = useId();
-  const message = formatDiagnosticMessage(diagnostic, t, modByPackageId);
-  const location = formatDiagnosticLocation(diagnostic);
-  const descriptor = diagnostic.suppression;
-  const translated = i18n.exists(`diagnostics.${diagnostic.code}`);
-  const ruleVersion = translated && diagnostic.params.gameVersion ? null : descriptor?.gameVersion;
-  const displayedPackages = translated ? messagePackageIds(diagnostic.params) : new Set<string>();
-  const otherPackages = [...new Set(diagnostic.relatedPackages)]
-    .filter((id) => !displayedPackages.has(normalizePackageId(id)))
-    .map((id) => formatPackageLabel(id, modByPackageId));
+  const { summary, subject, details } = presentDiagnostic(diagnostic, t, modByPackageId);
+  const rule = diagnostic.suppression;
+  const actionLabel = t(suppressed ? 'suppression.restoreOne' : 'suppression.ignoreOne');
+  const ActionIcon = suppressed ? RotateCcw : EyeOff;
+  const showSubject =
+    subject && normalizePackageId(subject.packageId) !== normalizePackageId(subjectPackageId ?? '');
 
   return (
-    <Grid
-      asChild
-      gap={1}
-      className="grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 px-2 py-2 text-sm wrap-anywhere"
-    >
+    <Row asChild gap={1.5} className="min-h-8 items-center px-2 py-0.5">
       <li>
-        <h4 className="font-semibold">
-          {t(`suppression.types.${diagnostic.code}`, { defaultValue: diagnostic.code })}
-        </h4>
-        {descriptor ? (
+        {select ? (
+          <input
+            type="checkbox"
+            className="shrink-0 accent-primary"
+            aria-label={t('suppression.selectDiagnostic')}
+            aria-describedby={messageId}
+            checked={select.checked}
+            disabled={pending || !ready}
+            onChange={select.onToggle}
+          />
+        ) : null}
+        <p id={messageId} className="min-w-0 flex-1 text-xs leading-snug wrap-anywhere">
+          {showSubject ? (
+            <>
+              <span className="mr-1 font-semibold">{subject.label}</span>{' '}
+            </>
+          ) : null}
+          {summary}
+        </p>
+        <DiagnosticDetails details={details} describedBy={messageId} />
+        {rule && !select ? (
           <Button
             type="button"
-            size="sm"
-            variant="outline"
-            className="h-6 px-2 aria-disabled:opacity-50"
+            size="icon"
+            variant="ghost"
+            className="size-7 shrink-0 text-muted-foreground aria-disabled:opacity-50"
             disabled={!ready}
             aria-disabled={pending || undefined}
+            aria-label={actionLabel}
             aria-describedby={messageId}
-            data-diagnostic-key={descriptor.key}
+            title={actionLabel}
+            data-diagnostic-key={rule.key}
             data-ignored={suppressed || undefined}
-            onClick={(event) => onAction(descriptor, event.currentTarget)}
+            onClick={(event) => onAction(rule, event.currentTarget)}
           >
-            {t(suppressed ? 'suppression.restore' : 'suppression.suppress')}
+            <ActionIcon aria-hidden="true" />
           </Button>
         ) : null}
-        <Col gap={1} className="col-span-2">
-          <p id={messageId}>{message}</p>
-          {location && !message.includes(location) ? (
-            <p className="font-mono text-xs text-muted-foreground">{location}</p>
-          ) : null}
-          {otherPackages.length > 0 ? (
-            <p className="text-xs text-muted-foreground">{otherPackages.join(', ')}</p>
-          ) : null}
-          {ruleVersion ? (
-            <p className="text-xs text-muted-foreground">
-              {t('suppression.gameVersion', { version: ruleVersion })}
-            </p>
-          ) : null}
-        </Col>
       </li>
-    </Grid>
+    </Row>
   );
-}
-
-/** Identifies packages already interpolated into the translated diagnostic message. */
-function messagePackageIds(params: DiagnosticDto['params']): Set<string> {
-  const packages = params.cycle?.split(' -> ') ?? [];
-  for (const [key, value] of Object.entries(params)) {
-    if (key.toLowerCase().endsWith('packageid')) packages.push(value);
-  }
-  return new Set(packages.map(normalizePackageId));
 }
 
 /** Restores keyboard focus after an action moves its row to the other section. */
@@ -202,14 +240,13 @@ function useDiagnosticActionFocus(pending: boolean) {
     const activeActions = report.querySelectorAll<HTMLButtonElement>(
       'button[data-diagnostic-key]:not([data-ignored]):enabled',
     );
-    const nextRestoreTarget = action.hasAttribute('data-ignored')
-      ? (report.querySelector<HTMLButtonElement>('details[open] button:enabled') ??
+    const restored = action.hasAttribute('data-ignored')
+      ? (report.querySelector<HTMLButtonElement>('details[open] button[data-ignored]:enabled') ??
         [...activeActions].find(
           (button) => button.dataset.diagnosticKey === action.dataset.diagnosticKey,
         ))
       : null;
-    const target =
-      nextRestoreTarget ?? activeActions[0] ?? report.querySelector('summary') ?? report;
+    const target = restored ?? activeActions[0] ?? report.querySelector('summary') ?? report;
     target.focus();
   });
 

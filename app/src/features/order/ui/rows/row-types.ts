@@ -10,7 +10,7 @@ import type {
   TagDefDto,
 } from '@/commands';
 import type { DiagnosticItem } from '@/domain/diagnostics/suppression';
-import type { RowDiagnosticMenus } from '../diagnostic-menu-items';
+import type { RowDiagnosticNavigation } from '../diagnostic-row-menu';
 import type { Selection } from '@/features/order/types';
 import type { DropIndicatorStore } from '@/features/order/hooks/drop-indicator-store';
 
@@ -21,7 +21,7 @@ export type ActiveEntryRowProps = {
   aliases: DisplayAliasDto[];
   modByPackageId: Map<string, ModMetadataDto>;
   diagnostics: DiagnosticItem[];
-  diagnosticMenus: RowDiagnosticMenus;
+  diagnosticNavigation: RowDiagnosticNavigation;
   tagDefs: TagDefDto[];
   modTags: ModTagBindingDto[];
   tagTargetIdentities: ModIdentityDto[];
@@ -61,7 +61,7 @@ export type GroupChildRowProps = {
   tagDefs: TagDefDto[];
   modTags: ModTagBindingDto[];
   diagnostics: DiagnosticItem[];
-  diagnosticMenus: RowDiagnosticMenus;
+  diagnosticNavigation: RowDiagnosticNavigation;
   onWarmFileInfo: WarmFileInfo;
   onSelect: (child: ModListGroupChildDto) => void;
   onDoubleClick: (groupId: string, childId: string) => void;

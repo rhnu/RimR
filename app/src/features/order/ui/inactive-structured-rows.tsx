@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react';
-import type { RowDiagnosticMenus } from './diagnostic-menu-items';
+import { DiagnosticRowMenu, type RowDiagnosticNavigation } from './diagnostic-row-menu';
 import { useDraggable } from '@dnd-kit/core';
 import { useTranslation } from 'react-i18next';
 import { Layers } from 'lucide-react';
@@ -13,7 +13,6 @@ import type {
   SteamWorkshopOpenTarget,
   TagDefDto,
 } from '@/commands';
-import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { ModTypeIcon } from '@/components/mod/mod-type-icon';
 import {
   InactiveChildMenu,
@@ -27,7 +26,7 @@ import type { Selection } from '@/features/order/types';
 import { cn } from '@/lib/utils';
 
 type TagRowProps = {
-  diagnosticMenus: RowDiagnosticMenus;
+  diagnosticNavigation: RowDiagnosticNavigation;
   tagDefs: TagDefDto[];
   modTags: ModTagBindingDto[];
   tagTargetIdentities?: ModIdentityDto[];
@@ -60,7 +59,7 @@ type InactiveEntryRowProps = {
 
 export function InactiveEntryRow({
   row,
-  diagnosticMenus,
+  diagnosticNavigation,
   aliases,
   tagDefs,
   modTags,
@@ -72,22 +71,17 @@ export function InactiveEntryRow({
   onRenameGroup,
   onAddActive,
   onDoubleClick,
-  onEditAlias,
-  onOpenModFolder,
-  onOpenSteamWorkshopPage,
-  onToggleModTag,
-  onCreateTag,
-  onRenameTag,
-  onSetTagColor,
-  onDeleteTag,
-  onReorderModTags,
+  ...menuActions
 }: InactiveEntryRowProps) {
   const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: row.id });
   const sourceKey = row.entry.kind === 'mod' ? row.entry.identity.sourceKey : null;
   return (
-    <ContextMenu onOpenChange={(open) => open && onContextOpen(row.entry)}>
-      <ContextMenuTrigger asChild>
+    <DiagnosticRowMenu
+      target={{ kind: 'entry', entry: row.entry }}
+      navigation={diagnosticNavigation}
+      onOpen={() => onContextOpen(row.entry)}
+      trigger={
         <div
           ref={setNodeRef}
           onPointerEnter={() => warmInactiveEntry(row.entry, onWarmFileInfo)}
@@ -113,28 +107,20 @@ export function InactiveEntryRow({
             ) : null}
           </button>
         </div>
-      </ContextMenuTrigger>
+      }
+    >
       <InactiveEntryMenu
-        diagnosticMenus={diagnosticMenus}
+        {...menuActions}
         entry={row.entry}
         sourceKey={sourceKey}
         onRenameGroup={onRenameGroup}
         onAddActive={onAddActive}
-        onEditAlias={onEditAlias}
-        onOpenModFolder={onOpenModFolder}
-        onOpenSteamWorkshopPage={onOpenSteamWorkshopPage}
         modByPackageId={modByPackageId}
         tagDefs={tagDefs}
         modTags={modTags}
         tagTargetIdentities={tagTargetIdentities}
-        onToggleModTag={onToggleModTag}
-        onCreateTag={onCreateTag}
-        onRenameTag={onRenameTag}
-        onSetTagColor={onSetTagColor}
-        onDeleteTag={onDeleteTag}
-        onReorderModTags={onReorderModTags}
       />
-    </ContextMenu>
+    </DiagnosticRowMenu>
   );
 }
 
@@ -153,7 +139,7 @@ type InactiveChildRowProps = {
 
 export function InactiveChildRow({
   row,
-  diagnosticMenus,
+  diagnosticNavigation,
   aliases,
   tagDefs,
   modTags,
@@ -176,8 +162,10 @@ export function InactiveChildRow({
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: row.id });
   const sourceKey = row.child.identity.sourceKey;
   return (
-    <ContextMenu>
-      <ContextMenuTrigger asChild>
+    <DiagnosticRowMenu
+      target={{ kind: 'mod', identity: row.child.identity }}
+      navigation={diagnosticNavigation}
+      trigger={
         <div
           ref={setNodeRef}
           onPointerEnter={() => onWarmFileInfo(sourceKey)}
@@ -204,9 +192,9 @@ export function InactiveChildRow({
             ) : null}
           </button>
         </div>
-      </ContextMenuTrigger>
+      }
+    >
       <InactiveChildMenu
-        diagnosticMenus={diagnosticMenus}
         row={row}
         sourceKey={sourceKey}
         onAddActive={onAddActive}
@@ -223,7 +211,7 @@ export function InactiveChildRow({
         onDeleteTag={onDeleteTag}
         onReorderModTags={onReorderModTags}
       />
-    </ContextMenu>
+    </DiagnosticRowMenu>
   );
 }
 

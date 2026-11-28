@@ -2,12 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { createInstance } from 'i18next';
 import en from '@/i18n/locales/en.json';
 import zhCN from '@/i18n/locales/zh-CN.json';
-import type { DiagnosticDto, ModMetadataDto } from '@/commands';
-import {
-  formatDiagnosticMessage,
-  formatDiagnosticLocation,
-  formatPackageLabel,
-} from '@/domain/diagnostics/messages';
+import type { DiagnosticDto, DiagnosticSuppressionDto, ModMetadataDto } from '@/commands';
+import { formatPackageLabel, presentDiagnostic } from '@/domain/diagnostics/messages';
 
 function diagnostic(overrides: Partial<DiagnosticDto> = {}): DiagnosticDto {
   return {
@@ -58,76 +54,196 @@ function mod(id: string, name: string | null): ModMetadataDto {
   };
 }
 
-describe('diagnostic message formatting', () => {
-  it.each(['en', 'zh-CN'])('explains unsupported game versions in %s', async (locale) => {
-    const i18n = createInstance();
-    await i18n.init({
-      resources: { en: { translation: en }, 'zh-CN': { translation: zhCN } },
-      lng: locale,
-      interpolation: { escapeValue: false },
-    });
+async function translator(locale = 'en') {
+  const i18n = createInstance();
+  await i18n.init({
+    resources: { en: { translation: en }, 'zh-CN': { translation: zhCN } },
+    lng: locale,
+    interpolation: { escapeValue: false },
+  });
+  return i18n.t;
+}
+
+function suppression(overrides: Partial<DiagnosticSuppressionDto>): DiagnosticSuppressionDto {
+  return {
+    key: 'saved-rule',
+    code: 'gameVersionUnsupported',
+    params: {},
+    relatedPackages: ['older.mod'],
+    sourceKeys: [],
+    gameVersion: '1.7',
+    ...overrides,
+  };
+}
+
+describe('game version diagnosis', () => {
+  it.each([
+    ['en', 'Unsupported on current version 1.7'],
+    ['zh-CN', '不适配当前版本 1.7'],
+  ])('uses major and minor versions in %s', async (locale, summary) => {
+    const t = await translator(locale);
+    const mods = new Map([['older.mod', mod('older.mod', 'Older Mod')]]);
     const mismatch = diagnostic({
       code: 'gameVersionUnsupported',
       params: {
-        packageId: 'missing.mod',
-        gameVersion: '1.6.4633 rev123',
-        supportedVersions: '1.4, 1.5',
+        packageId: 'older.mod',
+        gameVersion: '1.7.4633 rev123',
+        supportedVersions: '1.5.812 rev40, 1.5, 1.6',
       },
+      relatedPackages: ['older.mod'],
     });
-    const message = formatDiagnosticMessage(
-      mismatch,
-      i18n.t.bind(i18n),
-      new Map([['missing.mod', mod('missing.mod', 'Older Mod')]]),
-    );
-    expect(message).toContain('Older Mod (missing.mod)');
-    expect(message).toContain('1.6.4633 rev123');
-    expect(message).toContain('1.4, 1.5');
-    expect(message).not.toContain('{{');
-    expect(message).not.toBe(mismatch.message);
+    const presentation = presentDiagnostic(mismatch, t, mods);
+    expect(presentation.summary).toBe(summary);
+    expect(presentation.subject).toEqual({ packageId: 'older.mod', label: 'Older Mod' });
+    expect(presentation.details.map(({ value }) => value)).toContain('1.5, 1.6');
+    expect(presentDiagnostic(suppression({}), t, mods).summary).toBe(summary);
   });
+});
 
-  it('uses translated diagnostic templates with params', () => {
-    const t = (key: string, params?: Record<string, string>) =>
-      key === 'diagnostics.configModMissing' ? `Missing from catalog: ${params?.packageId}` : key;
+describe('mod relationship diagnostics', () => {
+  it.each(['orderViolationLoadAfter', 'orderViolationLoadBefore'] as const)(
+    'keeps the prerequisite first for %s',
+    async (code) => {
+      const t = await translator();
+      const mods = new Map([
+        ['aaa.later', mod('aaa.later', 'Later')],
+        ['zzz.first', mod('zzz.first', 'First')],
+      ]);
+      const item = diagnostic({
+        code,
+        params: {
+          packageId: 'aaa.later',
+          targetPackageId: 'zzz.first',
+          rule: code === 'orderViolationLoadAfter' ? 'loadAfter' : 'loadBefore',
+        },
+        relatedPackages: ['aaa.later', 'zzz.first'],
+      });
+      const presentation = presentDiagnostic(item, t, mods);
+      expect(presentation.summary).toBe('First must load before Later');
+      expect(presentation.details).toContainEqual(
+        expect.objectContaining({ label: 'Rule', value: item.params.rule }),
+      );
+    },
+  );
 
-    expect(formatDiagnosticMessage(diagnostic(), t)).toBe('Missing from catalog: missing.mod');
-  });
-
-  it('falls back to backend message when translation is missing', () => {
-    const t = (key: string) => key;
-
-    expect(formatDiagnosticMessage(diagnostic(), t)).toBe(
-      'Mod in config but not installed: missing.mod',
-    );
-  });
-
-  it('formats path, xml path, and line/column location details', () => {
-    expect(formatDiagnosticLocation(diagnostic())).toBe(
-      'ModsConfig.xml /ModsConfigData/activeMods/li[2] 4:9',
-    );
-  });
-
-  it('enriches packageId params with mod names when modByPackageId is provided', () => {
-    const t = (key: string, params?: Record<string, string>) =>
-      key === 'diagnostics.configModMissing' ? `Missing: ${params?.packageId}` : key;
-    const modByPackageId = new Map([['missing.mod', mod('missing.mod', 'Cool Mod')]]);
-
-    expect(formatDiagnosticMessage(diagnostic(), t, modByPackageId)).toBe(
-      'Missing: Cool Mod (missing.mod)',
-    );
-  });
-
-  it('leaves non-packageId params untouched when enriching', () => {
-    const t = (key: string, params?: Record<string, string>) =>
-      key === 'diagnostics.sourceReadFailed' ? `Read error for ${params?.sourceKey}` : key;
-    const modByPackageId = new Map([['key.bad', mod('key.bad', 'Should Not Appear')]]);
-    const diag = diagnostic({
-      code: 'sourceReadFailed',
-      params: { sourceKey: 'key.bad' },
-      relatedPackages: [],
+  it('does not infer a relationship direction from a saved rule with only sorted IDs', async () => {
+    const t = await translator();
+    const saved = suppression({
+      code: 'dependencyMissing',
+      relatedPackages: ['aaa.required', 'zzz.dependent'],
     });
+    const presentation = presentDiagnostic(saved, t, new Map());
+    expect(presentation.summary).toBe('Missing dependency');
+    expect(presentation.details).toContainEqual(
+      expect.objectContaining({ label: 'Package IDs', value: 'aaa.required, zzz.dependent' }),
+    );
+  });
 
-    expect(formatDiagnosticMessage(diag, t, modByPackageId)).toBe('Read error for key.bad');
+  it('describes a saved cycle with mod names in the original edge order', async () => {
+    const t = await translator('zh-CN');
+    const mods = new Map([
+      ['aaa.mod', mod('aaa.mod', 'Alpha')],
+      ['bbb.mod', mod('bbb.mod', 'Beta')],
+      ['ccc.mod', mod('ccc.mod', 'Gamma')],
+    ]);
+    const cycle = presentDiagnostic(
+      suppression({
+        code: 'circularDependency',
+        params: { cycle: 'aaa.mod -> ccc.mod -> bbb.mod -> aaa.mod' },
+        relatedPackages: ['aaa.mod', 'bbb.mod', 'ccc.mod'],
+      }),
+      t,
+      mods,
+    );
+    expect(cycle.summary).toBe('循环依赖涉及 Alpha、Gamma 等 3 个模组');
+    expect(cycle.details).toContainEqual(
+      expect.objectContaining({ label: '循环顺序', value: 'Alpha → Gamma → Beta → Alpha' }),
+    );
+  });
+});
+
+describe('installation diagnostics', () => {
+  it('keeps used and shadowed paths with their copy roles', async () => {
+    const t = await translator('zh-CN');
+    const loaded = 'D:\\Mods\\Older, Expanded';
+    const shadowed = 'D:\\Workshop\\12345';
+    const location = (sourceKey: string) => ({
+      sourceKey,
+      path: sourceKey + '\\About\\About.xml',
+      xmlPath: '/ModMetaData/packageId',
+      line: null,
+      col: null,
+      byteOffset: null,
+    });
+    const duplicate = diagnostic({
+      code: 'packageIdDuplicate',
+      params: { packageId: 'older.mod', usedPath: loaded, shadowedPaths: shadowed },
+      relatedPackages: ['older.mod'],
+      location: location(loaded),
+      relatedLocations: [location(shadowed)],
+    });
+    const mods = new Map([['older.mod', mod('older.mod', 'Older Mod')]]);
+    const current = presentDiagnostic(duplicate, t, mods);
+    expect(current.summary).toBe('发现 2 个安装副本');
+    expect(current.subject?.label).toBe('Older Mod');
+    expect(current.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: '加载的副本',
+          value: expect.stringContaining(location(loaded).path),
+        }),
+        expect.objectContaining({
+          label: '被忽略的副本',
+          value: expect.stringContaining(location(shadowed).path),
+        }),
+      ]),
+    );
+    const saved = presentDiagnostic(
+      suppression({
+        code: duplicate.code,
+        params: duplicate.params,
+        gameVersion: null,
+        sourceKeys: [loaded, shadowed],
+      }),
+      t,
+      mods,
+    );
+    expect(saved.summary).toBe(current.summary);
+    expect(saved.details).toContainEqual(
+      expect.objectContaining({ label: '加载的副本', value: loaded }),
+    );
+  });
+
+  it('keeps the source folder in the summary and parser facts in details', async () => {
+    const t = await translator('zh-CN');
+    const sourceKey = 'D:\\RimWorld\\Mods\\Broken Mod';
+    const parsed = presentDiagnostic(
+      diagnostic({
+        code: 'xmlMalformed',
+        location: {
+          sourceKey,
+          path: sourceKey + '\\About\\About.xml',
+          xmlPath: '/ModMetaData',
+          line: 4,
+          col: 9,
+          byteOffset: 88,
+        },
+        params: { sourceKey, error: 'Unexpected closing tag' },
+        relatedPackages: [],
+      }),
+      t,
+      new Map(),
+    );
+    expect(parsed.summary).toBe('无法解析 About.xml（Broken Mod）');
+    expect(parsed.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: '原因', value: 'Unexpected closing tag' }),
+        expect.objectContaining({
+          label: '位置',
+          value: expect.stringMatching(/About\.xml.*\/ModMetaData.*4:9/s),
+        }),
+      ]),
+    );
   });
 });
 

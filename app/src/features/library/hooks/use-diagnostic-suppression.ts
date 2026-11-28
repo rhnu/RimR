@@ -39,9 +39,15 @@ export function useDiagnosticSuppressionActions(ready: boolean) {
       pending: isPending,
       ready,
       suppress: (items: DiagnosticSuppressionDto[]) =>
-        void change(items, false).catch(() => undefined),
+        change(items, false).then(
+          () => true,
+          () => false,
+        ),
       restore: (items: DiagnosticSuppressionDto[]) =>
-        void change(items, true).catch(() => undefined),
+        change(items, true).then(
+          () => true,
+          () => false,
+        ),
     }),
     [change, isPending, ready],
   );

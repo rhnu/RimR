@@ -1,13 +1,30 @@
-import type { ModIdentityDto, ModListEntryDto, ModMetadataDto } from '@/commands';
+import type { DisplayAliasDto, ModIdentityDto, ModListEntryDto, ModMetadataDto } from '@/commands';
 import { entryDiagnosticTargets, type DiagnosticState } from '@/domain/diagnostics/suppression';
 import { catalogItemKey } from '@/domain/mods/catalog';
-import { identityForMod, resolveSourceKey } from '@/domain/mods/identity';
+import {
+  displayName,
+  identityForMod,
+  labelForIdentity,
+  resolveSourceKey,
+} from '@/domain/mods/identity';
 
 export type OrderDiagnosticTarget =
   | { kind: 'entry'; entry: ModListEntryDto }
   | { kind: 'mod'; identity: ModIdentityDto }
   | { kind: 'source'; identity: ModIdentityDto }
   | { kind: 'catalog'; mod: ModMetadataDto };
+
+export type OrderDiagnosticScope =
+  | { kind: 'mod'; name: string; identities: [ModIdentityDto] }
+  | { kind: 'selection'; identities: ModIdentityDto[] }
+  | { kind: 'group'; name: string; identities: ModIdentityDto[] };
+
+type DiagnosticSelection = {
+  entryIds: Set<string>;
+  catalogKeys: Set<string>;
+  entries: ModListEntryDto[];
+  catalog: Map<string, ModMetadataDto>;
+};
 
 export function createDiagnosticTargets(
   diagnostics: DiagnosticState,
@@ -28,35 +45,44 @@ export function createDiagnosticTargets(
     );
   }
 
+  function multiSelectedIdentities(target: OrderDiagnosticTarget, selected: DiagnosticSelection) {
+    if (target.kind === 'entry' && selected.entryIds.has(target.entry.id)) {
+      const entries = selected.entries.filter(
+        (entry) => entry.kind !== 'separator' && selected.entryIds.has(entry.id),
+      );
+      return entries.length > 1 ? installedIdentities(entries.flatMap(entryDiagnosticTargets)) : [];
+    }
+    if (target.kind === 'catalog' && selected.catalogKeys.has(catalogItemKey(target.mod))) {
+      const identities = [...selected.catalogKeys].flatMap((key) => {
+        const mod = selected.catalog.get(key);
+        return mod ? [identityForMod(mod)] : [];
+      });
+      return identities.length > 1 ? identities : [];
+    }
+    return [];
+  }
+
   return {
     forTarget: (target: OrderDiagnosticTarget) => diagnostics.forTargets(identitiesFor(target)),
-    menuForTarget(
+    forScope: (scope: OrderDiagnosticScope) => diagnostics.forTargets(scope.identities),
+    scopeForTarget(
       target: OrderDiagnosticTarget,
-      selected: {
-        entryIds: Set<string>;
-        catalogKeys: Set<string>;
-        entries: ModListEntryDto[];
-        catalog: Map<string, ModMetadataDto>;
-      },
-    ) {
-      if (target.kind === 'entry' && selected.entryIds.has(target.entry.id)) {
-        return diagnostics.menuForTargets(
-          installedIdentities(
-            selected.entries
-              .filter((entry) => selected.entryIds.has(entry.id))
-              .flatMap(entryDiagnosticTargets),
-          ),
-        );
+      selected: DiagnosticSelection,
+      aliases: DisplayAliasDto[],
+    ): OrderDiagnosticScope | null {
+      if (target.kind === 'entry' && target.entry.kind === 'separator') return null;
+      const selection = multiSelectedIdentities(target, selected);
+      if (selection.length > 0) return { kind: 'selection', identities: selection };
+      if (target.kind === 'entry' && target.entry.kind === 'group') {
+        return { kind: 'group', name: target.entry.name, identities: identitiesFor(target) };
       }
-      if (target.kind === 'catalog' && selected.catalogKeys.has(catalogItemKey(target.mod))) {
-        return diagnostics.menuForTargets(
-          [...selected.catalogKeys].flatMap((key) => {
-            const mod = selected.catalog.get(key);
-            return mod ? [identityForMod(mod)] : [];
-          }),
-        );
-      }
-      return diagnostics.menuForTargets(identitiesFor(target));
+      const [identity] = identitiesFor(target);
+      if (!identity) return null;
+      const name =
+        target.kind === 'catalog'
+          ? displayName(target.mod, aliases)
+          : labelForIdentity(identity, aliases, modByPackageId);
+      return { kind: 'mod', name, identities: [identity] };
     },
   };
 }

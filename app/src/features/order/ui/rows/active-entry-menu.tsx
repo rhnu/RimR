@@ -1,12 +1,7 @@
-import { DiagnosticMenuItems } from '../diagnostic-menu-items';
 import { Layers, Pencil, SplitSquareHorizontal, Trash2, Ungroup } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { ModListEntryDto } from '@/commands';
-import {
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-} from '@/components/ui/context-menu';
+import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu';
 import { OpenModActionsMenuItems } from '@/features/order/ui/open-mod-actions-menu-items';
 import { TagMenuItems } from '@/components/mod/tags/tag-menu-items';
 import { tagIdsForIdentities } from '@/domain/mods/tags';
@@ -16,7 +11,6 @@ import type { ActiveEntryRowProps } from '@/features/order/ui/rows/row-types';
 type ActiveEntryMenuProps = Pick<
   ActiveEntryRowProps,
   | 'canCreateGroup'
-  | 'diagnosticMenus'
   | 'onRemove'
   | 'onUngroup'
   | 'onCreateGroup'
@@ -43,18 +37,14 @@ type ActiveEntryMenuProps = Pick<
 export function ActiveEntryMenu(props: ActiveEntryMenuProps) {
   const { t } = useTranslation();
   return (
-    <ContextMenuContent>
+    <>
       <EntryActions {...props} />
-      <DiagnosticMenuItems
-        target={{ kind: 'entry', entry: props.entry }}
-        menus={props.diagnosticMenus}
-      />
       <ContextMenuSeparator />
       <ContextMenuItem onSelect={() => props.onAddSeparator(props.entry)}>
         <SplitSquareHorizontal className="size-4" />
         {t('order.context.addSeparatorAbove')}
       </ContextMenuItem>
-    </ContextMenuContent>
+    </>
   );
 }
 

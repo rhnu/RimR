@@ -1,4 +1,3 @@
-import { DiagnosticMenuItems, type RowDiagnosticMenus } from './diagnostic-menu-items';
 import { Pencil, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type {
@@ -9,7 +8,7 @@ import type {
   SteamWorkshopOpenTarget,
   TagDefDto,
 } from '@/commands';
-import { ContextMenuContent, ContextMenuItem } from '@/components/ui/context-menu';
+import { ContextMenuItem } from '@/components/ui/context-menu';
 import { OpenModActionsMenuItems } from '@/features/order/ui/open-mod-actions-menu-items';
 import { TagMenuItems } from '@/components/mod/tags/tag-menu-items';
 import { tagIdsForIdentities } from '@/domain/mods/tags';
@@ -29,7 +28,6 @@ type TagMenuProps = {
 };
 
 export function InactiveEntryMenu({
-  diagnosticMenus,
   entry,
   sourceKey,
   onRenameGroup,
@@ -48,7 +46,6 @@ export function InactiveEntryMenu({
   onDeleteTag,
   onReorderModTags,
 }: {
-  diagnosticMenus: RowDiagnosticMenus;
   entry: ModListEntryDto;
   sourceKey: string | null | undefined;
   onRenameGroup: (entryId: string, name: string) => void;
@@ -60,8 +57,7 @@ export function InactiveEntryMenu({
 } & TagMenuProps) {
   const { t } = useTranslation();
   return (
-    <ContextMenuContent>
-      <DiagnosticMenuItems target={{ kind: 'entry', entry }} menus={diagnosticMenus} />
+    <>
       <ContextMenuItem onSelect={() => onAddActive(entry.id)}>
         <Plus className="size-4" />
         {t('order.context.addToActive')}
@@ -91,12 +87,11 @@ export function InactiveEntryMenu({
           onReorderModTags={onReorderModTags}
         />
       ) : null}
-    </ContextMenuContent>
+    </>
   );
 }
 
 export function InactiveChildMenu({
-  diagnosticMenus,
   row,
   sourceKey,
   onAddActive,
@@ -113,7 +108,6 @@ export function InactiveChildMenu({
   onDeleteTag,
   onReorderModTags,
 }: {
-  diagnosticMenus: RowDiagnosticMenus;
   row: Extract<InactiveRenderRow, { kind: 'child' }>;
   sourceKey: string | null | undefined;
   onAddActive: (groupId: string, childId: string) => void;
@@ -124,11 +118,7 @@ export function InactiveChildMenu({
 } & TagMenuProps) {
   const { t } = useTranslation();
   return (
-    <ContextMenuContent>
-      <DiagnosticMenuItems
-        target={{ kind: 'mod', identity: row.child.identity }}
-        menus={diagnosticMenus}
-      />
+    <>
       <ContextMenuItem onSelect={() => onAddActive(row.groupId, row.child.id)}>
         <Plus className="size-4" />
         {t('order.context.addToActive')}
@@ -150,7 +140,7 @@ export function InactiveChildMenu({
         onDeleteTag={onDeleteTag}
         onReorderModTags={onReorderModTags}
       />
-    </ContextMenuContent>
+    </>
   );
 }
 

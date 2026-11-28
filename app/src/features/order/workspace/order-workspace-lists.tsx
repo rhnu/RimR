@@ -10,8 +10,8 @@ import {
 } from '../model';
 import type { createDiagnosticTargets, OrderDiagnosticTarget } from '../model/diagnostic-targets';
 import { ActiveModsPanel } from '../ui/active-mods-panel';
+import type { RowDiagnosticNavigation } from '../ui/diagnostic-row-menu';
 import { InactiveModsPanel } from '../ui/inactive-mods-panel';
-import type { DiagnosticActions } from '../ui/diagnostic-report';
 import { useOpenHandlers } from './workspace-hooks';
 import type {
   OrderDerived,
@@ -41,7 +41,7 @@ type OrderListsProps = {
   edit: OrderEditActions;
   dropIndicatorStore: OrderDrag['dropIndicatorStore'];
   diagnostics: ReturnType<typeof createDiagnosticTargets>;
-  diagnosticActions: DiagnosticActions;
+  onOpenDiagnosticScope: RowDiagnosticNavigation['openScope'];
 };
 
 export function OrderWorkspaceLists(props: OrderListsProps) {
@@ -67,24 +67,29 @@ function useListRows({
   derived,
   preview,
   diagnostics,
-  diagnosticActions,
+  onOpenDiagnosticScope,
 }: OrderListsProps) {
   const { aliases, tagDefs, modTags } = settings;
   const { selectedEntryIds, selectedInactiveCatalogKeys } = selection;
   const { modByPackageId, modByCatalogKey } = derived;
   const open = useOpenHandlers();
   const tagCommands = useTagCommands();
-  const diagnosticMenus = useMemo(
+  const diagnosticNavigation = useMemo<RowDiagnosticNavigation>(
     () => ({
-      forTarget: (target: OrderDiagnosticTarget) =>
-        diagnostics.menuForTarget(target, {
-          entryIds: selectedEntryIds,
-          catalogKeys: selectedInactiveCatalogKeys,
-          entries,
-          catalog: modByCatalogKey,
-        }),
-      actions: diagnosticActions,
-      modByPackageId,
+      scopeForTarget: (target: OrderDiagnosticTarget) => {
+        const scope = diagnostics.scopeForTarget(
+          target,
+          {
+            entryIds: selectedEntryIds,
+            catalogKeys: selectedInactiveCatalogKeys,
+            entries,
+            catalog: modByCatalogKey,
+          },
+          aliases,
+        );
+        return scope && diagnostics.forScope(scope).length > 0 ? scope : null;
+      },
+      openScope: onOpenDiagnosticScope,
     }),
     [
       diagnostics,
@@ -92,8 +97,8 @@ function useListRows({
       selectedInactiveCatalogKeys,
       entries,
       modByCatalogKey,
-      modByPackageId,
-      diagnosticActions,
+      aliases,
+      onOpenDiagnosticScope,
     ],
   );
   return {
@@ -102,7 +107,7 @@ function useListRows({
     modTags,
     modByPackageId,
     diagnosticsForTarget: diagnostics.forTarget,
-    diagnosticMenus,
+    diagnosticNavigation,
     onWarmFileInfo: preview.warmModPreview,
     onOpenModFolder: open.handleOpenModFolder,
     onOpenSteamWorkshopPage: open.handleOpenSteamWorkshopPage,

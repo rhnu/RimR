@@ -1,6 +1,7 @@
-import { useMemo, useState, type ComponentProps } from 'react';
+import { CircleDashed, EyeOff, RotateCcw } from 'lucide-react';
+import { useId, useLayoutEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { DiagnosticSuppressionDto } from '@/commands';
+import type { DiagnosticDto, DiagnosticSuppressionDto } from '@/commands';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -11,10 +12,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { FilterInput } from '@/components/ui/filter-input';
+import { Col, Row } from '@/components/ui/layout';
 import { collectDiagnostics, filterSuppressions } from '@/domain/diagnostics/suppression';
-import { formatDiagnosticMessage, formatPackageLabel } from '@/domain/diagnostics/messages';
+import { presentDiagnostic } from '@/domain/diagnostics/messages';
 import { primaryModsByPackageId } from '@/domain/mods/catalog';
 import { flattenModListEntries } from '@/domain/mod-list/normalize';
+import { DiagnosticDetails } from '@/features/diagnostics/diagnostic-details';
 import { useCatalogSnapshot } from '@/queries/catalog';
 import { useValidationStore } from '@/stores/validation';
 import { useWorkspaceStore } from '@/stores/workspace-store';
@@ -53,10 +56,38 @@ function SuppressionManager() {
   const { t } = useTranslation();
   const view = useSuppressionManagerState();
   const { commands, visible, selectedRules, setSelected } = view;
+  const managerRef = useRef<HTMLDivElement>(null);
+  const focusedRestore = useRef<HTMLButtonElement | null>(null);
+
+  useLayoutEffect(() => {
+    const action = focusedRestore.current;
+    const manager = managerRef.current;
+    if (!action || !manager || commands.pending) return;
+    if (action.isConnected && !action.disabled) return;
+    focusedRestore.current = null;
+    const { activeElement, body } = manager.ownerDocument;
+    if (activeElement !== action && activeElement !== body) return;
+    const next = manager.querySelector<HTMLButtonElement>('button[data-restore-rule]');
+    (next ?? manager.querySelector('input'))?.focus();
+  }, [commands.pending, visible, selectedRules.length]);
+
+  function restore(rules: DiagnosticSuppressionDto[], button: HTMLButtonElement) {
+    if (commands.pending || rules.length === 0) return;
+    focusedRestore.current = button.ownerDocument.activeElement === button ? button : null;
+    void commands.restore(rules).then((restored) => {
+      if (!restored) {
+        if (focusedRestore.current === button) focusedRestore.current = null;
+        return;
+      }
+      const keys = new Set(rules.map((rule) => rule.key));
+      setSelected((current) => new Set([...current].filter((key) => !keys.has(key))));
+    });
+  }
+
   return (
-    <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
+    <Col ref={managerRef} className="overflow-y-auto">
       <SuppressionFilters view={view} />
-      <div className="max-h-[50vh] min-h-20 overflow-auto border border-border">
+      <div className="min-h-20 max-h-[50vh] overflow-y-auto border border-border">
         {!commands.ready ? (
           <p className="p-3 text-xs text-muted-foreground">{t('order.state.modListNotLoaded')}</p>
         ) : visible.length === 0 ? (
@@ -64,11 +95,16 @@ function SuppressionManager() {
             {t(commands.rules.length === 0 ? 'suppression.empty' : 'suppression.noMatches')}
           </p>
         ) : (
-          visible.map((rule) => <SuppressionRuleRow key={rule.key} rule={rule} view={view} />)
+          <ul className="divide-y divide-border">
+            {visible.map((rule) => (
+              <SuppressionRuleRow key={rule.key} rule={rule} view={view} onRestore={restore} />
+            ))}
+          </ul>
         )}
       </div>
-      <div className="flex flex-wrap gap-2">
+      <Row wrap>
         <Button
+          type="button"
           size="sm"
           variant="outline"
           disabled={visible.length === 0}
@@ -77,15 +113,18 @@ function SuppressionManager() {
           {t('suppression.selectFiltered')}
         </Button>
         <Button
+          type="button"
           size="sm"
           variant="outline"
-          disabled={commands.pending || selectedRules.length === 0}
-          onClick={() => commands.restore(selectedRules)}
+          disabled={selectedRules.length === 0}
+          aria-disabled={commands.pending || undefined}
+          className="aria-disabled:opacity-50"
+          onClick={(event) => restore(selectedRules, event.currentTarget)}
         >
           {t('suppression.restoreSelected', { count: selectedRules.length })}
         </Button>
-      </div>
-    </div>
+      </Row>
+    </Col>
   );
 }
 
@@ -101,10 +140,13 @@ function useSuppressionManagerState() {
       : null;
   const currentValidation =
     validation.inputKey === inputKey && validation.phase === 'ready' ? validation.result : null;
-  const diagnostics = collectDiagnostics(scan.data?.diagnostics ?? [], currentValidation);
-  const currentKeys = new Set(
-    diagnostics.flatMap((item) => (item.suppression ? [item.suppression.key] : [])),
-  );
+  const currentDiagnostics = useMemo(() => {
+    const byRuleKey = new Map<string, DiagnosticDto>();
+    for (const diagnostic of collectDiagnostics(scan.data?.diagnostics ?? [], currentValidation)) {
+      if (diagnostic.suppression) byRuleKey.set(diagnostic.suppression.key, diagnostic);
+    }
+    return byRuleKey;
+  }, [scan.data, currentValidation]);
   const modByPackageId = useMemo(
     () => primaryModsByPackageId(scan.data?.catalog.mods ?? []),
     [scan.data],
@@ -113,7 +155,10 @@ function useSuppressionManagerState() {
   const [code, setCode] = useState('');
   const [version, setVersion] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const visible = filterSuppressions(commands.rules, query, code, version, modByPackageId);
+  const visible = useMemo(
+    () => filterSuppressions(commands.rules, query, code, version, modByPackageId),
+    [commands.rules, query, code, version, modByPackageId],
+  );
   const selectedRules = visible.filter((rule) => selected.has(rule.key));
   const codes = [...new Set(commands.rules.map((rule) => rule.code))];
   const versions = [
@@ -121,7 +166,7 @@ function useSuppressionManagerState() {
   ].sort();
   return {
     commands,
-    currentKeys,
+    currentDiagnostics,
     modByPackageId,
     query,
     setQuery,
@@ -146,7 +191,7 @@ function SuppressionFilters({ view }: { view: ManagerView }) {
   return (
     <>
       <FilterInput value={query} onValueChange={setQuery} label={t('suppression.search')} />
-      <div className="flex flex-wrap items-center gap-2">
+      <Row wrap>
         <select
           value={code}
           onChange={(event) => setCode(event.target.value)}
@@ -177,62 +222,81 @@ function SuppressionFilters({ view }: { view: ManagerView }) {
         <span className="text-xs text-muted-foreground">
           {t('suppression.ruleCount', { count: visible.length })}
         </span>
-      </div>
+      </Row>
     </>
   );
 }
 
-function SuppressionRuleRow({ rule, view }: { rule: DiagnosticSuppressionDto; view: ManagerView }) {
+function SuppressionRuleRow({
+  rule,
+  view,
+  onRestore,
+}: {
+  rule: DiagnosticSuppressionDto;
+  view: ManagerView;
+  onRestore: (rules: DiagnosticSuppressionDto[], button: HTMLButtonElement) => void;
+}) {
   const { t } = useTranslation();
-  const { selected, setSelected, currentKeys, modByPackageId, commands } = view;
+  const id = useId();
+  const { selected, setSelected, currentDiagnostics, modByPackageId, commands } = view;
+  const current = currentDiagnostics.get(rule.key);
+  const status = t(current ? 'suppression.matching' : 'suppression.dormant');
+  const StatusIcon = current ? EyeOff : CircleDashed;
+  const { subject, summary, details } = presentDiagnostic(current ?? rule, t, modByPackageId);
+  const messageId = `${id}-message`;
+  const restoreLabel = t('suppression.restoreOne');
+  const ruleDetails = [
+    ...details,
+    {
+      label: t('suppression.versionFilter'),
+      value: rule.gameVersion ?? t('suppression.anyVersion'),
+    },
+  ];
   return (
-    <label
-      key={rule.key}
-      className="flex items-start gap-2 border-b border-border p-2 text-xs last:border-b-0"
-    >
-      <input
-        type="checkbox"
-        className="mt-0.5 accent-primary"
-        checked={selected.has(rule.key)}
-        onChange={(event) =>
-          setSelected((current) => {
-            const next = new Set(current);
-            if (event.target.checked) next.add(rule.key);
-            else next.delete(rule.key);
-            return next;
-          })
-        }
-      />
-      <span className="min-w-0 flex-1 space-y-1">
-        <span className="block break-words">
-          {formatDiagnosticMessage(suppressionMessage(rule), t, modByPackageId)}
+    <Row asChild className="min-h-8 px-2 py-0.5 text-xs">
+      <li>
+        <input
+          id={id}
+          type="checkbox"
+          aria-describedby={`${id}-status`}
+          className="shrink-0 accent-primary focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          checked={selected.has(rule.key)}
+          onChange={(event) => {
+            const checked = event.currentTarget.checked;
+            setSelected((current) => {
+              const next = new Set(current);
+              if (checked) next.add(rule.key);
+              else next.delete(rule.key);
+              return next;
+            });
+          }}
+        />
+        <span title={status} className="shrink-0 text-muted-foreground">
+          <StatusIcon aria-hidden="true" className="size-4" />
+          <span id={`${id}-status`} className="sr-only">
+            {status}
+          </span>
         </span>
-        <span className="block break-all text-muted-foreground">
-          {[
-            ...rule.relatedPackages.map((pkg) => formatPackageLabel(pkg, modByPackageId)),
-            ...rule.sourceKeys,
-          ].join(' · ')}
-        </span>
-        <span className="block text-muted-foreground">
-          {t(`suppression.types.${rule.code}`)} · {rule.gameVersion ?? t('suppression.anyVersion')}{' '}
-          · {t(currentKeys.has(rule.key) ? 'suppression.matching' : 'suppression.dormant')}
-        </span>
-      </span>
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={commands.pending}
-        onClick={(event) => {
-          event.preventDefault();
-          commands.restore([rule]);
-        }}
-      >
-        {t('suppression.restore')}
-      </Button>
-    </label>
+        <label htmlFor={id} id={messageId} className="min-w-0 flex-1 wrap-anywhere">
+          {subject ? <strong className="mr-1 font-medium">{subject.label} </strong> : null}
+          {summary}
+        </label>
+        <DiagnosticDetails details={ruleDetails} describedBy={messageId} />
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          aria-label={restoreLabel}
+          aria-disabled={commands.pending || undefined}
+          aria-describedby={messageId}
+          title={restoreLabel}
+          data-restore-rule
+          className="size-7 shrink-0 text-muted-foreground aria-disabled:opacity-50"
+          onClick={(event) => onRestore([rule], event.currentTarget)}
+        >
+          <RotateCcw aria-hidden="true" />
+        </Button>
+      </li>
+    </Row>
   );
-}
-
-function suppressionMessage(rule: DiagnosticSuppressionDto) {
-  return { code: rule.code, params: rule.params, message: rule.code };
 }
