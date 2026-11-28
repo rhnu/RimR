@@ -1,4 +1,9 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{ErrorKind, Read},
+    path::PathBuf,
+};
 
 use rimr_core::SourceKind;
 use rimr_steam::{appworkshop_acf_path, parse_appworkshop_acf, workshop_file_id_from_mod_path};
@@ -33,7 +38,7 @@ impl AppState {
         tracing::info!(path = ?acf_path, "reading ACF file");
         let content = match tokio::fs::read_to_string(&acf_path).await {
             Ok(content) => content,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            Err(e) if e.kind() == ErrorKind::NotFound => {
                 tracing::info!(path = ?acf_path, "ACF file not found");
                 return Ok(SteamWorkshopLogDto {
                     entries: Vec::new(),
@@ -157,31 +162,34 @@ impl AppState {
             )
         })?;
 
-        let log_path = game_data_dir.join(source.file_name());
-
-        let (content, metadata) = tokio::task::spawn_blocking({
-            let log_path = log_path.clone();
-            move || -> std::io::Result<(String, std::fs::Metadata)> {
-                let content = std::fs::read_to_string(&log_path)?;
-                let metadata = std::fs::metadata(&log_path)?;
-                Ok((content, metadata))
-            }
+        let (log_path, content, metadata) = tokio::task::spawn_blocking(move || {
+            let file_name = source.file_name();
+            let mut log_path = game_data_dir.join("Logs").join(file_name);
+            let file = match File::open(&log_path) {
+                Err(error) if error.kind() == ErrorKind::NotFound => {
+                    log_path = game_data_dir.join(file_name);
+                    File::open(&log_path)
+                },
+                result => result,
+            };
+            let (content, metadata) = file
+                .and_then(|mut file| {
+                    let mut content = String::new();
+                    file.read_to_string(&mut content)?;
+                    Ok((content, file.metadata()?))
+                })
+                .map_err(|error| {
+                    let app_error = if error.kind() == ErrorKind::NotFound {
+                        AppError::new(AppErrorCode::PathInvalid, format!("{file_name} not found"))
+                    } else {
+                        AppError::new(AppErrorCode::SourceIo, "failed to read player log")
+                    };
+                    app_error.with_source(error).with_path(log_path.clone())
+                })?;
+            Ok::<_, AppError>((log_path, content, metadata))
         })
         .await
-        .map_err(|e| AppError::new(AppErrorCode::Internal, "operation failed").with_source(e))?
-        .map_err(|e| {
-            if e.kind() == std::io::ErrorKind::NotFound {
-                AppError::new(
-                    AppErrorCode::PathInvalid,
-                    format!("{} not found", source.file_name()),
-                )
-                .with_path(log_path.clone())
-            } else {
-                AppError::new(AppErrorCode::SourceIo, "operation failed")
-                    .with_source(e)
-                    .with_path(log_path.clone())
-            }
-        })?;
+        .map_err(|e| AppError::new(AppErrorCode::Internal, "operation failed").with_source(e))??;
 
         let file_size_bytes = metadata.len();
         let modified_at_ms = metadata
@@ -221,6 +229,7 @@ impl AppState {
         };
 
         tracing::info!(
+            path = ?log_path,
             total_lines = dto.total_lines,
             errors = dto.error_count,
             warnings = dto.warning_count,
