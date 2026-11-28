@@ -17,7 +17,8 @@ use crate::{
     error::{AppError, AppErrorCode, AppResult},
     mod_file_info,
     ports::ModSource,
-    source::{FsModSource, SourceRoots},
+    rules::ValidateOpts,
+    source::{FsModSource, SourceRoots, load_no_version_warning},
 };
 
 #[derive(Debug, Clone)]
@@ -48,6 +49,10 @@ impl AppState {
             ..crate::ScanOpts::default()
         };
         let mut report = crate::services::scan_mod_metadata(&source, &opts).await?;
+        let validation = ValidateOpts {
+            no_version_warning: load_no_version_warning(&report.catalog, &game_version).await,
+            game_version: Some(game_version),
+        };
 
         if version_unknown {
             report.diagnostics.push(rimr_core::Diagnostic::new(
@@ -64,9 +69,7 @@ impl AppState {
         );
         let mut state = self.write_state()?;
         state.generation += 1;
-        state
-            .workspace
-            .replace_catalog(report.catalog, game_version);
+        state.workspace.replace_catalog(report.catalog, validation);
         state.canonical_source_roots = Some(canonical_source_roots);
         state.mod_previews.clear();
         state.mod_folder_sizes.clear();

@@ -1,6 +1,9 @@
 use std::{error::Error, sync::Arc};
 
-use rimr_core::{LibrarySettings, ModListId, flatten_active_mods, mod_list_from_active_mods};
+use rimr_core::{
+    GameVersion, LibrarySettings, ModListId, NoVersionWarning, SourceFile, flatten_active_mods,
+    mod_list_from_active_mods,
+};
 use serde_json::json;
 
 use super::*;
@@ -23,7 +26,11 @@ fn order_validation_uses_version_published_with_catalog_and_refreshes_on_rescan(
         ));
         catalog
     };
-    session.replace_catalog(catalog(), GameVersion::parse("1.6.4633"));
+    let validation = |version| ValidateOpts {
+        game_version: Some(GameVersion::parse(version)),
+        ..ValidateOpts::default()
+    };
+    session.replace_catalog(catalog(), validation("1.6.4633"));
     // The version in loaded game configuration can be stale after an update.
     session.replace_game_config(ModsConfig {
         version: "1.5".into(),
@@ -36,7 +43,42 @@ fn order_validation_uses_version_published_with_catalog_and_refreshes_on_rescan(
     assert_eq!(result.report.warnings.len(), 1);
     assert_eq!(result.report.warnings[0].params["gameVersion"], "1.6.4633");
 
-    session.replace_catalog(catalog(), GameVersion::parse("1.5"));
+    let list_file = SourceFile::new(
+        None,
+        "installed/1.6/ModIdsToFix.xml",
+        b"<ModIdsToFix><li> Test.Versioned </li></ModIdsToFix>".to_vec(),
+    );
+    session.replace_catalog(
+        catalog(),
+        ValidateOpts {
+            no_version_warning: Some(NoVersionWarning::parse(&list_file).unwrap()),
+            ..validation("1.6.4633")
+        },
+    );
+    let covered = session
+        .validate_active_order(vec!["test.versioned".into()])
+        .unwrap()
+        .report;
+    assert!(covered.warnings.is_empty());
+    assert_eq!(covered.infos.len(), 1);
+    let info = &covered.infos[0];
+    assert_eq!(info.severity, rimr_core::Severity::Info);
+    assert_eq!(info.params["supportedVersions"], "1.5");
+    assert_eq!(info.related_locations[0].path, list_file.path);
+    assert_eq!(
+        info.suppression().unwrap().key,
+        result.report.warnings[0].suppression().unwrap().key
+    );
+
+    session.replace_catalog(catalog(), validation("1.7"));
+    let uncovered = session
+        .validate_active_order(vec!["test.versioned".into()])
+        .unwrap()
+        .report;
+    assert!(uncovered.infos.is_empty());
+    assert_eq!(uncovered.warnings.len(), 1);
+
+    session.replace_catalog(catalog(), validation("1.5"));
     assert!(
         session
             .validate_active_order(vec!["test.versioned".into()])
@@ -44,7 +86,7 @@ fn order_validation_uses_version_published_with_catalog_and_refreshes_on_rescan(
             .report
             .is_clean()
     );
-    session.replace_catalog(catalog(), GameVersion::unknown());
+    session.replace_catalog(catalog(), validation("Unknown"));
     assert!(
         session
             .validate_active_order(vec!["test.versioned".into()])
@@ -225,7 +267,7 @@ fn partial_session_publication_preserves_independent_state() {
     let original_config = config("original");
     let mut published = WorkspaceSession::default();
     published.replace_game_config(original_config.clone());
-    published.replace_catalog(ModCatalog::new(), GameVersion::unknown());
+    published.replace_catalog(ModCatalog::new(), ValidateOpts::default());
     assert_eq!(published.mods_config(), Some(&original_config));
     assert!(published.catalog().is_some());
     let updated_config = config("updated");

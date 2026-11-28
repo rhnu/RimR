@@ -4,10 +4,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    domain::{ActiveModList, GameVersion, ModCatalog, ModList, PackageId},
+    domain::{ActiveModList, ModCatalog, ModList, PackageId},
     error::{AppError, AppErrorCode, AppResult, RimrFileParseError},
     formats::ModsConfig,
     ports::Clock,
+    rules::ValidateOpts,
     services,
 };
 
@@ -16,7 +17,7 @@ pub const RIMR_FILE_FORMAT_VERSION: u32 = 3;
 /// Application-owned runtime state for a `RimR` workspace session.
 #[derive(Debug, Default)]
 pub struct WorkspaceSession {
-    catalog: Option<(ModCatalog, GameVersion)>,
+    catalog: Option<(ModCatalog, ValidateOpts)>,
     active_mods: Option<ActiveModList>,
     mods_config: Option<ModsConfig>,
 }
@@ -31,8 +32,8 @@ impl WorkspaceSession {
     pub fn mods_config(&self) -> Option<&ModsConfig> { self.mods_config.as_ref() }
 
     /// Publishes a completed scan without replacing loaded game state.
-    pub fn replace_catalog(&mut self, catalog: ModCatalog, game_version: GameVersion) {
-        self.catalog = Some((catalog, game_version));
+    pub fn replace_catalog(&mut self, catalog: ModCatalog, validation: ValidateOpts) {
+        self.catalog = Some((catalog, validation));
     }
 
     /// Publishes game state without replacing the latest catalog.
@@ -54,7 +55,7 @@ impl WorkspaceSession {
         &self,
         active_mods: Vec<String>,
     ) -> AppResult<crate::services::ValidateOrderResult> {
-        let (catalog, game_version) = self
+        let (catalog, validation) = self
             .catalog
             .as_ref()
             .ok_or_else(|| AppError::new(AppErrorCode::StateMissing, "catalog is not loaded"))?;
@@ -63,13 +64,7 @@ impl WorkspaceSession {
             .map(|package_id| PackageId::new(&package_id))
             .collect::<Vec<_>>();
         let list = ActiveModList::from_slice(&ids);
-        Ok(services::validate_order(
-            catalog,
-            &list,
-            &crate::rules::ValidateOpts {
-                game_version: Some(game_version.clone()),
-            },
-        ))
+        Ok(services::validate_order(catalog, &list, validation))
     }
 }
 

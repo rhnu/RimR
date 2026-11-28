@@ -33,6 +33,7 @@ pub fn validate_order(
     tracing::info!(
         warnings = report.warnings.len(),
         errors = report.errors.len(),
+        infos = report.infos.len(),
         "mod order validation complete"
     );
     ValidateOrderResult { report }

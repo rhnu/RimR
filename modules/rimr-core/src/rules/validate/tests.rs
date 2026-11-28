@@ -76,6 +76,7 @@ fn version_report(
         &build_load_order_graph(&catalog),
         &ValidateOpts {
             game_version: target.map(GameVersion::parse),
+            ..ValidateOpts::default()
         },
     )
 }
@@ -141,6 +142,7 @@ fn version_matching_compares_major_and_minor_and_uses_primary_copy() {
         &build_load_order_graph(&catalog),
         &ValidateOpts {
             game_version: Some(GameVersion::parse("1.6")),
+            ..ValidateOpts::default()
         },
     );
     assert!(report.warnings.is_empty());
@@ -422,6 +424,7 @@ fn relation_suppression_uses_target_game_context_and_distinguishes_force_rules()
             &build_load_order_graph(&catalog),
             &ValidateOpts {
                 game_version: version.map(GameVersion::parse),
+                ..ValidateOpts::default()
             },
         );
         report.warnings[0].suppression().unwrap().key

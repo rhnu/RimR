@@ -3,6 +3,7 @@
 use crate::{
     diagnostics::Diagnostic,
     domain::{ActiveModList, GameVersion, ModCatalog},
+    formats::NoVersionWarning,
     rules::{checks, graph::LoadOrderGraph},
 };
 
@@ -11,6 +12,8 @@ use crate::{
 pub struct ValidateOpts {
     /// Target version used when compiling this catalog; absent when unavailable.
     pub game_version: Option<GameVersion>,
+    /// Optional list read for the same target version as the catalog.
+    pub no_version_warning: Option<NoVersionWarning>,
 }
 
 /// Result of order validation: a collection of diagnostics.
@@ -62,10 +65,6 @@ pub fn validate_order(
     let mut warnings = checks::check_order_violations(list, graph);
     warnings.extend(checks::check_missing_dependencies(catalog, list));
     warnings.extend(checks::check_inactive_dependencies(catalog, list));
-    if let Some(version) = &opts.game_version {
-        warnings.extend(checks::check_game_versions(catalog, list, version));
-    }
-
     let mut errors = checks::check_active_missing(catalog, list);
     errors.extend(checks::check_cycles(graph, list));
     errors.extend(checks::check_incompatibles(catalog, list, graph));
@@ -76,6 +75,7 @@ pub fn validate_order(
         warnings,
         infos: Vec::new(),
     };
+    checks::check_game_versions(catalog, list, opts, &mut report);
     if let Some(version) = &opts.game_version {
         for diagnostic in report.errors.iter_mut().chain(&mut report.warnings) {
             diagnostic.set_suppression_game_version(version);
@@ -84,6 +84,7 @@ pub fn validate_order(
     tracing::info!(
         errors = report.errors.len(),
         warnings = report.warnings.len(),
+        infos = report.infos.len(),
         "order validation checks complete"
     );
     report

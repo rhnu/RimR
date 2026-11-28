@@ -8,8 +8,10 @@ use crate::{
 };
 
 mod game_version;
+mod no_version_warning;
 
 pub(crate) use game_version::detect_game_version;
+pub(crate) use no_version_warning::load_no_version_warning;
 
 #[derive(Debug, Clone)]
 pub struct SourceRoots {

@@ -21,8 +21,8 @@ pub use domain::{
 };
 pub use error::CoreError;
 pub use formats::{
-    CompileOpts, ModsConfig, compile_metadata, parse_about_xml, parse_mods_config,
-    parse_save_mod_ids, serialize_mods_config,
+    CompileOpts, ModsConfig, NoVersionWarning, NoVersionWarningParseError, compile_metadata,
+    parse_about_xml, parse_mods_config, parse_save_mod_ids, serialize_mods_config,
 };
 pub use ports::{ModFeatures, ModSourceEntry, ModSourceKey, SourceFile, SourceKind};
 pub use rules::{

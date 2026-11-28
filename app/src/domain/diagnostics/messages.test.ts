@@ -98,6 +98,33 @@ describe('game version diagnosis', () => {
     expect(presentation.details.map(({ value }) => value)).toContain('1.5, 1.6');
     expect(presentDiagnostic(suppression({}), t, mods).summary).toBe(summary);
   });
+
+  it.each([
+    ['en', 'Listed by No Version Warning for 1.7', 'No Version Warning list'],
+    ['zh-CN', 'No Version Warning 名单已收录（1.7）', 'No Version Warning 名单'],
+  ])(
+    'shows the local list and the declared versions in %s',
+    async (locale, summary, sourceLabel) => {
+      const t = await translator(locale);
+      const path = 'workshop/2599504692/1.7/ModIdsToFix.xml';
+      const presentation = presentDiagnostic(
+        diagnostic({
+          severity: 'info',
+          code: 'gameVersionUnsupported',
+          params: { packageId: 'older.mod', gameVersion: '1.7.5021', supportedVersions: '1.6' },
+          relatedPackages: ['older.mod'],
+          relatedLocations: [
+            { path, sourceKey: null, xmlPath: null, line: null, col: null, byteOffset: null },
+          ],
+        }),
+        t,
+        new Map(),
+      );
+      expect(presentation.summary).toBe(summary);
+      expect(presentation.details.map(({ value }) => value)).toContain('1.6');
+      expect(presentation.details).toContainEqual({ label: sourceLabel, value: path, mono: true });
+    },
+  );
 });
 
 describe('mod relationship diagnostics', () => {

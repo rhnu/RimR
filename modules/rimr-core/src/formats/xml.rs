@@ -82,10 +82,13 @@ pub fn read_text(reader: &mut Reader<&[u8]>) -> Result<Option<String>, XmlReadEr
 }
 
 /// Error from XML text reading.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum XmlReadError {
-    Xml(quick_xml::Error),
+    #[error(transparent)]
+    Xml(#[from] quick_xml::Error),
+    #[error(transparent)]
     Decoding(quick_xml::encoding::EncodingError),
+    #[error("{0}")]
     UnknownEntity(String),
 }
 

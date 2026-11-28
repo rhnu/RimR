@@ -46,8 +46,10 @@ export function presentDiagnostic(
   if (item.code === 'packageIdDuplicate') {
     addDuplicateLocations(item, context);
   } else {
+    const relatedLocation =
+      item.code === 'gameVersionUnsupported' ? 'noVersionWarningList' : 'relatedLocation';
     for (const location of locations) {
-      const key = location === live?.location ? 'location' : 'relatedLocation';
+      const key = location === live?.location ? 'location' : relatedLocation;
       addDetail(key, formatLocation(location), true);
     }
   }
@@ -139,7 +141,7 @@ type SinglePackageCode =
 function summarizeSinglePackage(
   code: SinglePackageCode,
   item: Diagnostic,
-  { t, locations, saved, addDetail }: DiagnosticContext,
+  { t, live, locations, saved, addDetail }: DiagnosticContext,
 ): string {
   if (code === 'gameVersionUnsupported') {
     const version =
@@ -150,7 +152,10 @@ function summarizeSinglePackage(
         .flatMap((value) => majorMinorVersion(value) ?? []),
     );
     addDetail('supportedVersions', [...supported].join(', '));
-    if (version) return t('diagnostics.versionMismatch', { version });
+    if (version) {
+      const key = live?.severity === 'info' ? 'versionListedByNoVersionWarning' : 'versionMismatch';
+      return t(`diagnostics.${key}`, { version });
+    }
   }
   if (code === 'packageIdDuplicate') {
     const count = Math.max(locations.length, saved?.sourceKeys.length ?? 0);

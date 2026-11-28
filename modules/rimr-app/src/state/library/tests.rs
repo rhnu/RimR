@@ -42,7 +42,7 @@ impl Fixture {
             .write_state()
             .unwrap()
             .workspace
-            .replace_catalog(catalog, rimr_core::GameVersion::unknown());
+            .replace_catalog(catalog, rimr_core::ValidateOpts::default());
     }
 }
 
